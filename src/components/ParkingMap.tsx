@@ -665,7 +665,15 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     }
   };
 
-  if (error) return <div className="p-4 text-red-500">Error loading spots: {error}</div>;
+  if (error) return (
+    <div className="flex flex-col items-center justify-center p-8 text-center">
+      <p className="text-red-500 mb-2">Could not load spots: {error}</p>
+      <p className="text-sm text-zinc-500 mb-4">Check your internet connection and try again.</p>
+      <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+        Retry
+      </button>
+    </div>
+  );
 
   return (
     <div className={`relative w-full ${fullHeight ? 'h-full' : 'h-screen'} overflow-hidden bg-zinc-50 dark:bg-zinc-950`}>
