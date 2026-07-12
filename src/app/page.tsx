@@ -45,12 +45,13 @@ export default function Home() {
 
         {/* Hero text overlay */}
         <div className="absolute inset-0 z-20 pointer-events-none">
-          <div className="h-full max-w-6xl mx-auto px-4 flex flex-col justify-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white drop-shadow-lg max-w-2xl">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+          <div className="relative h-full max-w-6xl mx-auto px-4 flex flex-col justify-center">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white max-w-2xl">
               Match with your perfect{" "}
-              <span className="text-blue-400">parking spot</span>
+              <span className="text-blue-300">parking spot</span>
             </h1>
-            <p className="text-lg sm:text-xl text-white/90 font-medium mt-3 max-w-lg drop-shadow">
+            <p className="text-lg sm:text-xl text-white font-medium mt-3 max-w-lg">
               Set your schedule, pick your spot, and get matched with compatible drivers — all in one simple app.
             </p>
             <div className="flex gap-3 mt-6 pointer-events-auto">
