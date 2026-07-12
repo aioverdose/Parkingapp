@@ -118,6 +118,9 @@ export interface Database {
           tos_signed_at: string | null;
           role: string;
           created_at: string | null;
+          phone_number: string | null;
+          phone_verified: boolean | null;
+          phone_verified_at: string | null;
         };
         Insert: {
           id?: string;
@@ -131,6 +134,9 @@ export interface Database {
           tos_signed_at?: string | null;
           role?: string;
           created_at?: string | null;
+          phone_number?: string | null;
+          phone_verified?: boolean | null;
+          phone_verified_at?: string | null;
         };
         Update: {
           id?: string;
@@ -144,6 +150,9 @@ export interface Database {
           tos_signed_at?: string | null;
           role?: string;
           created_at?: string | null;
+          phone_number?: string | null;
+          phone_verified?: boolean | null;
+          phone_verified_at?: string | null;
         };
         Relationships: [];
       };
@@ -226,6 +235,84 @@ export interface Database {
           spot_owner_id?: string;
           seeker_id?: string;
           status?: "pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      driver_locations: {
+        Row: {
+          id: string;
+          user_id: string;
+          match_id: string | null;
+          latitude: number;
+          longitude: number;
+          heading: number | null;
+          speed: number | null;
+          accuracy: number | null;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          match_id?: string | null;
+          latitude: number;
+          longitude: number;
+          heading?: number | null;
+          speed?: number | null;
+          accuracy?: number | null;
+          recorded_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          match_id?: string | null;
+          latitude?: number;
+          longitude?: number;
+          heading?: number | null;
+          speed?: number | null;
+          accuracy?: number | null;
+          recorded_at?: string;
+        };
+        Relationships: [];
+      };
+      active_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          match_id: string;
+          role: string;
+          status: string;
+          eta_seconds: number | null;
+          grace_period_ends_at: string | null;
+          arrived_at: string | null;
+          departed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          match_id: string;
+          role: string;
+          status?: string;
+          eta_seconds?: number | null;
+          grace_period_ends_at?: string | null;
+          arrived_at?: string | null;
+          departed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          match_id?: string;
+          role?: string;
+          status?: string;
+          eta_seconds?: number | null;
+          grace_period_ends_at?: string | null;
+          arrived_at?: string | null;
+          departed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -527,6 +614,44 @@ export interface Database {
       ensure_user_exists: {
         Args: { p_user_id: string };
         Returns: unknown;
+      };
+      phone_otps: {
+        Row: {
+          id: string;
+          user_id: string;
+          phone: string;
+          code: string;
+          used: boolean | null;
+          created_at: string | null;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          phone: string;
+          code: string;
+          used?: boolean | null;
+          created_at?: string | null;
+          expires_at: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          phone?: string;
+          code?: string;
+          used?: boolean | null;
+          created_at?: string | null;
+          expires_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "phone_otps_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Enums: {

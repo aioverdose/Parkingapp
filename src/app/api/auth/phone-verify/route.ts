@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { checkRateLimit } from "@/lib/api/rate-limit";
+import { verifyOtp } from "@/lib/otp";
+import { isTwilioConfigured } from "@/lib/twilio";
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const rateCheck = checkRateLimit(`phone-verify:${ip}`, 10, 60_000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
     }
 
     const { phone, code } = await request.json();
@@ -16,42 +25,51 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Try to verify the OTP
-    const { error } = await supabase.auth.verifyOtp({
+    // Try Supabase OTP verification first
+    const { error: supabaseError } = await supabase.auth.verifyOtp({
       phone,
       token: code,
       type: "sms",
     });
 
-    if (error) {
-      // In dev mode, accept any 6-digit code
-      if (code.length === 6 && /^\d{6}$/.test(code)) {
-        // Mark as verified
-        await (supabase as any)
-          .from("users")
-          .update({
-            phone_verified: true,
-            phone_verified_at: new Date().toISOString(),
-          })
-          .eq("id", user.id);
+    if (!supabaseError) {
+      await (supabase as any)
+        .from("users")
+        .update({
+          phone_number: phone,
+          phone_verified: true,
+          phone_verified_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
 
-        return NextResponse.json({ success: true, verified: true, simulated: true });
-      }
-
-      return NextResponse.json({ error: "Invalid verification code" }, { status: 400 });
+      return NextResponse.json({ success: true, verified: true, method: "supabase" });
     }
 
-    // Mark as verified in our profile
-    await (supabase as any)
-      .from("users")
-      .update({
-        phone_verified: true,
-        phone_verified_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
+    // Fall back to Twilio direct OTP verification
+    if (isTwilioConfigured()) {
+      const result = await verifyOtp(phone, code, user.id);
+      return NextResponse.json({ success: true, verified: true, method: "twilio" });
+    }
 
-    return NextResponse.json({ success: true, verified: true, simulated: false });
+    // Dev mode: accept any 6-digit code
+    if (code.length === 6 && /^\d{6}$/.test(code)) {
+      await (supabase as any)
+        .from("users")
+        .update({
+          phone_number: phone,
+          phone_verified: true,
+          phone_verified_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      return NextResponse.json({ success: true, verified: true, method: "simulated" });
+    }
+
+    return NextResponse.json({ error: "Invalid verification code" }, { status: 400 });
   } catch (err) {
+    if (err instanceof Error && err.message.includes("expired")) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 },

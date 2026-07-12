@@ -12,13 +12,14 @@ export async function createEphemeralChat(spotId: string, receiverId: string) {
     .single();
 
   if (spotError || !spot) return { error: "Spot not found" };
-  if (spot.user_id === receiverId) return { error: "Cannot chat with yourself" };
+  const spotUserId = (spot as { user_id: string }).user_id;
+  if (spotUserId === receiverId) return { error: "Cannot chat with yourself" };
 
   const { data, error } = await supabase
     .from("ephemeral_chats")
     .insert({
       spot_id: spotId,
-      sender_id: spot.user_id,
+      sender_id: spotUserId,
       receiver_id: receiverId,
       status: "active",
       expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),

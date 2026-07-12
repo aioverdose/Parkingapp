@@ -1,13 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Phone, Check, X, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, Phone, Check, X, AlertCircle, RefreshCw } from "lucide-react";
 
 interface PhoneVerificationModalProps {
   open: boolean;
   userId: string;
   onVerified: () => void;
   onClose: () => void;
+}
+
+const COOLDOWN_SECONDS = 60;
+
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
 export function PhoneVerificationModal({ open, userId, onVerified, onClose }: PhoneVerificationModalProps) {
@@ -19,6 +29,36 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [simulated, setSimulated] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setPhone("");
+      setCode("");
+      setStep("phone");
+      setError(null);
+      setSuccess(false);
+      setSimulated(false);
+      setCooldown(0);
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      timerRef.current = setInterval(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [cooldown]);
 
   if (!open) return null;
 
@@ -30,15 +70,18 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
   };
 
   const handleSendCode = async () => {
-    if (!phone || phone.length < 10) return;
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) return;
     setSending(true);
     setError(null);
+    setSimulated(false);
 
     const token = await getToken();
+    const e164 = `+1${digits}`;
     const res = await fetch("/api/auth/phone-request", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone: e164 }),
     });
     const data = await res.json();
 
@@ -48,20 +91,23 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
       return;
     }
 
-    setSimulated(data.simulated || false);
+    setSimulated(data.method === "simulated");
     setStep("code");
+    setCooldown(COOLDOWN_SECONDS);
   };
 
   const handleVerify = async () => {
-    if (!code || code.length < 6) return;
+    if (code.length < 6) return;
     setVerifying(true);
     setError(null);
 
     const token = await getToken();
+    const digits = phone.replace(/\D/g, "");
+    const e164 = `+1${digits}`;
     const res = await fetch("/api/auth/phone-verify", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify({ phone: e164, code }),
     });
     const data = await res.json();
 
@@ -99,13 +145,14 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
               Enter your phone number to verify your identity. Required before posting spots.
             </p>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-medium">+1</span>
+              <Phone className="absolute left-9 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
               <input
                 type="tel"
-                placeholder="+1 (555) 123-4567"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                placeholder="(555) 123-4567"
+                value={formatPhone(phone)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                className="w-full pl-16 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
               />
             </div>
             {error && (
@@ -116,7 +163,7 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
             )}
             <button
               onClick={handleSendCode}
-              disabled={sending || phone.length < 10}
+              disabled={sending || phone.replace(/\D/g, "").length < 10}
               className="w-full h-12 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 text-white font-bold transition flex items-center justify-center gap-2"
             >
               {sending ? <Loader2 size={18} className="animate-spin" /> : null}
@@ -126,7 +173,7 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-zinc-500">
-              Enter the 6-digit code sent to {phone}
+              Enter the 6-digit code sent to <span className="font-medium text-zinc-800 dark:text-zinc-200">{formatPhone(phone)}</span>
             </p>
             {simulated && (
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-400">
@@ -164,6 +211,20 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
               >
                 {verifying ? <Loader2 size={18} className="animate-spin" /> : "Verify Code"}
               </button>
+            </div>
+            <div className="flex justify-center">
+              {cooldown > 0 ? (
+                <span className="text-xs text-zinc-400">Resend in {cooldown}s</span>
+              ) : (
+                <button
+                  onClick={handleSendCode}
+                  disabled={sending}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <RefreshCw size={12} />
+                  Resend code
+                </button>
+              )}
             </div>
           </div>
         )}

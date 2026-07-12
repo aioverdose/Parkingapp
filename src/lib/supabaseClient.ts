@@ -1,7 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types";
 
-let cachedClient: SupabaseClient<Database> | null = null;
+let cachedClient: SupabaseClient<any> | null = null;
 let configured = true;
 
 export const isSupabaseConfigured = (): boolean => {
@@ -9,7 +8,7 @@ export const isSupabaseConfigured = (): boolean => {
   return configured;
 };
 
-export const createBrowserClient = (): SupabaseClient<Database> => {
+export const createBrowserClient = (): SupabaseClient<any> => {
   if (cachedClient) return cachedClient;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -17,7 +16,7 @@ export const createBrowserClient = (): SupabaseClient<Database> => {
 
   if (!url || !key) {
     configured = false;
-    cachedClient = createClient<Database>(
+    cachedClient = createClient<any>(
       "https://placeholder.supabase.co",
       "placeholder-key",
     );
@@ -25,6 +24,6 @@ export const createBrowserClient = (): SupabaseClient<Database> => {
   }
 
   configured = true;
-  cachedClient = createClient<Database>(url, key);
+  cachedClient = createClient<any>(url, key);
   return cachedClient;
 };

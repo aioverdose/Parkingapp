@@ -57,6 +57,7 @@ export async function getAllNeighborhoods() {
     .not("neighborhood", "is", null)
     .order("neighborhood");
 
-  const unique = new Set(data?.map((r) => r.neighborhood).filter(Boolean) as string[]);
+  const rows = (data ?? []) as { neighborhood: string | null }[];
+  const unique = new Set(rows.map((r) => r.neighborhood).filter(Boolean) as string[]);
   return Array.from(unique).sort();
 }

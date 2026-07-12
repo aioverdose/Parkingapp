@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { LayoutDashboard, Megaphone, Users, AlertTriangle, Globe, Truck, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Megaphone, Users, AlertTriangle, Globe, Truck, ArrowLeft, Radar } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createBrowserClient();
@@ -51,6 +51,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <a href="/admin" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
           <LayoutDashboard size={18} /> Dashboard
         </a>
+        <a href="/admin/control-tower" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+          <Radar size={18} /> Control Tower
+        </a>
         <a href="/admin/ads" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
           <Megaphone size={18} /> Ad Campaigns
         </a>
@@ -75,6 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Mobile nav */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex">
         <a href="/admin" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><LayoutDashboard size={20} />Dashboard</a>
+        <a href="/admin/control-tower" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Radar size={20} />Tower</a>
         <a href="/admin/ads" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Megaphone size={20} />Ads</a>
         <a href="/admin/users" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Users size={20} />Users</a>
         <a href="/admin/flags" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><AlertTriangle size={20} />Flags</a>

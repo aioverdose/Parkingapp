@@ -6,14 +6,14 @@ export const createAdminClient = () => {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
-    return createClient<Database>(
+    return createClient<any>(
       url ?? "https://placeholder.supabase.co",
       key ?? "placeholder-key",
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
   }
 
-  return createClient<Database>(url, key, {
+  return createClient<any>(url, key, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

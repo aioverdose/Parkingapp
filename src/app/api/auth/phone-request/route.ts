@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { checkRateLimit } from "@/lib/api/rate-limit";
+import { requestOtp } from "@/lib/otp";
+import { isTwilioConfigured } from "@/lib/twilio";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,31 +12,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { phone } = await request.json();
-    if (!phone) {
-      return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const rateCheck = checkRateLimit(`phone-request:${ip}`, 5, 60_000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
     }
 
-    // Save phone to profile immediately
-    const supabase = createAdminClient();
-    await (supabase as any)
-      .from("users")
-      .update({ phone_number: phone })
-      .eq("id", user.id);
+    const { phone } = await request.json();
+    if (!phone || phone.replace(/\D/g, "").length < 10) {
+      return NextResponse.json({ error: "Valid phone number is required" }, { status: 400 });
+    }
 
-    // Try Supabase phone auth OTP
-    const { error } = await supabase.auth.signInWithOtp({
+    const supabase = createAdminClient();
+
+    // Try Supabase phone auth OTP first
+    const { error: supabaseError } = await supabase.auth.signInWithOtp({
       phone,
       options: { shouldCreateUser: false },
     });
 
-    if (error) {
-      // If SMS not configured, still allow (dev mode)
-      console.warn("Phone OTP failed (SMS may not be configured):", error.message);
-      return NextResponse.json({ success: true, warning: error.message, simulated: true });
+    if (!supabaseError) {
+      await (supabase as any)
+        .from("users")
+        .update({ phone_number: phone })
+        .eq("id", user.id);
+
+      return NextResponse.json({ success: true, method: "supabase" });
     }
 
-    return NextResponse.json({ success: true, simulated: false });
+    // Fall back to Twilio direct SMS
+    if (isTwilioConfigured()) {
+      const result = await requestOtp(phone, user.id);
+      return NextResponse.json({ success: true, method: "twilio", expires_at: result.expires_at });
+    }
+
+    // No SMS provider configured — dev mode
+    console.warn("Phone OTP unavailable (no SMS provider configured)");
+    return NextResponse.json({
+      success: true,
+      method: "simulated",
+      warning: "SMS not configured. Any 6-digit code will work in dev mode.",
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
