@@ -140,6 +140,9 @@ export default function SettingsPage() {
             <a href="/faq" className="block w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-sm font-medium text-center hover:bg-zinc-100 dark:hover:bg-zinc-700 transition">
               FAQ / Help
             </a>
+            <a href="/support" className="block w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-sm font-medium text-center hover:bg-zinc-100 dark:hover:bg-zinc-700 transition">
+              Support Center
+            </a>
             <a href="/tos/latest" className="block w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-sm font-medium text-center hover:bg-zinc-100 dark:hover:bg-zinc-700 transition">
               Terms of Service
             </a>

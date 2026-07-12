@@ -47,7 +47,7 @@ const FAQS = [
   },
   {
     q: "How do I contact support?",
-    a: "Report issues using the flag button. For other inquiries, contact us at privacy@spotmatch.app.",
+    a: "Visit our Support Center for guides and contact options. You can also email us at support@spotmatch.app.",
   },
 ];
 
