@@ -15,7 +15,7 @@ import { reverseGeocode } from "@/lib/geocode";
 import {
   ArrowLeft, MapPin, Clock, Star, TrendingUp, CheckCircle2,
   BookOpen, Settings, GraduationCap, Loader2, Trash2, Award,
-  User as UserIcon, AlertCircle, Plus,
+  User as UserIcon, AlertCircle, Plus, LogOut,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -93,6 +93,11 @@ export default function ProfilePage() {
   const handleDeleteSpot = async (spotId: string) => {
     await deleteParkingSpot(spotId);
     setSavedSpots((prev) => prev.filter((s) => s.id !== spotId));
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
   };
 
   const handleMapClick = async (evt: any) => {
@@ -381,6 +386,13 @@ export default function ProfilePage() {
               <MapPin size={22} />
               <span className="text-[11px] font-bold">View Map</span>
             </a>
+            <button
+              onClick={handleLogout}
+              className="flex flex-col items-center gap-1.5 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition"
+            >
+              <LogOut size={22} />
+              <span className="text-[11px] font-bold">Logout</span>
+            </button>
           </div>
         </div>
 

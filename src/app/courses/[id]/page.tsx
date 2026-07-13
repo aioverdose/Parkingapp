@@ -19,6 +19,7 @@ export default function CourseDetailPage() {
     score: number | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -52,7 +53,8 @@ export default function CourseDetailPage() {
 
   const handleSubmit = async () => {
     if (!course || submitting) return;
-    if (answers.includes(-1)) { alert("Please answer all questions."); return; }
+    if (answers.includes(-1)) { setErrorMsg("Please answer all questions."); return; }
+    setErrorMsg(null);
 
     setSubmitting(true);
     const token = (await supabase.auth.getSession()).data.session?.access_token;
@@ -204,17 +206,25 @@ export default function CourseDetailPage() {
         </div>
 
         {!result && existingProgress?.status !== "passed" && (
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || answers.includes(-1)}
-            className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 disabled:from-zinc-300 disabled:to-zinc-300 dark:disabled:from-zinc-700 dark:disabled:to-zinc-700 text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:shadow-none"
-          >
-            {submitting ? (
-              <Loader2 className="animate-spin" size={22} />
-            ) : (
-              "Submit Quiz"
+          <>
+            {errorMsg && (
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm mb-2 bg-red-50 dark:bg-red-900/20 px-4 py-2 rounded-xl">
+                <AlertCircle size={16} />
+                {errorMsg}
+              </div>
             )}
-          </button>
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || answers.includes(-1)}
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 disabled:from-zinc-300 disabled:to-zinc-300 dark:disabled:from-zinc-700 dark:disabled:to-zinc-700 text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:shadow-none"
+            >
+              {submitting ? (
+                <Loader2 className="animate-spin" size={22} />
+              ) : (
+                "Submit Quiz"
+              )}
+            </button>
+          </>
         )}
       </div>
     </div>

@@ -17,15 +17,18 @@ export default function Home() {
           </div>
 
           <div className="hidden sm:flex items-center gap-6">
-            {["How it works", "Find a Spot", "Support"].map((label) => (
-              <a
-                key={label}
-                href="#"
-                className="text-sm font-medium text-zinc-500 hover:text-blue-600 transition-colors"
-              >
-                {label}
-              </a>
-            ))}
+            <a
+              href="/support/getting-started"
+              className="text-sm font-medium text-zinc-500 hover:text-blue-600 transition-colors"
+            >
+              How it works
+            </a>
+            <a
+              href="/support"
+              className="text-sm font-medium text-zinc-500 hover:text-blue-600 transition-colors"
+            >
+              Support
+            </a>
           </div>
 
           <a
@@ -62,7 +65,7 @@ export default function Home() {
                 Get Started
               </a>
               <a
-                href="#how-it-works"
+                href="/support/getting-started"
                 className="bg-white/20 backdrop-blur text-white border border-white/30 px-6 py-3 rounded-xl font-semibold text-base shadow-lg hover:bg-white/30 transition-colors"
               >
                 How it works

@@ -15,7 +15,15 @@ CREATE TABLE IF NOT EXISTS public.driver_locations (
 CREATE INDEX IF NOT EXISTS idx_driver_locations_user ON public.driver_locations(user_id, recorded_at DESC);
 CREATE INDEX IF NOT EXISTS idx_driver_locations_match ON public.driver_locations(match_id, recorded_at DESC);
 
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS public.driver_locations;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'driver_locations'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.driver_locations;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.active_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,4 +42,12 @@ CREATE TABLE IF NOT EXISTS public.active_sessions (
 CREATE INDEX IF NOT EXISTS idx_active_sessions_match ON public.active_sessions(match_id);
 CREATE INDEX IF NOT EXISTS idx_active_sessions_user ON public.active_sessions(user_id);
 
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS public.active_sessions;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'active_sessions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.active_sessions;
+  END IF;
+END $$;
