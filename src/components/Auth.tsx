@@ -15,6 +15,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
   const [name, setName] = useState("");
   const [vehicleType, setVehicleType] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +55,26 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Enter your email address first.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/signup`,
+      });
+      if (error) throw error;
+      setResetSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send reset email");
     } finally {
       setLoading(false);
     }
@@ -110,27 +131,45 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
           />
         </div>
 
-        <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-          />
-        </div>
+        {resetSent ? (
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 text-sm text-green-700 dark:text-green-300 text-center">
+            Reset link sent! Check your email inbox (and spam folder).
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+              <input
+                type="password"
+                placeholder="Password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+              />
+            </div>
 
-        {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
+            {isLogin && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-xs text-blue-600 hover:underline self-end -mt-2"
+              >
+                Forgot Password?
+              </button>
+            )}
 
-        <Button type="submit" disabled={loading} className="h-14 text-lg font-bold bg-blue-600 hover:bg-blue-700 text-white">
-          {loading ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            isLogin ? "Log In" : "Sign Up"
-          )}
-        </Button>
+            {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
+
+            <Button type="submit" disabled={loading} className="h-14 text-lg font-bold bg-blue-600 hover:bg-blue-700 text-white">
+              {loading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                isLogin ? "Log In" : "Sign Up"
+              )}
+            </Button>
+          </>
+        )}
       </form>
 
       <div className="text-center">

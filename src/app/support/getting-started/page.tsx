@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MapPin, Clock, Car, Bell, MessageCircle, Handshake, Search } from "lucide-react";
 
-const STEPS = [
+const STEPS: { icon: any; id?: string; title: string; desc: string }[] = [
   {
     icon: MapPin,
     title: "Select a Spot on the Map",
@@ -21,6 +21,7 @@ const STEPS = [
   },
   {
     icon: Search,
+    id: "matching",
     title: "Get Matched",
     desc: "Our system automatically finds drivers looking for a spot in your area during your available window. You'll get a notification when a match is found.",
   },
@@ -61,7 +62,7 @@ export default function GettingStartedPage() {
 
         <div className="flex flex-col gap-4">
           {STEPS.map((step, i) => (
-            <div key={i} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 flex gap-4">
+            <div key={i} id={step.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 flex gap-4">
               <div className="flex flex-col items-center">
                 <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                   <step.icon size={20} className="text-blue-600" />

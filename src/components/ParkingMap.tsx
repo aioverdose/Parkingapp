@@ -17,7 +17,7 @@ import { Button } from "./ui/button";
 import { SpotRequestMarker } from "./SpotRequestMarker";
 import { DeparturePingMarker } from "./DeparturePingMarker";
 import type { DeparturePingData } from "./DeparturePingMarker";
-import { BarChart3, User as UserIcon, Search, Loader2, Bell, MessageCircle, MapPin, Clock, X as CloseIcon, Handshake } from "lucide-react";
+import { User as UserIcon, Search, Loader2, Bell, MapPin, Clock, X as CloseIcon, Handshake } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { useNotifications } from "@/hooks/useNotifications";
 import { getUserChats, getActiveSpotRequests, getActiveDeparturePings } from "@/actions/social";
@@ -823,38 +823,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
 
         {/* Top-right icon buttons */}
         <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-          {user && activeChats.length > 0 && (
-            <div className="relative">
-              <Button
-                onClick={() => {
-                  const chat = activeChats[0];
-                  if (chat) setActiveChat({ chatId: chat.id, spotId: chat.spot_id });
-                }}
-                className="w-12 h-12 p-0 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xl hover:bg-zinc-100 border-none"
-              >
-                <MessageCircle size={24} className="text-blue-600" />
-              </Button>
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-50 dark:border-zinc-950">
-                {activeChats.length}
-              </div>
-            </div>
-          )}
-          <div className="relative">
-            <Button
-              onClick={() => {
-                setShowStats(true);
-                setUnreadNotifications(0);
-              }}
-              className="w-12 h-12 p-0 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xl hover:bg-zinc-100 border-none"
-            >
-              <BarChart3 size={24} />
-            </Button>
-            {unreadNotifications > 0 && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-50 dark:border-zinc-950 animate-bounce">
-                {unreadNotifications}
-              </div>
-            )}
-          </div>
           {!user && (
             <Button
               onClick={() => setShowAuth(true)}

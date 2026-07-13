@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, BookOpen, User, Settings } from "lucide-react";
+import { Home, BookOpen, User } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export function BottomNav() {
@@ -10,7 +10,6 @@ export function BottomNav() {
     { href: "/", label: "Home", icon: Home },
     { href: "/courses", label: "Courses", icon: BookOpen },
     { href: "/profile", label: "Profile", icon: User },
-    { href: "/settings", label: "Settings", icon: Settings },
   ];
 
   return (

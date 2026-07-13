@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Shield, MessageCircle, ChevronDown, ChevronUp, Mail, ExternalLink } from "lucide-react";
+import { ArrowLeft, BookOpen, Shield, MessageCircle, User, Wrench, HelpCircle, ChevronDown, ChevronUp, Mail, ExternalLink } from "lucide-react";
 
 const CATEGORIES = [
   {
@@ -22,6 +22,24 @@ const CATEGORIES = [
     title: "Safety & Reporting",
     desc: "Safety guidelines and how to report issues or inappropriate behavior.",
     href: "/support/reporting",
+  },
+  {
+    icon: User,
+    title: "Account Management",
+    desc: "Manage your profile, change password, delete account, and more.",
+    href: "/support/account",
+  },
+  {
+    icon: Wrench,
+    title: "Troubleshooting",
+    desc: "Fix common issues with matching, notifications, login, and GPS.",
+    href: "/support/troubleshooting",
+  },
+  {
+    icon: HelpCircle,
+    title: "FAQ",
+    desc: "Frequently asked questions about SpotMatch.",
+    href: "/faq",
   },
 ];
 
