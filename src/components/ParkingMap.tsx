@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Map, { Marker, NavigationControl, GeolocateControl, ViewStateChangeEvent } from "react-map-gl/maplibre";
+import Map, { Marker, NavigationControl, GeolocateControl, ViewStateChangeEvent, MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRealtimeSpots } from "@/hooks/useRealtimeSpots";
 import { INITIAL_VIEW_STATE, MAP_STYLE_URL, SATELLITE_STYLE } from "@/lib/map";
 import { SpotMarker } from "./SpotMarker";
+import { ClusterMarker } from "./ClusterMarker";
+import { useSpotClusters } from "@/hooks/useSpotClusters";
 import type { Spot } from "@/hooks/useRealtimeSpots";
 import { SpotDetails } from "./SpotDetails";
 import { PostSpotForm } from "./PostSpotForm";
@@ -64,6 +66,8 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
+  const [joinWaitlistLoading, setJoinWaitlistLoading] = useState(false);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -94,6 +98,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
 
   // Step 1: Location permission overlay
   const [showLocationOverlay, setShowLocationOverlay] = useState(true);
+  const mapRef = useRef<MapRef>(null);
   const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
 
   // Step 2: TOS modal
@@ -665,6 +670,41 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     }
   };
 
+  const clusters = useSpotClusters(spots, viewState.zoom);
+
+  const handleClusterClick = useCallback((cluster: { lat: number; lng: number }) => {
+    const zoom = Math.min(viewState.zoom + 3, 16);
+    setViewState((prev) => ({
+      ...prev,
+      latitude: cluster.lat,
+      longitude: cluster.lng,
+      zoom,
+      transitionDuration: 500,
+    }));
+  }, [viewState.zoom]);
+
+  const handleJoinWaitlist = async () => {
+    if (!user) { setShowAuth(true); return; }
+    setJoinWaitlistLoading(true);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) return;
+      const res = await fetch("/api/waitlist/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          latitude: viewState.latitude,
+          longitude: viewState.longitude,
+          radius_meters: 200,
+          vehicle_type: userVehicleType,
+        }),
+      });
+      if (res.ok) setWaitlistJoined(true);
+    } finally {
+      setJoinWaitlistLoading(false);
+    }
+  };
+
   if (error) return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <p className="text-red-500 mb-2">Could not load spots: {error}</p>
@@ -686,6 +726,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
       {/* Map (hidden behind location overlay) */}
       <div className={showLocationOverlay ? "hidden" : "w-full h-full"}>
         <Map
+          ref={mapRef}
           {...viewState}
           onMove={(evt: ViewStateChangeEvent) => setViewState(evt.viewState)}
           mapStyle={satelliteView ? SATELLITE_STYLE : MAP_STYLE_URL}
@@ -706,16 +747,24 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
               {satelliteView ? "Street" : "Satellite"}
             </button>
           </div>
-          {spots.map((spot) => (
-            <SpotMarker
-              key={spot.id}
-              spot={spot}
-              onClick={(s) => {
-                setSelectedSpot(s);
-                onSpotClick?.(s);
-              }}
-            />
-          ))}
+          {clusters.map((item) =>
+            item.type === "cluster" ? (
+              <ClusterMarker
+                key={item.id}
+                cluster={item}
+                onClick={handleClusterClick}
+              />
+            ) : (
+              <SpotMarker
+                key={item.id}
+                spot={item.spot}
+                onClick={(s) => {
+                  setSelectedSpot(s);
+                  onSpotClick?.(s);
+                }}
+              />
+            )
+          )}
           {spotRequests.map((req) => (
             <SpotRequestMarker
               key={req.id}
@@ -927,6 +976,25 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
                     </div>
                   ))}
                 </div>
+              )}
+              {user && (
+                <Button
+                  onClick={handleJoinWaitlist}
+                  disabled={joinWaitlistLoading || waitlistJoined}
+                  className={`w-full h-11 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg ${
+                    waitlistJoined
+                      ? "bg-emerald-500 text-white"
+                      : "bg-zinc-700 hover:bg-zinc-800 text-white"
+                  }`}
+                >
+                  {joinWaitlistLoading ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : waitlistJoined ? (
+                    <>Notifying you when spots open here</>
+                  ) : (
+                    <>Notify me when spots open near here</>
+                  )}
+                </Button>
               )}
             </div>
           ) : showLeaveForm && selectedLeaveSpot ? (

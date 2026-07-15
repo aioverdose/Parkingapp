@@ -396,6 +396,23 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Recurring Schedules */}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-4">
+          <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
+            <Clock size={16} className="text-blue-600" /> Recurring Schedule
+          </h3>
+          <p className="text-xs text-zinc-500 mb-3">
+            Set a recurring schedule and we&apos;ll remind you to list your spot every day at the same time.
+          </p>
+          <a
+            href="/settings?schedules=1"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition"
+          >
+            <Clock size={16} />
+            Set Up Recurring
+          </a>
+        </div>
+
         {/* Links */}
         <div className="space-y-2">
           <a href="/rankings" className="block w-full px-4 py-3.5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition">
