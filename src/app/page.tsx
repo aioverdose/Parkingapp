@@ -31,12 +31,20 @@ export default function Home() {
             </a>
           </div>
 
-          <a
-            href="/auth/signup"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-          >
-            Find a Match
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href="/auth/login"
+              className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-blue-600 transition-colors"
+            >
+              Log In
+            </a>
+            <a
+              href="/auth/signup"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Sign Up
+            </a>
+          </div>
         </div>
       </nav>
 

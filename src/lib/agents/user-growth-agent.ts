@@ -1,7 +1,5 @@
 import { createAdminClient } from "@/lib/supabaseAdmin";
 
-const INVITE_RADIUS_METERS = 322; // ~0.2 mile
-
 interface NewSpot {
   id: string;
   user_id: string;
@@ -13,24 +11,17 @@ interface NewSpot {
 export async function runUserGrowth(spot: NewSpot) {
   const supabase = createAdminClient();
 
-  const { data: allProfiles } = await (supabase.from("auth.users" as any) as any).select("id, email, phone").limit(500);
-
-  if (!allProfiles) return { invited: 0 };
+  const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 500 });
+  if (!authUsers?.users) return { invited: 0 };
 
   const { data: existingUserIds } = await supabase
     .from("users")
     .select("id");
 
-  const existingSet = new Set((existingUserIds || []).map((u: any) => u.id));
-  const nonUserProfiles = ((allProfiles || []) as any[]).filter((p: any) => !existingSet.has(p.id));
+  const existingSet = new Set((existingUserIds || []).map((u: { id: string }) => u.id));
+  const nonUserProfiles = authUsers.users.filter((u) => !existingSet.has(u.id));
 
-  const spotLat = spot.latitude;
-  const spotLng = spot.longitude;
-
-  const nearbyNonUsers = nonUserProfiles.filter((p: any) => {
-    if (!p.phone) return false;
-    return true;
-  });
+  const nearbyNonUsers = nonUserProfiles.filter((u) => u.phone);
 
   if (nearbyNonUsers.length === 0) return { invited: 0 };
 
