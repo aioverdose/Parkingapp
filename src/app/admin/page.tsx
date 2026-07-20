@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import {
   Megaphone, Users, MapPin, TrendingUp, MousePointerClick, Eye, Percent,
@@ -51,138 +51,77 @@ export default function AdminDashboard() {
   });
   const [ads, setAds] = useState<AdMetrics[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      const supabase = createBrowserClient();
-      try {
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60_000).toISOString();
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60_000).toISOString();
-
-      const q = (query: any) => query.then((r: any) => r.count ?? 0).catch(() => 0);
-      const qd = (query: any) => query.then((r: any) => r.data ?? []).catch(() => []);
-
-      const [
-        users,
-        spots,
-        adsCount,
-        chats,
-        adData,
-        users7d,
-        alertsToday,
-        alertsWeek,
-        alertsMonth,
-        hoodData,
-        congestionToday,
-        congestionWeek,
-        adImpToday,
-        adImpWeek,
-        adClickToday,
-        adClickWeek,
-        predToday,
-        predWeek,
-        predConverted,
-        predTotal,
-        invToday,
-        invWeek,
-        invConverted,
-        invTotal,
-      ] = await Promise.all([
-        q(supabase.from("users").select("*", { count: "exact", head: true })),
-        q(supabase.from("parking_spots").select("*", { count: "exact", head: true }).eq("status", "active")),
-        q(supabase.from("ads").select("*", { count: "exact", head: true }).eq("active", true)),
-        q(supabase.from("ephemeral_chats").select("*", { count: "exact", head: true }).eq("status", "active")),
-        qd(supabase.from("ads").select("id, title, business_name, impressions, clicks, active").order("created_at", { ascending: false })),
-        q(supabase.from("users").select("*", { count: "exact", head: true }).gt("created_at", weekAgo)),
-        q(supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart)),
-        q(supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo)),
-        q(supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", monthAgo)),
-        qd(supabase.from("parking_spots").select("address").eq("status", "active").gte("created_at", monthAgo)),
-        q(supabase.from("congestion_alerts" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart)),
-        q(supabase.from("congestion_alerts" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo)),
-        q(supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "impression").gte("created_at", todayStart)),
-        q(supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "impression").gte("created_at", weekAgo)),
-        q(supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "click").gte("created_at", todayStart)),
-        q(supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "click").gte("created_at", weekAgo)),
-        q(supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart)),
-        q(supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo)),
-        q(supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).eq("converted", true)),
-        q(supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true })),
-        q(supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart)),
-        q(supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo)),
-        q(supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).eq("converted", true)),
-        q(supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true })),
-      ]);
-
-      const totalAdImpressions = (adData ?? []).reduce((s, a: any) => s + (a.impressions ?? 0), 0);
-      const totalAdClicks = (adData ?? []).reduce((s, a: any) => s + (a.clicks ?? 0), 0);
-      const activeAds = (adData ?? []).filter((a: any) => a.active).length;
-
-      const hoodMap = new Map<string, number>();
-      for (const row of (hoodData ?? [])) {
-        const hood = (row.address || "").split(",").pop()?.trim() || "Unknown";
-        hoodMap.set(hood, (hoodMap.get(hood) || 0) + 1);
+  const load = useCallback(async () => {
+    const supabase = createBrowserClient();
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError("Not authenticated");
+        setLoading(false);
+        return;
       }
-      const topHoods = [...hoodMap.entries()]
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
 
-      const totalAlertsWeek = alertsWeek ?? 0;
-      const alertsPerDayVal = totalAlertsWeek > 0 ? (totalAlertsWeek / 7) : 0;
-
-      const totalUsers = users ?? 1;
-      const users7dVal = users7d ?? 0;
-      const retentionRateVal = totalUsers > 0 ? (users7dVal / totalUsers) * 100 : 0;
-
-      const predConvertedVal = predConverted ?? 0;
-      const predTotalVal = predTotal ?? 0;
-      const predAccuracyVal = predTotalVal > 0 ? (predConvertedVal / predTotalVal) * 100 : 0;
-
-      const invConvertedVal = invConverted ?? 0;
-      const invTotalVal = invTotal ?? 0;
-      const invConversionVal = invTotalVal > 0 ? (invConvertedVal / invTotalVal) * 100 : 0;
-
-      setStats({
-        users: totalUsers,
-        spots: spots ?? 0,
-        ads: adsCount ?? 0,
-        activeChats: chats ?? 0,
+      const res = await fetch("/api/admin/dashboard", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error || `Server error ${res.status}`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      setStats(data.stats);
+      setAds(data.agent.ads ?? []);
+
+      const alertsWeekVal = data.agent.alertsWeek ?? 0;
+      const alertsPerDayVal = alertsWeekVal > 0 ? alertsWeekVal / 7 : 0;
+      const totalUsers = data.stats.users || 1;
+      const users7dVal = data.agent.activeUsers7d ?? 0;
+      const retentionRateVal = (users7dVal / totalUsers) * 100;
+      const activeAds = (data.agent.ads ?? []).filter((a: any) => a.active).length;
+      const totalAdImpressions = (data.agent.ads ?? []).reduce((s: number, a: any) => s + (a.impressions ?? 0), 0);
+      const totalAdClicks = (data.agent.ads ?? []).reduce((s: number, a: any) => s + (a.clicks ?? 0), 0);
 
       setAgent({
         activeUsers7d: users7dVal,
-        alertsToday: alertsToday ?? 0,
-        alertsWeek: totalAlertsWeek,
-        alertsMonth: alertsMonth ?? 0,
+        alertsToday: data.agent.alertsToday ?? 0,
+        alertsWeek: alertsWeekVal,
+        alertsMonth: data.agent.alertsMonth ?? 0,
         alertsPerDay: alertsPerDayVal,
         retentionRate: Math.round(retentionRateVal),
-        topNeighborhoods: topHoods,
-        congestionToday: congestionToday ?? 0,
-        congestionWeek: congestionWeek ?? 0,
-        adImpressionsToday: adImpToday ?? 0,
-        adImpressionsWeek: adImpWeek ?? 0,
-        adClicksToday: adClickToday ?? 0,
-        adClicksWeek: adClickWeek ?? 0,
+        topNeighborhoods: data.agent.topNeighborhoods ?? [],
+        congestionToday: data.agent.congestionToday ?? 0,
+        congestionWeek: data.agent.congestionWeek ?? 0,
+        adImpressionsToday: data.agent.adImpressionsToday ?? 0,
+        adImpressionsWeek: data.agent.adImpressionsWeek ?? 0,
+        adClicksToday: data.agent.adClicksToday ?? 0,
+        adClicksWeek: data.agent.adClicksWeek ?? 0,
         adsDriversPerAd: activeAds > 0 ? Math.round(totalAdClicks / activeAds) : 0,
-        predictionsToday: predToday ?? 0,
-        predictionsWeek: predWeek ?? 0,
-        predictionAccuracy: Math.round(predAccuracyVal),
-        invitesToday: invToday ?? 0,
-        invitesWeek: invWeek ?? 0,
-        inviteConversionRate: Math.round(invConversionVal),
+        predictionsToday: data.agent.predictionsToday ?? 0,
+        predictionsWeek: data.agent.predictionsWeek ?? 0,
+        predictionAccuracy: data.agent.predictionAccuracy ?? 0,
+        invitesToday: data.agent.invitesToday ?? 0,
+        invitesWeek: data.agent.invitesWeek ?? 0,
+        inviteConversionRate: data.agent.inviteConversionRate ?? 0,
       });
-
-      setAds(adData as AdMetrics[]);
-      } catch (err) {
-        console.error("Admin dashboard load error:", err);
-      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to load dashboard");
+    } finally {
       setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const totalImpressions = ads.reduce((sum, a) => sum + (a.impressions ?? 0), 0);
   const totalClicks = ads.reduce((sum, a) => sum + (a.clicks ?? 0), 0);
@@ -219,6 +158,18 @@ export default function AdminDashboard() {
 
   if (loading) {
     return <div className="p-6 max-w-6xl mx-auto text-center py-12 text-zinc-500">Loading metrics...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto text-center py-12">
+        <p className="text-red-500 font-bold mb-2">Error loading dashboard</p>
+        <p className="text-sm text-zinc-500 mb-4">{error}</p>
+        <button onClick={load} className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm">
+          Try Again
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -303,7 +254,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Ad Performance Table */}
-      {ads.length > 0 ? (
+      {ads.length > 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden mb-8">
           <div className="p-5 border-b border-zinc-200 dark:border-zinc-800">
             <h2 className="font-bold">Ad Performance</h2>
@@ -332,11 +283,9 @@ export default function AdminDashboard() {
                       <td className="p-4 text-right font-mono">{ctr}%</td>
                       <td className="p-4 text-right">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                          ad.active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-zinc-100 text-zinc-500"
+                          ad.active ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"
                         }`}>
-                          {ad.active ? "Active" : "Inactive"}
+                          {ad.active ? "Active" : "Paused"}
                         </span>
                       </td>
                     </tr>
@@ -346,28 +295,7 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
-      ) : (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 border border-zinc-200 dark:border-zinc-800 text-center text-zinc-500 mb-8">
-          <Megaphone className="mx-auto mb-3 opacity-30" size={40} />
-          <p className="font-medium">No ad campaigns yet</p>
-          <p className="text-sm mt-1">Create your first ad to start tracking performance</p>
-          <a href="/admin/ads" className="inline-block mt-4 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition">
-            Create Ad
-          </a>
-        </div>
       )}
-
-      {/* Quick Links */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 border border-zinc-200 dark:border-zinc-800">
-        <h2 className="font-bold mb-4">Quick Links</h2>
-        <div className="flex flex-wrap gap-3">
-          <a href="/admin/ads" className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition">Manage Ad Campaigns</a>
-          <a href="/admin/users" className="px-4 py-2.5 bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-xl text-sm font-bold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition">Manage Users</a>
-          <a href="/admin/flags" className="px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition">Review Flags</a>
-          <a href="/admin/pilot-areas" className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition">Pilot Areas</a>
-          <a href="/admin/street-sweeping" className="px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-bold hover:bg-amber-600 transition">Street Sweeping</a>
-        </div>
-      </div>
     </div>
   );
 }
