@@ -927,9 +927,16 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
 
         {/* Top-right icon buttons */}
         <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-          {!user && (
+          {!user ? (
             <Button
               onClick={() => setShowAuth(true)}
+              className="w-12 h-12 p-0 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xl hover:bg-zinc-100 border-none"
+            >
+              <UserIcon size={24} />
+            </Button>
+          ) : (
+            <Button
+              onClick={() => router.push("/profile")}
               className="w-12 h-12 p-0 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xl hover:bg-zinc-100 border-none"
             >
               <UserIcon size={24} />

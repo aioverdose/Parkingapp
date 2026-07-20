@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { PWARegistration } from "@/components/PWARegistration";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -39,6 +40,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <PWARegistration />
+        <PWAInstallBanner />
         {children}
       </body>
     </html>
