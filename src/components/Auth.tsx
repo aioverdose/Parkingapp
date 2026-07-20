@@ -10,6 +10,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
   const supabase = createBrowserClient();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -65,7 +66,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
       setError("Enter your email address first.");
       return;
     }
-    setLoading(true);
+    setResetLoading(true);
     setError(null);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -76,7 +77,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send reset email");
     } finally {
-      setLoading(false);
+      setResetLoading(false);
     }
   };
 
@@ -153,9 +154,10 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="text-xs text-blue-600 hover:underline self-end -mt-2"
+                disabled={resetLoading}
+                className="text-xs text-blue-600 hover:underline self-end -mt-2 disabled:opacity-50"
               >
-                Forgot Password?
+                {resetLoading ? "Sending..." : "Forgot Password?"}
               </button>
             )}
 

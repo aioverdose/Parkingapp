@@ -9,6 +9,7 @@ export default function LoginPage() {
   const supabase = createBrowserClient();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -38,18 +39,18 @@ export default function LoginPage() {
       setError("Enter your email address first.");
       return;
     }
-    setLoading(true);
+    setResetLoading(true);
     setError(null);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
     if (error) {
       setError(error.message);
-      setLoading(false);
+      setResetLoading(false);
       return;
     }
     setResetSent(true);
-    setLoading(false);
+    setResetLoading(false);
   }
 
   return (
@@ -99,9 +100,10 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="text-xs text-blue-600 hover:underline self-end -mt-2"
+                disabled={resetLoading}
+                className="text-xs text-blue-600 hover:underline self-end -mt-2 disabled:opacity-50"
               >
-                Forgot Password?
+                {resetLoading ? "Sending..." : "Forgot Password?"}
               </button>
 
               {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}

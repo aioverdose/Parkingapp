@@ -36,6 +36,7 @@ export default function ResetPasswordPage() {
           if (error) {
             setExpired(true);
           } else {
+            window.history.replaceState({}, "", window.location.pathname);
             setReady(true);
           }
         }
@@ -48,7 +49,7 @@ export default function ResetPasswordPage() {
         setReady(true);
         return;
       }
-      const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
         if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
           if (!cancelled) setReady(true);
         }
@@ -58,13 +59,8 @@ export default function ResetPasswordPage() {
 
     handleRecovery();
 
-    const timeout = setTimeout(() => {
-      if (!cancelled) setExpired(true);
-    }, 15000);
-
     return () => {
       cancelled = true;
-      clearTimeout(timeout);
       if (subscription) subscription.unsubscribe();
     };
   }, []);

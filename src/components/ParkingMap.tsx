@@ -36,6 +36,10 @@ import { PhoneVerificationModal } from "./PhoneVerificationModal";
 import { SafetyWarningModal } from "./SafetyWarningModal";
 import { PilotAreaWarning } from "./PilotAreaWarning";
 import { MatchList } from "./MatchList";
+import { LocationConsentModal } from "./LocationConsentModal";
+import { LiveTrackingOverlay } from "./LiveTrackingOverlay";
+import { useLocationSharing } from "@/hooks/useLocationSharing";
+import { useLiveTracking } from "@/hooks/useLiveTracking";
 import { reverseGeocodeStreet } from "@/lib/reverse-geocode";
 import { checkPilotArea } from "@/lib/pilot-area";
 
@@ -96,6 +100,17 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [satelliteView, setSatelliteView] = useState(false);
 
+  // Live tracking state
+  const [activeTrackingMatch, setActiveTrackingMatch] = useState<{
+    matchId: string;
+    partnerName: string;
+    spotAddress: string;
+    spotLat: number;
+    spotLng: number;
+  } | null>(null);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [trackingEnabled, setTrackingEnabled] = useState(false);
+
   // Step 1: Location permission overlay
   const [showLocationOverlay, setShowLocationOverlay] = useState(true);
   const mapRef = useRef<MapRef>(null);
@@ -123,6 +138,46 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   const [showPilotWarning, setShowPilotWarning] = useState(false);
   const [gatingChecked, setGatingChecked] = useState(false);
   const [gatingBlockReason, setGatingBlockReason] = useState<string | null>(null);
+
+  // Live tracking hooks
+  const { sharing: mySharing, stopSharing } = useLocationSharing(
+    activeTrackingMatch?.matchId ?? null,
+    trackingEnabled,
+  );
+  const { partnerLocation, partnerSharing, isTracking, error: trackingError } = useLiveTracking(
+    activeTrackingMatch?.matchId ?? null,
+    user?.id ?? null,
+    activeTrackingMatch?.spotLat,
+    activeTrackingMatch?.spotLng,
+  );
+
+  const handleTrackOpen = useCallback((matchId: string, _spotId: string, partnerName: string, spotAddress: string, spotLat: number, spotLng: number) => {
+    setShowMatches(false);
+    setActiveTrackingMatch({ matchId, partnerName, spotAddress, spotLat, spotLng });
+    setShowConsentModal(true);
+    setTrackingEnabled(false);
+  }, []);
+
+  const handleConsentGiven = useCallback(async () => {
+    setShowConsentModal(false);
+    // Call the start API to record consent
+    if (activeTrackingMatch) {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (token) {
+        await fetch(`/api/matches/${activeTrackingMatch.matchId}/location/start`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    }
+    setTrackingEnabled(true);
+  }, [activeTrackingMatch, supabase]);
+
+  const handleStopTracking = useCallback(() => {
+    stopSharing();
+    setTrackingEnabled(false);
+    setActiveTrackingMatch(null);
+  }, [stopSharing]);
 
   async function fetchActiveChatsFunc(userId: string) {
     const chats = await getUserChats(userId);
@@ -1194,6 +1249,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
                 setShowMatches(false);
                 setActiveChat({ chatId, spotId });
               }}
+              onTrackOpen={handleTrackOpen}
             />
           </div>
         )}
@@ -1207,6 +1263,33 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
               <Auth onComplete={() => setShowAuth(false)} />
             </div>
           </div>
+        )}
+
+        {/* Live tracking overlay — rendered inside the map area */}
+        {activeTrackingMatch && isTracking && (
+          <LiveTrackingOverlay
+            partnerLocation={partnerLocation}
+            partnerSharing={partnerSharing}
+            isTracking={isTracking}
+            error={trackingError}
+            partnerName={activeTrackingMatch.partnerName}
+            spotAddress={activeTrackingMatch.spotAddress}
+            spotLat={activeTrackingMatch.spotLat}
+            spotLng={activeTrackingMatch.spotLng}
+            onStopTracking={handleStopTracking}
+            onEnableSharing={() => {
+              supabase.auth.getSession().then(async ({ data: { session } }) => {
+                if (session && activeTrackingMatch) {
+                  await fetch(`/api/matches/${activeTrackingMatch.matchId}/location/start`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                  });
+                  setTrackingEnabled(true);
+                }
+              });
+            }}
+            mySharing={mySharing}
+          />
         )}
       </div>
 
@@ -1244,6 +1327,19 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         open={showPilotWarning}
         areaName={pilotAreaName}
       />
+
+      {/* Location Consent Modal */}
+      {showConsentModal && activeTrackingMatch && (
+        <LocationConsentModal
+          partnerName={activeTrackingMatch.partnerName}
+          spotAddress={activeTrackingMatch.spotAddress}
+          onConsent={handleConsentGiven}
+          onDecline={() => {
+            setShowConsentModal(false);
+            setActiveTrackingMatch(null);
+          }}
+        />
+      )}
     </div>
   );
 }

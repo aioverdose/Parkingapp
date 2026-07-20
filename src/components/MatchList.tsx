@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, X, MessageCircle, MapPin, Car, User as UserIcon } from "lucide-react";
+import { Loader2, Check, X, MessageCircle, MapPin, Car, User as UserIcon, Navigation } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabaseClient";
 
 interface Match {
@@ -37,9 +37,10 @@ interface Match {
 interface MatchListProps {
   onClose: () => void;
   onChatOpen: (chatId: string, spotId: string) => void;
+  onTrackOpen?: (matchId: string, spotId: string, partnerName: string, spotAddress: string, spotLat: number, spotLng: number) => void;
 }
 
-export function MatchList({ onClose, onChatOpen }: MatchListProps) {
+export function MatchList({ onClose, onChatOpen, onTrackOpen }: MatchListProps) {
   const supabase = createBrowserClient();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -202,13 +203,31 @@ export function MatchList({ onClose, onChatOpen }: MatchListProps) {
                   </div>
 
                   {match.status === "confirmed" ? (
-                    <Button
-                      onClick={() => onChatOpen(match.id, match.spot_id)}
-                      className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2"
-                    >
-                      <MessageCircle size={16} />
-                      Chat & Coordinate
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => onChatOpen(match.id, match.spot_id)}
+                        className="flex-1 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2"
+                      >
+                        <MessageCircle size={16} />
+                        Chat
+                      </Button>
+                      {onTrackOpen && (
+                        <Button
+                          onClick={() => onTrackOpen(
+                            match.id,
+                            match.spot_id,
+                            otherUser?.name || "Driver",
+                            match.spot.address || "Parking spot",
+                            match.spot.latitude,
+                            match.spot.longitude,
+                          )}
+                          className="flex-1 h-10 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold flex items-center justify-center gap-2"
+                        >
+                          <Navigation size={16} />
+                          Track
+                        </Button>
+                      )}
+                    </div>
                   ) : (
                     <div className="flex gap-2">
                       <Button
@@ -282,13 +301,31 @@ export function MatchList({ onClose, onChatOpen }: MatchListProps) {
                     )}
                   </div>
 
-                  <Button
-                    onClick={() => onChatOpen(match.id, match.spot_id)}
-                    className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2"
-                  >
-                    <MessageCircle size={16} />
-                    Chat & Coordinate
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => onChatOpen(match.id, match.spot_id)}
+                      className="flex-1 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle size={16} />
+                      Chat
+                    </Button>
+                    {onTrackOpen && (
+                      <Button
+                        onClick={() => onTrackOpen(
+                          match.id,
+                          match.spot_id,
+                          otherUser?.name || "Driver",
+                          match.spot.address || "Parking spot",
+                          match.spot.latitude,
+                          match.spot.longitude,
+                        )}
+                        className="flex-1 h-10 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold flex items-center justify-center gap-2"
+                      >
+                        <Navigation size={16} />
+                        Track
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}

@@ -24,6 +24,13 @@ export const createBrowserClient = (): SupabaseClient<any> => {
   }
 
   configured = true;
-  cachedClient = createClient<any>(url, key);
+  cachedClient = createClient<any>(url, key, {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    },
+  });
   return cachedClient;
 };
