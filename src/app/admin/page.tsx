@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createAdminClient } from "@/lib/supabaseAdmin";
+import { createBrowserClient } from "@/lib/supabaseClient";
 import {
   Megaphone, Users, MapPin, TrendingUp, MousePointerClick, Eye, Percent,
   Bell, BarChart3, Target, Send, Activity, Search, Clock,
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function load() {
-      const supabase = createAdminClient();
+      const supabase = createBrowserClient();
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60_000).toISOString();

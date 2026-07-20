@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createAdminClient } from "@/lib/supabaseAdmin";
+import { createBrowserClient } from "@/lib/supabaseClient";
 import { Loader2, Plus, Pencil, Trash2, Search, Truck } from "lucide-react";
 
 interface SweepingEntry {
@@ -18,7 +18,7 @@ interface SweepingEntry {
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export default function AdminStreetSweepingPage() {
-  const supabase = createAdminClient();
+  const supabase = createBrowserClient();
   const [entries, setEntries] = useState<SweepingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

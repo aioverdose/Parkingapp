@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createAdminClient } from "@/lib/supabaseAdmin";
+import { createBrowserClient } from "@/lib/supabaseClient";
 import { Loader2, Plus, Pencil, Trash2, Globe } from "lucide-react";
 
 interface PilotArea {
@@ -16,7 +16,7 @@ interface PilotArea {
 }
 
 export default function AdminPilotAreasPage() {
-  const supabase = createAdminClient();
+  const supabase = createBrowserClient();
   const [areas, setAreas] = useState<PilotArea[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

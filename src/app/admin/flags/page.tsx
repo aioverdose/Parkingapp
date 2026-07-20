@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createAdminClient } from "@/lib/supabaseAdmin";
+import { createBrowserClient } from "@/lib/supabaseClient";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { AlertTriangle, CheckCircle, Trash2, Loader2, Search, Shield } from "lucide-react";
 
@@ -18,7 +18,7 @@ interface SpotFlag {
 }
 
 export default function AdminFlagsPage() {
-  const adminSupabase = createAdminClient();
+  const adminSupabase = createBrowserClient();
   const supabase = createBrowserClient();
   const [flags, setFlags] = useState<(SpotFlag & { spot_address?: string; flagger_name?: string })[]>([]);
   const [loading, setLoading] = useState(true);

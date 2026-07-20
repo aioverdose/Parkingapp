@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { Loader2, User, Car, ArrowLeft, CheckCircle } from "lucide-react";
+import { Loader2, User, Car, ArrowLeft, CheckCircle, LogOut } from "lucide-react";
 import { VEHICLE_TYPES } from "@/lib/vehicle-types";
 
 export default function SettingsPage() {
@@ -146,6 +146,15 @@ export default function SettingsPage() {
             <a href="/tos/latest" className="block w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-sm font-medium text-center hover:bg-zinc-100 dark:hover:bg-zinc-700 transition">
               Terms of Service
             </a>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.push("/");
+              }}
+              className="w-full px-4 py-3 bg-red-50 dark:bg-red-900/20 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 text-center hover:bg-red-100 dark:hover:bg-red-900/30 transition flex items-center justify-center gap-2"
+            >
+              <LogOut size={16} /> Log Out
+            </button>
           </div>
         </div>
       </div>
