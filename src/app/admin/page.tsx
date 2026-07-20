@@ -55,61 +55,65 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function load() {
       const supabase = createBrowserClient();
+      try {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60_000).toISOString();
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60_000).toISOString();
 
+      const q = (query: any) => query.then((r: any) => r.count ?? 0).catch(() => 0);
+      const qd = (query: any) => query.then((r: any) => r.data ?? []).catch(() => []);
+
       const [
-        { count: users },
-        { count: spots },
-        { count: adsCount },
-        { count: chats },
-        { data: adData },
-        { count: users7d },
-        { count: alertsToday },
-        { count: alertsWeek },
-        { count: alertsMonth },
-        { data: hoodData },
-        { count: congestionToday },
-        { count: congestionWeek },
-        { count: adImpToday },
-        { count: adImpWeek },
-        { count: adClickToday },
-        { count: adClickWeek },
-        { count: predToday },
-        { count: predWeek },
-        { count: predConverted },
-        { count: predTotal },
-        { count: invToday },
-        { count: invWeek },
-        { count: invConverted },
-        { count: invTotal },
+        users,
+        spots,
+        adsCount,
+        chats,
+        adData,
+        users7d,
+        alertsToday,
+        alertsWeek,
+        alertsMonth,
+        hoodData,
+        congestionToday,
+        congestionWeek,
+        adImpToday,
+        adImpWeek,
+        adClickToday,
+        adClickWeek,
+        predToday,
+        predWeek,
+        predConverted,
+        predTotal,
+        invToday,
+        invWeek,
+        invConverted,
+        invTotal,
       ] = await Promise.all([
-        supabase.from("users").select("*", { count: "exact", head: true }),
-        supabase.from("parking_spots").select("*", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("ads").select("*", { count: "exact", head: true }).eq("active", true),
-        supabase.from("ephemeral_chats").select("*", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("ads").select("id, title, business_name, impressions, clicks, active").order("created_at", { ascending: false }),
-        supabase.from("users").select("*", { count: "exact", head: true }).gt("created_at", weekAgo),
-        supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart),
-        supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo),
-        supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", monthAgo),
-        supabase.from("parking_spots").select("address").eq("status", "active").gte("created_at", monthAgo),
-        supabase.from("congestion_alerts" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart),
-        supabase.from("congestion_alerts" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo),
-        supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "impression").gte("created_at", todayStart),
-        supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "impression").gte("created_at", weekAgo),
-        supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "click").gte("created_at", todayStart),
-        supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "click").gte("created_at", weekAgo),
-        supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart),
-        supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo),
-        supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).eq("converted", true),
-        supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }),
-        supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart),
-        supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo),
-        supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).eq("converted", true),
-        supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }),
+        q(supabase.from("users").select("*", { count: "exact", head: true })),
+        q(supabase.from("parking_spots").select("*", { count: "exact", head: true }).eq("status", "active")),
+        q(supabase.from("ads").select("*", { count: "exact", head: true }).eq("active", true)),
+        q(supabase.from("ephemeral_chats").select("*", { count: "exact", head: true }).eq("status", "active")),
+        qd(supabase.from("ads").select("id, title, business_name, impressions, clicks, active").order("created_at", { ascending: false })),
+        q(supabase.from("users").select("*", { count: "exact", head: true }).gt("created_at", weekAgo)),
+        q(supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart)),
+        q(supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo)),
+        q(supabase.from("parking_spots" as any).select("*", { count: "exact", head: true }).gte("created_at", monthAgo)),
+        qd(supabase.from("parking_spots").select("address").eq("status", "active").gte("created_at", monthAgo)),
+        q(supabase.from("congestion_alerts" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart)),
+        q(supabase.from("congestion_alerts" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo)),
+        q(supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "impression").gte("created_at", todayStart)),
+        q(supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "impression").gte("created_at", weekAgo)),
+        q(supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "click").gte("created_at", todayStart)),
+        q(supabase.from("ad_analytics" as any).select("*", { count: "exact", head: true }).eq("event_type", "click").gte("created_at", weekAgo)),
+        q(supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart)),
+        q(supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo)),
+        q(supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true }).eq("converted", true)),
+        q(supabase.from("spot_predictions" as any).select("*", { count: "exact", head: true })),
+        q(supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).gte("created_at", todayStart)),
+        q(supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).gte("created_at", weekAgo)),
+        q(supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true }).eq("converted", true)),
+        q(supabase.from("invite_conversions" as any).select("*", { count: "exact", head: true })),
       ]);
 
       const totalAdImpressions = (adData ?? []).reduce((s, a: any) => s + (a.impressions ?? 0), 0);
@@ -172,6 +176,9 @@ export default function AdminDashboard() {
       });
 
       setAds(adData as AdMetrics[]);
+      } catch (err) {
+        console.error("Admin dashboard load error:", err);
+      }
       setLoading(false);
     }
     load();
