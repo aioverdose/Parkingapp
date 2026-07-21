@@ -1,4 +1,4 @@
-const CACHE_NAME = "spotmatch-v1";
+const CACHE_NAME = "spotmatch-v2";
 
 const STATIC_ASSETS = [
   "/",

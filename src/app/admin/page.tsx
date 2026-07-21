@@ -77,40 +77,42 @@ export default function AdminDashboard() {
       }
 
       const data = await res.json();
+      const agentData = data.agent ?? {};
+      const adsList = agentData.ads ?? [];
 
       setStats(data.stats);
-      setAds(data.agent.ads ?? []);
+      setAds(adsList);
 
-      const alertsWeekVal = data.agent.alertsWeek ?? 0;
+      const alertsWeekVal = agentData.alertsWeek ?? 0;
       const alertsPerDayVal = alertsWeekVal > 0 ? alertsWeekVal / 7 : 0;
-      const totalUsers = data.stats.users || 1;
-      const users7dVal = data.agent.activeUsers7d ?? 0;
+      const totalUsers = data.stats?.users || 1;
+      const users7dVal = agentData.activeUsers7d ?? 0;
       const retentionRateVal = (users7dVal / totalUsers) * 100;
-      const activeAds = (data.agent.ads ?? []).filter((a: any) => a.active).length;
-      const totalAdImpressions = (data.agent.ads ?? []).reduce((s: number, a: any) => s + (a.impressions ?? 0), 0);
-      const totalAdClicks = (data.agent.ads ?? []).reduce((s: number, a: any) => s + (a.clicks ?? 0), 0);
+      const activeAds = adsList.filter((a: any) => a.active).length;
+      const totalAdImpressions = adsList.reduce((s: number, a: any) => s + (a.impressions ?? 0), 0);
+      const totalAdClicks = adsList.reduce((s: number, a: any) => s + (a.clicks ?? 0), 0);
 
       setAgent({
-        activeUsers7d: users7dVal,
-        alertsToday: data.agent.alertsToday ?? 0,
-        alertsWeek: alertsWeekVal,
-        alertsMonth: data.agent.alertsMonth ?? 0,
+        activeUsers7d: agentData.activeUsers7d ?? 0,
+        alertsToday: agentData.alertsToday ?? 0,
+        alertsWeek: agentData.alertsWeek ?? 0,
+        alertsMonth: agentData.alertsMonth ?? 0,
         alertsPerDay: alertsPerDayVal,
         retentionRate: Math.round(retentionRateVal),
-        topNeighborhoods: data.agent.topNeighborhoods ?? [],
-        congestionToday: data.agent.congestionToday ?? 0,
-        congestionWeek: data.agent.congestionWeek ?? 0,
-        adImpressionsToday: data.agent.adImpressionsToday ?? 0,
-        adImpressionsWeek: data.agent.adImpressionsWeek ?? 0,
-        adClicksToday: data.agent.adClicksToday ?? 0,
-        adClicksWeek: data.agent.adClicksWeek ?? 0,
+        topNeighborhoods: agentData.topNeighborhoods ?? [],
+        congestionToday: agentData.congestionToday ?? 0,
+        congestionWeek: agentData.congestionWeek ?? 0,
+        adImpressionsToday: agentData.adImpressionsToday ?? 0,
+        adImpressionsWeek: agentData.adImpressionsWeek ?? 0,
+        adClicksToday: agentData.adClicksToday ?? 0,
+        adClicksWeek: agentData.adClicksWeek ?? 0,
         adsDriversPerAd: activeAds > 0 ? Math.round(totalAdClicks / activeAds) : 0,
-        predictionsToday: data.agent.predictionsToday ?? 0,
-        predictionsWeek: data.agent.predictionsWeek ?? 0,
-        predictionAccuracy: data.agent.predictionAccuracy ?? 0,
-        invitesToday: data.agent.invitesToday ?? 0,
-        invitesWeek: data.agent.invitesWeek ?? 0,
-        inviteConversionRate: data.agent.inviteConversionRate ?? 0,
+        predictionsToday: agentData.predictionsToday ?? 0,
+        predictionsWeek: agentData.predictionsWeek ?? 0,
+        predictionAccuracy: agentData.predictionAccuracy ?? 0,
+        invitesToday: agentData.invitesToday ?? 0,
+        invitesWeek: agentData.invitesWeek ?? 0,
+        inviteConversionRate: agentData.inviteConversionRate ?? 0,
       });
     } catch (err: any) {
       setError(err?.message || "Failed to load dashboard");
@@ -123,8 +125,8 @@ export default function AdminDashboard() {
     load();
   }, [load]);
 
-  const totalImpressions = ads.reduce((sum, a) => sum + (a.impressions ?? 0), 0);
-  const totalClicks = ads.reduce((sum, a) => sum + (a.clicks ?? 0), 0);
+  const totalImpressions = (ads ?? []).reduce((sum, a) => sum + (a.impressions ?? 0), 0);
+  const totalClicks = (ads ?? []).reduce((sum, a) => sum + (a.clicks ?? 0), 0);
   const overallCTR = totalImpressions > 0 ? (totalClicks / totalImpressions * 100).toFixed(1) : "0.0";
 
   const mainCards = [

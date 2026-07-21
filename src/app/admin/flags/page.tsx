@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { createBrowserClient } from "@/lib/supabaseClient";
 import { AlertTriangle, CheckCircle, Trash2, Loader2, Search, Shield } from "lucide-react";
 
 interface SpotFlag {

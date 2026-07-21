@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60_000).toISOString();
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60_000).toISOString();
 
-  const safe = async (p: Promise<any>, fallback: any = 0) => {
+  const safe = async (p: Promise<any> | any, fallback: any = 0) => {
     try {
-      const r = await p;
+      const r = await Promise.resolve(p);
       return r;
     } catch {
       return { data: null, count: fallback, error: null };

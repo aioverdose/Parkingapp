@@ -14,15 +14,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) {
-        router.push("/");
+        router.push("/auth/login");
         return;
       }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("users")
         .select("role")
         .eq("id", session.user.id)
         .single();
-      if (data?.role !== "admin" && data?.role !== "moderator") {
+      if (error || (data?.role !== "admin" && data?.role !== "moderator")) {
         router.push("/");
         return;
       }

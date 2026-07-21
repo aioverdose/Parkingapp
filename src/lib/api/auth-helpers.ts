@@ -7,7 +7,7 @@ export async function getAuthenticatedUser(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) {
-    throw new Error("Missing Supabase environment variables");
+    return null;
   }
 
   const supabase = createClient<Database>(url, key, {
@@ -20,6 +20,11 @@ export async function getAuthenticatedUser(request: NextRequest) {
   const token = request.headers.get("Authorization")?.replace("Bearer ", "");
   if (!token) return null;
 
-  const { data } = await supabase.auth.getUser(token);
-  return data.user;
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error) return null;
+    return data.user;
+  } catch {
+    return null;
+  }
 }
