@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const rateCheck = checkRateLimit(`control-tower:${user.id}`, 30, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -44,9 +43,6 @@ export async function GET(request: NextRequest) {
     }
 
     const matchIds = matches.map((m) => m.id);
-    const userIds = [
-      ...new Set(matches.flatMap((m) => [m.spot_owner_id, m.seeker_id])),
-    ];
 
     const [locationsResult, sessionsResult] = await Promise.all([
       supabase
@@ -85,7 +81,48 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ matches: enriched });
+    const { data: recentLocations } = await supabase
+      .from("driver_locations")
+      .select("id, user_id, latitude, longitude, heading, speed, accuracy, recorded_at")
+      .is("match_id", null)
+      .gte("recorded_at", new Date(Date.now() - 30 * 60_000).toISOString())
+      .order("recorded_at", { ascending: false });
+
+    const latestUserLocs = new Map<string, any>();
+    for (const loc of recentLocations ?? []) {
+      if (!latestUserLocs.has(loc.user_id)) {
+        latestUserLocs.set(loc.user_id, loc);
+      }
+    }
+
+    const matchUserIds = new Set(
+      matches.flatMap((m) => [m.spot_owner_id, m.seeker_id]),
+    );
+
+    const uniqueUserIds = [...latestUserLocs.keys()].filter((id) => !matchUserIds.has(id));
+
+    let userProfileMap = new Map<string, { name: string | null; email: string | null }>();
+    if (uniqueUserIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("users")
+        .select("id, name, email")
+        .in("id", uniqueUserIds);
+      for (const p of profiles ?? []) {
+        userProfileMap.set(p.id, { name: p.name, email: p.email });
+      }
+    }
+
+    const userLocations = uniqueUserIds.map((id) => {
+      const loc = latestUserLocs.get(id);
+      const profile = userProfileMap.get(id);
+      return {
+        ...loc,
+        user_name: profile?.name || null,
+        user_email: profile?.email || null,
+      };
+    });
+
+    return NextResponse.json({ matches: enriched, userLocations });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },

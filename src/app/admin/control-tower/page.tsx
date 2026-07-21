@@ -13,12 +13,15 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
+  Users,
+  ChevronRight,
+  Wifi,
 } from "lucide-react";
 
-const INITIAL_VIEW = {
-  latitude: 40.7128,
-  longitude: -74.006,
-  zoom: 11,
+const BELMONT_SHORE = {
+  latitude: 33.7692,
+  longitude: -118.0943,
+  zoom: 14,
 };
 
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
@@ -33,6 +36,11 @@ interface DriverLocation {
   speed: number | null;
   accuracy: number | null;
   recorded_at: string;
+}
+
+interface UserLocation extends DriverLocation {
+  user_name: string | null;
+  user_email: string | null;
 }
 
 interface ActiveSession {
@@ -80,6 +88,16 @@ function formatEta(seconds: number | null): string {
   return `${hrs}h ${rem}m`;
 }
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     en_route: "bg-blue-100 text-blue-700 border-blue-200",
@@ -89,7 +107,7 @@ function StatusBadge({ status }: { status: string }) {
     completed: "bg-zinc-100 text-zinc-600 border-zinc-200",
   };
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full border ${styles[status] || "bg-zinc-100 text-zinc-600"}`}>
+    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${styles[status] || "bg-zinc-100 text-zinc-600"}`}>
       {status.replace("_", " ")}
     </span>
   );
@@ -100,11 +118,14 @@ export default function ControlTowerPage() {
   const mapRef = useRef<any>(null);
 
   const [matches, setMatches] = useState<Match[]>([]);
+  const [userLocations, setUserLocations] = useState<UserLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [viewState, setViewState] = useState(INITIAL_VIEW);
+  const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null);
+  const [viewState, setViewState] = useState(BELMONT_SHORE);
   const [errors, setErrors] = useState<string[]>([]);
+  const [sidebarTab, setSidebarTab] = useState<"matches" | "users">("matches");
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -125,6 +146,7 @@ export default function ControlTowerPage() {
       if (!res.ok) return;
       const json = await res.json();
       setMatches(json.matches || []);
+      setUserLocations(json.userLocations || []);
     } catch {
       setErrors((prev) => [...prev.slice(-4), "Failed to fetch control tower data"]);
     } finally {
@@ -149,19 +171,27 @@ export default function ControlTowerPage() {
         { event: "INSERT", schema: "public", table: "driver_locations" },
         (payload) => {
           const loc = payload.new as DriverLocation;
-          setMatches((prev) =>
-            prev.map((m) => {
-              if (m.id === loc.match_id) {
-                const isOwner = loc.user_id === m.spot_owner_id;
-                return {
-                  ...m,
-                  owner_location: isOwner ? loc : m.owner_location,
-                  seeker_location: !isOwner ? loc : m.seeker_location,
-                };
-              }
-              return m;
-            }),
-          );
+
+          if (loc.match_id) {
+            setMatches((prev) =>
+              prev.map((m) => {
+                if (m.id === loc.match_id) {
+                  const isOwner = loc.user_id === m.spot_owner_id;
+                  return {
+                    ...m,
+                    owner_location: isOwner ? loc : m.owner_location,
+                    seeker_location: !isOwner ? loc : m.seeker_location,
+                  };
+                }
+                return m;
+              }),
+            );
+          } else {
+            setUserLocations((prev) => {
+              const filtered = prev.filter((u) => u.user_id !== loc.user_id);
+              return [{ ...loc, user_name: null, user_email: null }, ...filtered];
+            });
+          }
         },
       )
       .subscribe();
@@ -224,12 +254,20 @@ export default function ControlTowerPage() {
     );
   }
 
+  const totalMarkers = matches.length + userLocations.length;
+
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       <div className="flex items-center justify-between px-4 py-2 border-b bg-white dark:bg-zinc-900 shrink-0">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold">Control Tower</h1>
-          <span className="text-sm text-zinc-500">{matches.length} active match{matches.length !== 1 ? "es" : ""}</span>
+          <span className="text-xs text-zinc-500 flex items-center gap-1">
+            <Wifi size={12} className="text-green-500" />
+            {matches.length} match{matches.length !== 1 ? "es" : ""}
+            <span className="mx-1">·</span>
+            <Users size={12} />
+            {userLocations.length} user{userLocations.length !== 1 ? "s" : ""}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           {errors.length > 0 && (
@@ -266,7 +304,7 @@ export default function ControlTowerPage() {
                   <Marker
                     latitude={match.owner_location.latitude}
                     longitude={match.owner_location.longitude}
-                    onClick={() => setSelectedMatch(match)}
+                    onClick={() => { setSelectedMatch(match); setSelectedUser(null); }}
                     pitchAlignment="map"
                   >
                     <div className="relative cursor-pointer group">
@@ -289,7 +327,7 @@ export default function ControlTowerPage() {
                   <Marker
                     latitude={match.seeker_location.latitude}
                     longitude={match.seeker_location.longitude}
-                    onClick={() => setSelectedMatch(match)}
+                    onClick={() => { setSelectedMatch(match); setSelectedUser(null); }}
                     pitchAlignment="map"
                   >
                     <div className="relative cursor-pointer group">
@@ -349,9 +387,31 @@ export default function ControlTowerPage() {
               </div>
             ))}
 
+            {userLocations.map((userLoc) => (
+              <Marker
+                key={`user-${userLoc.user_id}`}
+                latitude={userLoc.latitude}
+                longitude={userLoc.longitude}
+                onClick={() => { setSelectedUser(userLoc); setSelectedMatch(null); }}
+                pitchAlignment="map"
+              >
+                <div className="relative cursor-pointer">
+                  <div
+                    className="w-4 h-4 rounded-full bg-amber-500 border-2 border-white shadow-md flex items-center justify-center"
+                    style={{
+                      transform: `rotate(${userLoc.heading ?? 0}deg)`,
+                    }}
+                  >
+                    <Navigation size={10} className="text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-green-400 border border-white" />
+                </div>
+              </Marker>
+            ))}
+
             {selectedMatch && (
               <Popup
-                latitude={(selectedMatch.seeker_location?.latitude ?? selectedMatch.spot.latitude) + 0.005}
+                latitude={(selectedMatch.seeker_location?.latitude ?? selectedMatch.spot.latitude) + 0.003}
                 longitude={selectedMatch.seeker_location?.longitude ?? selectedMatch.spot.longitude}
                 onClose={() => setSelectedMatch(null)}
                 closeButton={true}
@@ -391,51 +451,172 @@ export default function ControlTowerPage() {
                 </div>
               </Popup>
             )}
+
+            {selectedUser && (
+              <Popup
+                latitude={selectedUser.latitude + 0.003}
+                longitude={selectedUser.longitude}
+                onClose={() => setSelectedUser(null)}
+                closeButton={true}
+                closeOnClick={false}
+                maxWidth="250px"
+              >
+                <div className="text-sm space-y-1 p-1">
+                  <h3 className="font-bold">{selectedUser.user_name || "User"}</h3>
+                  {selectedUser.user_email && (
+                    <p className="text-xs text-zinc-500">{selectedUser.user_email}</p>
+                  )}
+                  <p className="text-xs text-zinc-400">
+                    Last ping: {timeAgo(selectedUser.recorded_at)}
+                  </p>
+                  {selectedUser.speed != null && selectedUser.speed > 0 && (
+                    <p className="text-xs text-zinc-500">
+                      Speed: {Math.round(selectedUser.speed * 2.237)} mph
+                    </p>
+                  )}
+                </div>
+              </Popup>
+            )}
           </Map>
+
+          <div className="absolute bottom-4 left-4 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 p-3 text-xs">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-purple-600" />
+                <span className="text-zinc-600">Owner</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-blue-600" />
+                <span className="text-zinc-600">Seeker</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-green-600" />
+                <span className="text-zinc-600">Spot</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-amber-500" />
+                <span className="text-zinc-600">User</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="w-80 border-l bg-white dark:bg-zinc-900 overflow-y-auto shrink-0 hidden lg:block">
-          <div className="p-3 border-b text-sm font-semibold text-zinc-500 uppercase tracking-wide">
-            Active Matches
+        <div className="w-80 border-l bg-white dark:bg-zinc-900 overflow-y-auto shrink-0 hidden lg:flex flex-col">
+          <div className="flex border-b shrink-0">
+            <button
+              onClick={() => setSidebarTab("matches")}
+              className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wide transition ${
+                sidebarTab === "matches"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-zinc-500 hover:text-zinc-700"
+              }`}
+            >
+              Matches ({matches.length})
+            </button>
+            <button
+              onClick={() => setSidebarTab("users")}
+              className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wide transition ${
+                sidebarTab === "users"
+                  ? "text-amber-600 border-b-2 border-amber-600"
+                  : "text-zinc-500 hover:text-zinc-700"
+              }`}
+            >
+              Users ({userLocations.length})
+            </button>
           </div>
-          {matches.length === 0 ? (
-            <div className="p-4 text-sm text-zinc-400 text-center">No active matches</div>
-          ) : (
-            <div className="divide-y">
-              {matches.map((match) => (
-                <button
-                  key={match.id}
-                  onClick={() => {
-                    setSelectedMatch(match);
-                    if (match.seeker_location) {
-                      setViewState({
-                        latitude: match.seeker_location.latitude,
-                        longitude: match.seeker_location.longitude,
-                        zoom: 13,
-                      });
-                    }
-                  }}
-                  className={`w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition text-sm ${
-                    selectedMatch?.id === match.id ? "bg-blue-50 dark:bg-blue-900/20" : ""
-                  }`}
-                >
-                  <p className="font-semibold truncate">{match.spot.address}</p>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1">
-                      <Navigation size={10} className="text-purple-500" />
-                      {match.owner_session ? formatEta(match.owner_session.eta_seconds) : "--"}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Navigation size={10} className="text-blue-500" />
-                      {match.seeker_session ? formatEta(match.seeker_session.eta_seconds) : "--"}
-                    </span>
-                    {match.owner_session && <StatusBadge status={match.owner_session.status} />}
-                    {match.seeker_session && <StatusBadge status={match.seeker_session.status} />}
+
+          <div className="flex-1 overflow-y-auto">
+            {sidebarTab === "matches" && (
+              <>
+                {matches.length === 0 ? (
+                  <div className="p-4 text-sm text-zinc-400 text-center">No active matches</div>
+                ) : (
+                  <div className="divide-y">
+                    {matches.map((match) => (
+                      <button
+                        key={match.id}
+                        onClick={() => {
+                          setSelectedMatch(match);
+                          setSelectedUser(null);
+                          if (match.seeker_location) {
+                            setViewState({
+                              latitude: match.seeker_location.latitude,
+                              longitude: match.seeker_location.longitude,
+                              zoom: 15,
+                            });
+                          } else if (match.spot) {
+                            setViewState({
+                              latitude: match.spot.latitude,
+                              longitude: match.spot.longitude,
+                              zoom: 15,
+                            });
+                          }
+                        }}
+                        className={`w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition text-sm ${
+                          selectedMatch?.id === match.id ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                        }`}
+                      >
+                        <p className="font-semibold truncate">{match.spot.address}</p>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500">
+                          <span className="flex items-center gap-1">
+                            <Navigation size={10} className="text-purple-500" />
+                            {match.owner_session ? formatEta(match.owner_session.eta_seconds) : "--"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Navigation size={10} className="text-blue-500" />
+                            {match.seeker_session ? formatEta(match.seeker_session.eta_seconds) : "--"}
+                          </span>
+                          {match.owner_session && <StatusBadge status={match.owner_session.status} />}
+                          {match.seeker_session && <StatusBadge status={match.seeker_session.status} />}
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                </button>
-              ))}
-            </div>
-          )}
+                )}
+              </>
+            )}
+
+            {sidebarTab === "users" && (
+              <>
+                {userLocations.length === 0 ? (
+                  <div className="p-4 text-sm text-zinc-400 text-center">No users reporting location</div>
+                ) : (
+                  <div className="divide-y">
+                    {userLocations.map((userLoc) => (
+                      <button
+                        key={userLoc.user_id}
+                        onClick={() => {
+                          setSelectedUser(userLoc);
+                          setSelectedMatch(null);
+                          setViewState({
+                            latitude: userLoc.latitude,
+                            longitude: userLoc.longitude,
+                            zoom: 16,
+                          });
+                        }}
+                        className={`w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition text-sm ${
+                          selectedUser?.user_id === userLoc.user_id ? "bg-amber-50 dark:bg-amber-900/20" : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                          <p className="font-semibold truncate">
+                            {userLoc.user_name || userLoc.user_email || "Unknown"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500 pl-4">
+                          <span>{timeAgo(userLoc.recorded_at)}</span>
+                          {userLoc.speed != null && userLoc.speed > 0 && (
+                            <span>{Math.round(userLoc.speed * 2.237)} mph</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
