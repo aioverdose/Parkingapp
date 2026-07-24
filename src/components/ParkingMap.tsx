@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Map, { Marker, NavigationControl, GeolocateControl, ViewStateChangeEvent, MapRef } from "react-map-gl/maplibre";
+import Map, { Marker, GeolocateControl, ViewStateChangeEvent, MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRealtimeSpots } from "@/hooks/useRealtimeSpots";
 import { INITIAL_VIEW_STATE, MAP_STYLE_URL, SATELLITE_STYLE } from "@/lib/map";
@@ -42,6 +42,7 @@ import { useLocationSharing } from "@/hooks/useLocationSharing";
 import { useLiveTracking } from "@/hooks/useLiveTracking";
 import { reverseGeocodeStreet } from "@/lib/reverse-geocode";
 import { checkPilotArea } from "@/lib/pilot-area";
+import { SpotQuestOverlay } from "./spotquest/SpotQuestOverlay";
 
 type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 type SweepingData = {
@@ -787,7 +788,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
           mapStyle={satelliteView ? SATELLITE_STYLE : MAP_STYLE_URL}
           style={{ width: "100%", height: "100%" }}
         >
-          <NavigationControl position="top-left" />
           <GeolocateControl
             position="top-left"
             positionOptions={{ enableHighAccuracy: true }}
@@ -879,7 +879,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         </Map>
 
         {/* Search Bar */}
-        <form onSubmit={handleSearch} className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-md px-4">
+        <form onSubmit={handleSearch} className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-4">
           <div className="relative">
             <input
               type="text"
@@ -953,6 +953,11 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
               userId={user?.id || null}
             />
           </div>
+        )}
+
+        {/* SpotQuest Game Overlay */}
+        {user && !showPostForm && !showStats && !showMatches && !activeChat && !selectedSpot && (
+          <SpotQuestOverlay />
         )}
 
         {/* Bottom section */}
