@@ -898,18 +898,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
             <div className="flex flex-col gap-2">
               {user && (
                 <div className="flex gap-2">
-                  {pendingMatchCount > 0 && (
-                    <Button
-                      onClick={() => setShowMatches(true)}
-                      className="flex-1 h-12 rounded-full shadow-2xl bg-green-600 hover:bg-green-700 text-white font-bold flex items-center justify-center gap-2 relative"
-                    >
-                      <Handshake size={20} />
-                      Matches
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-                        {pendingMatchCount}
-                      </span>
-                    </Button>
-                  )}
                   <Button
                     onClick={handleSaveSpot}
                     disabled={savingSpot}
