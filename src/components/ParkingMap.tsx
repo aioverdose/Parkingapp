@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Map, { Marker, GeolocateControl, ViewStateChangeEvent, MapRef } from "react-map-gl/maplibre";
+import Map, { Marker, ViewStateChangeEvent, MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRealtimeSpots } from "@/hooks/useRealtimeSpots";
 import { INITIAL_VIEW_STATE, MAP_STYLE_URL, SATELLITE_STYLE } from "@/lib/map";
@@ -73,9 +73,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [joinWaitlistLoading, setJoinWaitlistLoading] = useState(false);
   const [waitlistJoined, setWaitlistJoined] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
   const [showStats, setShowStats] = useState(false);
   const [showMatches, setShowMatches] = useState(false);
   const [pendingMatchCount, setPendingMatchCount] = useState(0);
@@ -692,40 +689,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     setSavedSpots((prev) => prev.filter((s) => s.id !== spotId));
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchTerm.trim()) return;
-
-    setIsSearchingLocation(true);
-    setSearchError(null);
-
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchTerm)}&format=json&limit=1`
-      );
-      const data = await res.json();
-
-      if (data && data.length > 0) {
-        const { lat, lon } = data[0];
-        setViewState((current) => ({
-          ...current,
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lon),
-          zoom: 14,
-          transitionDuration: 1000,
-        }));
-        setSearchTerm("");
-      } else {
-        setSearchError("No results found for your search.");
-      }
-    } catch (err) {
-      console.error("Geocoding error:", err);
-      setSearchError("Failed to search for location. Please try again.");
-    } finally {
-      setIsSearchingLocation(false);
-    }
-  };
-
   const clusters = useSpotClusters(spots, viewState.zoom);
 
   const handleClusterClick = useCallback((cluster: { lat: number; lng: number }) => {
@@ -788,11 +751,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
           mapStyle={satelliteView ? SATELLITE_STYLE : MAP_STYLE_URL}
           style={{ width: "100%", height: "100%" }}
         >
-          <GeolocateControl
-            position="top-left"
-            positionOptions={{ enableHighAccuracy: true }}
-            trackUserLocation
-          />
           <div className="absolute top-2 left-14 z-10">
             <button
               onClick={() => setSatelliteView((v) => !v)}
@@ -877,32 +835,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
             </Marker>
           )}
         </Map>
-
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search for an address or area..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full shadow-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
-            <Button
-              type="submit"
-              disabled={isSearchingLocation}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 px-4 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isSearchingLocation ? <Loader2 className="animate-spin h-5 w-5" /> : "Go"}
-            </Button>
-          </div>
-          {searchError && (
-            <div className="mt-2 text-center">
-              <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">{searchError}</span>
-            </div>
-          )}
-        </form>
 
         {/* Real-time Notification Toast */}
         {activeNotification && (

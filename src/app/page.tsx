@@ -65,20 +65,7 @@ export default function Home() {
             <p className="text-lg sm:text-xl text-white font-medium mt-3 max-w-lg">
               Matching drivers that are coming and going
             </p>
-            <div className="flex gap-3 mt-6 pointer-events-auto">
-              <a
-                href="/auth/signup"
-                className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold text-base shadow-lg hover:bg-green-700 transition-colors"
-              >
-                Get Started
-              </a>
-              <a
-                href="/support/getting-started"
-                className="bg-white/20 backdrop-blur text-white border border-white/30 px-6 py-3 rounded-xl font-semibold text-base shadow-lg hover:bg-white/30 transition-colors"
-              >
-                How it works
-              </a>
-            </div>
+
           </div>
         </div>
       </main>
