@@ -30,7 +30,7 @@ import type { User } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { LocationPermissionOverlay } from "./LocationPermissionOverlay";
 import { TOSModal } from "./TOSModal";
-import { ActionButtons } from "./ActionButtons";
+
 import { StreetSweepingBanner } from "./StreetSweepingBanner";
 import { PhoneVerificationModal } from "./PhoneVerificationModal";
 import { SafetyWarningModal } from "./SafetyWarningModal";
@@ -896,17 +896,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 w-full max-w-xs px-4 flex flex-col gap-2">
           {!showLookingForSpot && !showLeaveForm ? (
             <div className="flex flex-col gap-2">
-              <ActionButtons
-                onPrimary={() => handleBottomAction("post")}
-                onSecondary={() => {
-                  if (user) {
-                    setShowMatches(true);
-                  } else {
-                    setShowAuth(true);
-                  }
-                }}
-                disabled={!profileChecked}
-              />
               {user && (
                 <div className="flex gap-2">
                   {pendingMatchCount > 0 && (
