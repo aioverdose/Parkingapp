@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { ArrowLeft, CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Loader2, AlertCircle, PartyPopper, Trophy } from "lucide-react";
 import type { Course } from "@/lib/courses";
 
 export default function CourseDetailPage() {
@@ -20,6 +20,8 @@ export default function CourseDetailPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [allCoursesPassed, setAllCoursesPassed] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -43,6 +45,18 @@ export default function CourseDetailPage() {
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!result?.passed || redirectCountdown <= 0) return;
+    const timer = setTimeout(() => setRedirectCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [result?.passed, redirectCountdown]);
+
+  useEffect(() => {
+    if (result?.passed && redirectCountdown === 0) {
+      router.push(allCoursesPassed ? "/profile" : "/courses");
+    }
+  }, [result?.passed, redirectCountdown, allCoursesPassed, router]);
 
   const handleAnswer = (questionIndex: number, optionIndex: number) => {
     if (result) return;
@@ -69,6 +83,28 @@ export default function CourseDetailPage() {
     const data = await res.json();
     setResult({ passed: data.passed, score: data.score });
     setSubmitting(false);
+
+    if (data.passed) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        const [coursesRes, progressRes] = await Promise.all([
+          fetch("/api/courses"),
+          supabase
+            .from("user_course_progress")
+            .select("course_id, status")
+            .eq("user_id", sessionData.session.user.id),
+        ]);
+        const coursesData = await coursesRes.json();
+        const allCourses: Course[] = coursesData.courses ?? [];
+        const passedIds = new Set(
+          (progressRes.data ?? []).filter((p: any) => p.status === "passed").map((p: any) => p.course_id)
+        );
+        passedIds.add(id);
+        if (allCourses.length > 0 && allCourses.every((c) => passedIds.has(c.id))) {
+          setAllCoursesPassed(true);
+        }
+      }
+    }
   };
 
   if (loading) {
@@ -105,33 +141,40 @@ export default function CourseDetailPage() {
         </div>
 
         {result && (
-          <div className={`rounded-2xl p-5 mb-6 ${
-            result.passed
-              ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
-              : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-          }`}>
-            <div className="flex items-center gap-3">
-              {result.passed ? (
-                <CheckCircle2 size={28} className="text-green-600" />
+          result.passed ? (
+            <div className="rounded-2xl p-6 mb-6 bg-gradient-to-br from-green-500 to-emerald-600 text-white text-center">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                {allCoursesPassed ? <Trophy size={32} /> : <PartyPopper size={32} />}
+              </div>
+              <h2 className="text-2xl font-black mb-2">
+                {allCoursesPassed ? "All Courses Complete!" : "Congratulations!"}
+              </h2>
+              <p className="text-green-100 text-sm mb-1">
+                You scored {result.score}% on this course.
+              </p>
+              {allCoursesPassed ? (
+                <p className="text-green-100 text-xs mb-4">You finished all courses! Redirecting to your profile...</p>
               ) : (
-                <XCircle size={28} className="text-red-500" />
+                <p className="text-green-100 text-xs mb-4">Redirecting to courses in {redirectCountdown}s...</p>
               )}
-              <div>
-                <p className="font-bold text-lg">{result.passed ? "Passed!" : "Not this time"}</p>
-                <p className="text-sm">Score: {result.score}%{result.passed ? "" : " — try again!"}</p>
+              <button
+                onClick={() => router.push(allCoursesPassed ? "/profile" : "/courses")}
+                className="w-full h-12 rounded-xl bg-white text-green-700 font-bold text-sm hover:bg-green-50 transition"
+              >
+                {allCoursesPassed ? "Go to Profile" : "Back to Courses"}
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-2xl p-5 mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <div className="flex items-center gap-3">
+                <XCircle size={28} className="text-red-500" />
+                <div>
+                  <p className="font-bold text-lg">Not this time</p>
+                  <p className="text-sm">Score: {result.score}% — try again!</p>
+                </div>
               </div>
             </div>
-            {result.passed && (
-              <div className="mt-3">
-                <button
-                  onClick={() => router.push("/courses")}
-                  className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold transition"
-                >
-                  Back to Courses
-                </button>
-              </div>
-            )}
-          </div>
+          )
         )}
 
         {existingProgress?.status === "passed" && !result && (

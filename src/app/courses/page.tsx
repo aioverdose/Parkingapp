@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { BookOpen, CheckCircle2, Lock, ArrowLeft, Loader2, GraduationCap } from "lucide-react";
+import { BookOpen, CheckCircle2, Lock, ArrowLeft, Loader2, GraduationCap, Trophy } from "lucide-react";
 import type { Course, UserCourseProgress } from "@/lib/courses";
 
 export default function CoursesPage() {
@@ -76,6 +76,22 @@ export default function CoursesPage() {
             <span>{completedCount}/{totalCourses} completed</span>
           </div>
         </div>
+
+        {completedCount === totalCourses && totalCourses > 0 && (
+          <div className="rounded-2xl p-5 mb-6 bg-gradient-to-br from-green-500 to-emerald-600 text-white text-center">
+            <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Trophy size={28} />
+            </div>
+            <h2 className="text-lg font-black mb-1">All Courses Complete!</h2>
+            <p className="text-green-100 text-xs mb-4">You've finished all {totalCourses} courses. Great job!</p>
+            <button
+              onClick={() => router.push("/profile")}
+              className="w-full h-11 rounded-xl bg-white text-green-700 font-bold text-sm hover:bg-green-50 transition"
+            >
+              Go to Profile
+            </button>
+          </div>
+        )}
 
         <div className="space-y-3">
           {courses.map((course) => {
