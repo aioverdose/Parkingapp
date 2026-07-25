@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { getGameState, toggleGameMode, markOnboardingSeen } from "@/actions/spotquest";
-import type { GameState, HandoffXpResult, PerfectParkResult } from "@/lib/spotquest/types";
+import { getGameState, toggleGameMode, markOnboardingSeen, setVehicleType } from "@/actions/spotquest";
+import type { GameState, HandoffXpResult, PerfectParkResult, VehicleType } from "@/lib/spotquest/types";
 
 interface UseSpotQuestReturn {
   state: GameState | null;
@@ -19,6 +19,8 @@ interface UseSpotQuestReturn {
   awardPerfectPark: (score: number) => Promise<PerfectParkResult | null>;
   refresh: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
+  vehicleType: VehicleType | null;
+  setVehicleType: (type: VehicleType) => Promise<void>;
   newBadges: string[];
   clearNewBadges: () => void;
   pendingLevelUp: number | null;
@@ -158,6 +160,14 @@ export function useSpotQuest(): UseSpotQuestReturn {
     );
   }, [userId]);
 
+  const handleSetVehicleType = useCallback(async (type: VehicleType) => {
+    if (!userId) return;
+    await setVehicleType(userId, type);
+    setState((prev) =>
+      prev ? { ...prev, profile: { ...prev.profile, vehicle_type: type } } : prev,
+    );
+  }, [userId]);
+
   return {
     state,
     loading,
@@ -167,6 +177,8 @@ export function useSpotQuest(): UseSpotQuestReturn {
     awardPerfectPark,
     refresh,
     completeOnboarding,
+    vehicleType: state?.profile?.vehicle_type ?? null,
+    setVehicleType: handleSetVehicleType,
     newBadges,
     clearNewBadges: () => setNewBadges([]),
     pendingLevelUp,

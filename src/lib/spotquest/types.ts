@@ -1,5 +1,16 @@
 // SpotQuest Game Types
 
+export type VehicleType = "sedan" | "suv" | "truck" | "compact" | "motorcycle" | "van";
+
+export const VEHICLE_TYPES: { value: VehicleType; label: string; icon: string }[] = [
+  { value: "sedan", label: "Sedan", icon: "🚗" },
+  { value: "suv", label: "SUV", icon: "🚙" },
+  { value: "truck", label: "Truck", icon: "🛻" },
+  { value: "compact", label: "Compact", icon: "🚘" },
+  { value: "motorcycle", label: "Motorcycle", icon: "🏍️" },
+  { value: "van", label: "Van", icon: "🚐" },
+];
+
 export interface GameProfile {
   user_id: string;
   total_xp: number;
@@ -12,6 +23,7 @@ export interface GameProfile {
   total_bonus_xp: number;
   onboarding_seen: boolean;
   game_mode_enabled: boolean;
+  vehicle_type: VehicleType | null;
   created_at: string;
   updated_at: string;
 }
@@ -126,6 +138,7 @@ export interface GameState {
     perfect_parks: number;
     onboarding_seen: boolean;
     game_mode_enabled: boolean;
+    vehicle_type: VehicleType | null;
     xp_to_next_level: number;
     xp_for_current_level: number;
   };

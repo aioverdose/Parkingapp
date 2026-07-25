@@ -7,24 +7,25 @@ import { GameHUD } from "./GameHUD";
 import { BadgePopup } from "./BadgePopup";
 import { LevelUpAnimation } from "./LevelUpAnimation";
 import { QuestTracker } from "./QuestTracker";
-import { PerfectParkMiniGame } from "./PerfectParkMiniGame";
+import { BelmontShoreGame } from "./BelmontShoreGame";
 import { ConfettiEffect } from "./ConfettiEffect";
 import { OnboardingTutorial } from "./OnboardingTutorial";
 import { BadgeDisplay } from "./BadgeDisplay";
 import { LeaderboardWidget } from "./LeaderboardWidget";
 import { getSpotQuestLeaderboard } from "@/actions/spotquest";
-import type { LeaderboardEntry, UserBadge } from "@/lib/spotquest/types";
+import type { LeaderboardEntry } from "@/lib/spotquest/types";
 import {
-  Gamepad2, X, Trophy, Award, Target, ChevronDown, ChevronUp,
+  Gamepad2, X, Trophy, Target, ChevronDown, ChevronUp,
   Sparkles, Zap
 } from "lucide-react";
 
 export function SpotQuestOverlay() {
   const {
     state, loading, gameMode, toggleGameMode,
-    awardHandoffXp, awardPerfectPark, refresh,
+    awardPerfectPark,
     completeOnboarding, newBadges, clearNewBadges,
     pendingLevelUp, clearPendingLevelUp,
+    vehicleType, setVehicleType,
   } = useSpotQuest();
 
   const { canvasRef, fire } = useConfetti();
@@ -128,7 +129,7 @@ export function SpotQuestOverlay() {
                   className="flex-1 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
                 >
                   <Target size={14} />
-                  Perfect Park
+                  Belmont Shore
                 </button>
                 <button
                   onClick={() => setShowLeaderboard(!showLeaderboard)}
@@ -199,9 +200,11 @@ export function SpotQuestOverlay() {
 
       {/* Mini-game modal */}
       {showMiniGame && (
-        <PerfectParkMiniGame
+        <BelmontShoreGame
           onComplete={handleMiniGameComplete}
           onClose={() => setShowMiniGame(false)}
+          playerVehicleType={vehicleType}
+          onSetVehicleType={setVehicleType}
         />
       )}
 

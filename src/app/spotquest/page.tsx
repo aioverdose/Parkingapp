@@ -9,7 +9,7 @@ import { GameHUD } from "@/components/spotquest/GameHUD";
 import { QuestTracker } from "@/components/spotquest/QuestTracker";
 import { BadgeDisplay } from "@/components/spotquest/BadgeDisplay";
 import { LeaderboardWidget } from "@/components/spotquest/LeaderboardWidget";
-import { PerfectParkMiniGame } from "@/components/spotquest/PerfectParkMiniGame";
+import { BelmontShoreGame } from "@/components/spotquest/BelmontShoreGame";
 import { ConfettiEffect } from "@/components/spotquest/ConfettiEffect";
 import { getSpotQuestLeaderboard } from "@/actions/spotquest";
 import type { LeaderboardEntry } from "@/lib/spotquest/types";
@@ -20,6 +20,7 @@ export default function SpotQuestPage() {
   const {
     state, loading, awardPerfectPark,
     pendingLevelUp, clearPendingLevelUp,
+    vehicleType, setVehicleType,
   } = useSpotQuest();
   const { canvasRef, fire } = useConfetti();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -121,10 +122,10 @@ export default function SpotQuestPage() {
           className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-2xl p-5 shadow-xl text-left transition-all"
         >
           <div className="flex items-center gap-4">
-            <div className="text-4xl animate-bounce-slow">🎯</div>
+            <div className="text-4xl animate-bounce-slow">🅿️</div>
             <div>
-              <h3 className="font-black text-lg">Perfect Park Challenge</h3>
-              <p className="text-sm text-white/70">Tap to park for bonus XP!</p>
+              <h3 className="font-black text-lg">Belmont Shore</h3>
+              <p className="text-sm text-white/70">Match vehicles & earn XP!</p>
             </div>
             <Sparkles size={20} className="ml-auto text-white/50" />
           </div>
@@ -157,9 +158,11 @@ export default function SpotQuestPage() {
 
       {/* Mini-game modal */}
       {showMiniGame && (
-        <PerfectParkMiniGame
+        <BelmontShoreGame
           onComplete={async (score) => await awardPerfectPark(score)}
           onClose={() => setShowMiniGame(false)}
+          playerVehicleType={vehicleType}
+          onSetVehicleType={setVehicleType}
         />
       )}
 

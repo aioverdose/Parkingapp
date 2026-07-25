@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabaseAdmin";
-import type { GameState, LeaderboardEntry } from "@/lib/spotquest/types";
+import type { GameState, LeaderboardEntry, VehicleType } from "@/lib/spotquest/types";
 
 /** Fetch full game state for a user */
 export async function getGameState(userId: string): Promise<GameState | null> {
@@ -65,6 +65,17 @@ export async function markBadgeSeen(userId: string, badgeId: string): Promise<bo
     .update({ seen: true })
     .eq("user_id", userId)
     .eq("badge_id", badgeId);
+
+  return !error;
+}
+
+/** Set player vehicle type */
+export async function setVehicleType(userId: string, vehicleType: VehicleType): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("user_game_profile" as any)
+    .update({ vehicle_type: vehicleType, updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
 
   return !error;
 }
