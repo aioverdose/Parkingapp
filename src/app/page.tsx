@@ -52,10 +52,10 @@ export default function Home() {
         <div className="absolute inset-0 z-20 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
           <div className="relative h-full max-w-6xl mx-auto px-4 flex flex-col justify-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-blue-500 max-w-2xl">
-              Street Parking Matching Service
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-black max-w-2xl">
+              Meet Your Parking Match
             </h1>
-            <p className="text-lg sm:text-xl text-blue-400 font-medium mt-3 max-w-lg">
+            <p className="text-lg sm:text-xl text-zinc-600 font-medium mt-3 max-w-lg">
               Connecting drivers that are coming and going
             </p>
 
