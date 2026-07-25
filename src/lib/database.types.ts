@@ -594,9 +594,225 @@ export interface Database {
         };
         Relationships: [];
       };
+      user_game_profile: {
+        Row: {
+          id: string;
+          user_id: string;
+          total_xp: number;
+          level: number;
+          current_streak: number;
+          longest_streak: number;
+          last_handoff_date: string | null;
+          perfect_parks: number;
+          total_handoffs_xp: number;
+          total_bonus_xp: number;
+          onboarding_seen: boolean;
+          game_mode_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          total_xp?: number;
+          level?: number;
+          current_streak?: number;
+          longest_streak?: number;
+          last_handoff_date?: string | null;
+          perfect_parks?: number;
+          total_handoffs_xp?: number;
+          total_bonus_xp?: number;
+          onboarding_seen?: boolean;
+          game_mode_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          total_xp?: number;
+          level?: number;
+          current_streak?: number;
+          longest_streak?: number;
+          last_handoff_date?: string | null;
+          perfect_parks?: number;
+          total_handoffs_xp?: number;
+          total_bonus_xp?: number;
+          onboarding_seen?: boolean;
+          game_mode_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      game_transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          xp_amount: number;
+          xp_type: string;
+          description: string;
+          metadata: any | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          xp_amount: number;
+          xp_type: string;
+          description: string;
+          metadata?: any | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          xp_amount?: number;
+          xp_type?: string;
+          description?: string;
+          metadata?: any | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      badges: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          icon_emoji: string;
+          category: string;
+          tier: string;
+          xp_reward: number;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          description: string;
+          icon_emoji?: string;
+          category?: string;
+          tier?: string;
+          xp_reward?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          icon_emoji?: string;
+          category?: string;
+          tier?: string;
+          xp_reward?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_badges: {
+        Row: {
+          id: string;
+          user_id: string;
+          badge_id: string;
+          earned_at: string;
+          seen: boolean;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          badge_id: string;
+          earned_at?: string;
+          seen?: boolean;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          badge_id?: string;
+          earned_at?: string;
+          seen?: boolean;
+        };
+        Relationships: [];
+      };
+      quests: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          quest_type: string;
+          icon_emoji: string;
+          target_count: number;
+          action_type: string;
+          xp_reward: number;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          description: string;
+          quest_type: string;
+          icon_emoji?: string;
+          target_count?: number;
+          action_type: string;
+          xp_reward?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          quest_type?: string;
+          icon_emoji?: string;
+          target_count?: number;
+          action_type?: string;
+          xp_reward?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_quests: {
+        Row: {
+          id: string;
+          user_id: string;
+          quest_id: string;
+          current_count: number;
+          target_count: number;
+          completed: boolean;
+          completed_at: string | null;
+          period_start: string;
+          period_end: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          quest_id: string;
+          current_count?: number;
+          target_count: number;
+          completed?: boolean;
+          completed_at?: string | null;
+          period_start?: string;
+          period_end: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          quest_id?: string;
+          current_count?: number;
+          target_count?: number;
+          completed?: boolean;
+          completed_at?: string | null;
+          period_start?: string;
+          period_end?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
-      [_: string]: never;
+      [_: string]: {
+        Row: Record<string, unknown>;
+        Relationships: unknown[];
+      };
     };
     Functions: {
       cleanup_ephemeral_chats: {

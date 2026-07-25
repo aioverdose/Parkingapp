@@ -15,12 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SpotMatch",
+  title: "ParkingMeeters",
   description: "Find your perfect parking spot match",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "SpotMatch",
+    title: "ParkingMeeters",
     statusBarStyle: "default",
   },
   other: {

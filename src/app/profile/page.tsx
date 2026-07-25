@@ -373,6 +373,13 @@ export default function ProfilePage() {
               <span className="text-[11px] font-bold">My Ranking</span>
             </a>
             <a
+              href="/spotquest"
+              className="flex flex-col items-center gap-1.5 p-4 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 text-purple-600 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/30 dark:hover:to-pink-900/30 transition"
+            >
+              <span className="text-2xl">🎮</span>
+              <span className="text-[11px] font-bold">SpotQuest</span>
+            </a>
+            <a
               href="/settings"
               className="flex flex-col items-center gap-1.5 p-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition"
             >

@@ -8,7 +8,7 @@ const CATEGORIES = [
   {
     icon: BookOpen,
     title: "Getting Started",
-    desc: "Learn how to use SpotMatch — list your spot, find a match, and more.",
+    desc: "Learn how to use ParkingMeeters — list your spot, find a match, and more.",
     href: "/support/getting-started",
   },
   {
@@ -38,7 +38,7 @@ const CATEGORIES = [
   {
     icon: HelpCircle,
     title: "FAQ",
-    desc: "Frequently asked questions about SpotMatch.",
+    desc: "Frequently asked questions about ParkingMeeters.",
     href: "/faq",
   },
 ];

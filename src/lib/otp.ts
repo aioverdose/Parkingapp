@@ -36,7 +36,7 @@ export async function requestOtp(phone: string, userId: string) {
       expires_at: expiresAt,
     });
 
-  const sent = await sendSms(cleanPhone, `Your SpotMatch verification code is: ${code}`);
+  const sent = await sendSms(cleanPhone, `Your ParkingMeeters verification code is: ${code}`);
   if (!sent) {
     throw new Error("Failed to send SMS. Check Twilio configuration.");
   }

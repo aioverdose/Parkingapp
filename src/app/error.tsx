@@ -10,7 +10,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[SpotMatch] Page error:", error);
+    console.error("[ParkingMeeters] Page error:", error);
   }, [error]);
 
   return (

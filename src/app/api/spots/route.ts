@@ -131,6 +131,15 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ spot_id: data.id }),
     }).catch(() => {});
 
+    // SpotQuest: Progress post_spot quest (fire-and-forget)
+    try {
+      const adminClient = createAdminClient();
+      await adminClient.rpc("progress_quest", {
+        p_user_id: user.id,
+        p_action_type: "post_spot",
+      });
+    } catch { /* non-critical */ }
+
     return NextResponse.json({ spot: data }, { status: 201 });
   } catch (err) {
     return NextResponse.json(

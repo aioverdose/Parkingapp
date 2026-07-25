@@ -56,7 +56,7 @@ export default function GettingStartedPage() {
         </div>
 
         <p className="text-sm text-zinc-500 mb-8 leading-relaxed">
-          SpotMatch connects drivers leaving a parking spot with those looking for one.
+          ParkingMeeters connects drivers leaving a parking spot with those looking for one.
           Here&apos;s how it works.
         </p>
 

@@ -6,8 +6,8 @@ import { ArrowLeft, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 
 const FAQS = [
   {
-    q: "What is SpotMatch?",
-    a: "SpotMatch is a matching service that connects drivers with compatible parking spots. Set your location, schedule, and vehicle type, and we'll match you with the perfect spot.",
+    q: "What is ParkingMeeters?",
+    a: "ParkingMeeters is a matching service that connects drivers with compatible parking spots. Set your location, schedule, and vehicle type, and we'll match you with the perfect spot.",
   },
   {
     q: "How do I list my parking spot?",

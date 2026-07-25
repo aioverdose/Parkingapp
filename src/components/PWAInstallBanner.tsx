@@ -59,7 +59,7 @@ export function PWAInstallBanner() {
           <Download size={20} className="text-blue-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold">Install SpotMatch</p>
+          <p className="text-sm font-bold">Install ParkingMeeters</p>
           <p className="text-xs text-zinc-500">Add to your home screen for quick access</p>
         </div>
         <div className="flex gap-1.5 shrink-0">

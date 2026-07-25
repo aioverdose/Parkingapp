@@ -8,7 +8,7 @@ export async function reverseGeocodeStreet(lat: number, lng: number): Promise<Re
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`,
-      { headers: { "User-Agent": "SpotMatch/1.0" } },
+      { headers: { "User-Agent": "ParkingMeeters/1.0" } },
     );
     const data = await res.json();
     const addr = data?.address || {};

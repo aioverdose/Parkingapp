@@ -40,7 +40,7 @@ export default function SignUpPage() {
           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto">
             S
           </div>
-          <h1 className="text-2xl font-bold">Join SpotMatch</h1>
+          <h1 className="text-2xl font-bold">Join ParkingMeeters</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Find your perfect parking spot match</p>
         </div>
 

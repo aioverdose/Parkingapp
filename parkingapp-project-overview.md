@@ -56,10 +56,19 @@ supabase/
 - **street_sweeping** — Long Beach street sweeping schedule
 - **contribution_stats** — Aggregated user contribution metrics (spots posted, claimed, hours saved, streaks)
 
-### Education & Ranking (new, migration 00015)
+### Education & Ranking (migration 00015)
 - **courses** — 5 educational courses with reading content and quiz questions (JSONB)
 - **user_course_progress** — Per-user course completion tracking (not_started, in_progress, passed, failed)
 - **user_ranking** — Ranking data (tier, points, trust score, handoffs, flags)
+
+### SpotQuest Gamification (migration 00021)
+- **user_game_profile** — XP, level, streaks, perfect parks, game mode toggle, onboarding state
+- **game_transactions** — XP transaction log with type (handoff, speed, streak, perfect_park, quest, badge) and JSONB metadata
+- **badges** — 10 badge definitions across 6 categories (handoff, streak, community, special, quest, perfect_park) with 4 tiers
+- **user_badges** — Earned badges with seen/unseen tracking for popup flow
+- **quests** — 11 quest definitions (5 daily, 3 weekly, 3 milestone) with action types
+- **user_quests** — Per-user quest progress with period tracking (daily/weekly/milestone windows)
+- **spotquest_leaderboard** — View combining game profile + ranking data for Belmont Shore leaderboard
 
 ### Database Triggers
 - Auto-update contribution stats on spot insert/claim
@@ -68,6 +77,7 @@ supabase/
 - Auto-update flag count for spot owners
 - Auto-update user ranking on course pass, handoff, or flag
 - Initialize default ranking on user signup
+- Initialize default game profile on user signup
 - TTL cleanup for expired spots, chats, departure pings
 
 ## Key Features

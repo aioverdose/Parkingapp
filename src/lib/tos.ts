@@ -3,7 +3,7 @@ export const TOS_VERSION = "1.1";
 export const TOS_CONTENT = `TERMS OF SERVICE — SPOTMATCH (v1.1)
 
 1. Acceptance
-By accessing or using SpotMatch, you agree to these Terms. If you do not agree, do not use the app.
+By accessing or using ParkingMeeters, you agree to these Terms. If you do not agree, do not use the app.
 
 2. No Street Parking Violations
 You must not use this app to violate any local laws, ordinances, or parking regulations. This app is for community coordination only and does not authorize illegal parking, spot occupation, or waiting on sidewalks. Public street parking spaces cannot be bought, sold, or reserved. Violation may result in immediate account termination.
@@ -21,7 +21,7 @@ You will not share your home address, full name, phone number, or other sensitiv
 All chats and posts are ephemeral and may be deleted automatically after 24-48 hours or after handoff completion. You acknowledge that content may not be permanently stored.
 
 7. Live Location Sharing
-SpotMatch offers an optional real-time location sharing feature for confirmed matches. By enabling this feature, you expressly consent to the following:
+ParkingMeeters offers an optional real-time location sharing feature for confirmed matches. By enabling this feature, you expressly consent to the following:
 
 a) What is shared: Your precise GPS coordinates (latitude and longitude), heading, and speed are shared in real time with your matched driver for the specific handoff only.
 
@@ -33,7 +33,7 @@ d) Data retention: All GPS location records are automatically deleted within 1 h
 
 e) Your rights: You may stop sharing your location at any time with a single tap. Stopping sharing does not affect your match or your ability to coordinate via chat. You may decline to share your location entirely — this feature is optional and does not affect your ability to use the app.
 
-f) Accuracy: Location accuracy depends on your device GPS and network conditions. SpotMatch does not guarantee the accuracy of shared locations.
+f) Accuracy: Location accuracy depends on your device GPS and network conditions. ParkingMeeters does not guarantee the accuracy of shared locations.
 
 g) Privacy policy: For full details, see our Privacy Policy at /privacy-policy.
 
@@ -43,7 +43,7 @@ By tapping "Share Location" in the app, you provide explicit, informed consent f
 We may terminate or suspend your account immediately for any violation of these Terms, without prior notice.
 
 9. Disclaimers
-You use this app at your own risk. We do not guarantee spot availability, accuracy of alerts, or safety of handoffs. SpotMatch is not responsible for any accidents, damages, or injuries that may occur during a parking spot handoff.
+You use this app at your own risk. We do not guarantee spot availability, accuracy of alerts, or safety of handoffs. ParkingMeeters is not responsible for any accidents, damages, or injuries that may occur during a parking spot handoff.
 
 10. Limitation of Liability
 We shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or use, arising from your use of the app.

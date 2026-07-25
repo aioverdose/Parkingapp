@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Reverse geocode to street name + city
     const geoRes = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=18&addressdetails=1`,
-      { headers: { "User-Agent": "SpotMatch/1.0" } },
+      { headers: { "User-Agent": "ParkingMeeters/1.0" } },
     );
     const geoData = await geoRes.json();
     const addr = geoData?.address || {};

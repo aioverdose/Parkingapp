@@ -12,8 +12,8 @@ export default function Home() {
       <nav className="relative z-50 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center justify-between max-w-6xl mx-auto px-4 py-3">
           <div className="text-xl font-bold tracking-tight">
-            <span className="text-blue-600">Spot</span>
-            <span className="text-green-600">Match</span>
+            <span className="text-blue-600">Parking</span>
+            <span className="text-blue-600">Meeters</span>
           </div>
 
           <div className="hidden sm:flex items-center gap-6">
@@ -52,12 +52,11 @@ export default function Home() {
         <div className="absolute inset-0 z-20 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
           <div className="relative h-full max-w-6xl mx-auto px-4 flex flex-col justify-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white max-w-2xl">
-              Street{" "}
-              <span className="text-blue-300">Parking Logistics</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-blue-500 max-w-2xl">
+              Street Parking Matching Service
             </h1>
-            <p className="text-lg sm:text-xl text-white font-medium mt-3 max-w-lg">
-              Matching drivers that are coming and going
+            <p className="text-lg sm:text-xl text-blue-400 font-medium mt-3 max-w-lg">
+              Connecting drivers that are coming and going
             </p>
 
           </div>

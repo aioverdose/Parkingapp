@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — SpotMatch",
+  title: "Privacy Policy — ParkingMeeters",
 };
 
 export default function PrivacyPolicyPage() {
@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
       <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-8 space-y-8 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
         <section>
           <h2 className="text-lg font-bold mb-2">1. Data We Collect</h2>
-          <p className="mb-1">We collect the following data to operate the SpotMatch app:</p>
+          <p className="mb-1">We collect the following data to operate the ParkingMeeters app:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Location data (GPS coordinates)</strong> — used to show nearby parking spots and match seekers with posters</li>
             <li><strong>Live GPS location (optional)</strong> — shared in real time with your matched driver during a confirmed handoff, only when you explicitly consent</li>
@@ -40,7 +40,7 @@ export default function PrivacyPolicyPage() {
 
         <section>
           <h2 className="text-lg font-bold mb-2">3. Live Location Sharing</h2>
-          <p className="mb-2">SpotMatch offers an optional real-time location sharing feature. When you enable this feature:</p>
+          <p className="mb-2">ParkingMeeters offers an optional real-time location sharing feature. When you enable this feature:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>Your precise GPS coordinates are shared <strong>only</strong> with your matched driver for the active handoff</li>
             <li>Location updates are sent approximately every 20 seconds</li>
@@ -91,7 +91,7 @@ export default function PrivacyPolicyPage() {
 
         <section>
           <h2 className="text-lg font-bold mb-2">8. Children&apos;s Privacy</h2>
-          <p>SpotMatch is not intended for users under 13. We do not knowingly collect data from children.</p>
+          <p>ParkingMeeters is not intended for users under 13. We do not knowingly collect data from children.</p>
         </section>
 
         <section>

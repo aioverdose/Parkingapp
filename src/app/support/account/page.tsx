@@ -50,7 +50,7 @@ export default function AccountPage() {
         </div>
 
         <p className="text-sm text-zinc-500 mb-8 leading-relaxed">
-          Manage your SpotMatch account settings, security, and personal information.
+          Manage your ParkingMeeters account settings, security, and personal information.
         </p>
 
         <div className="flex flex-col gap-3 mb-8">

@@ -40,6 +40,14 @@ export async function POST(request: NextRequest) {
     // Get updated average
     const avg = await (supabase as any).rpc("recalc_average_rating", { rated_user_id });
 
+    // SpotQuest: Progress rating quest for the rater (fire-and-forget)
+    try {
+      await (supabase as any).rpc("progress_quest", {
+        p_user_id: user.id,
+        p_action_type: "rate_user",
+      });
+    } catch { /* non-critical */ }
+
     return NextResponse.json({ success: true, rating: data, average_rating: avg.data });
   } catch (err) {
     return NextResponse.json(

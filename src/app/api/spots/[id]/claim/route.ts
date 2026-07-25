@@ -68,6 +68,34 @@ export async function POST(
       read: false,
     });
 
+    // SpotQuest: Award XP to both spot owner and seeker (fire-and-forget)
+    try {
+      await Promise.all([
+        supabase.rpc("award_handoff_xp", {
+          p_user_id: existingSpot.user_id,
+          p_match_id: null,
+          p_is_owner: true,
+        }),
+        supabase.rpc("award_handoff_xp", {
+          p_user_id: user.id,
+          p_match_id: null,
+          p_is_owner: false,
+        }),
+      ]);
+      // Check badges for both users
+      await Promise.all([
+        supabase.rpc("check_and_award_badges", { p_user_id: existingSpot.user_id }),
+        supabase.rpc("check_and_award_badges", { p_user_id: user.id }),
+      ]);
+      // Progress quests for both users
+      await Promise.all([
+        supabase.rpc("progress_quest", { p_user_id: existingSpot.user_id, p_action_type: "complete_handoff" }),
+        supabase.rpc("progress_quest", { p_user_id: user.id, p_action_type: "claim_spot" }),
+      ]);
+    } catch {
+      // Game XP is non-critical; don't fail the claim
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json(
