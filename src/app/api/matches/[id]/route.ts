@@ -87,6 +87,30 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         .from("parking_spots")
         .update({ status: "taken", claimed_by: match.seeker_id })
         .eq("id", match.spot_id);
+
+      // Award handoff XP, badges, and quest progress for both parties
+      try {
+        await Promise.all([
+          supabase.rpc("award_handoff_xp", {
+            p_user_id: match.spot_owner_id,
+            p_match_id: id,
+            p_is_owner: true,
+          }),
+          supabase.rpc("award_handoff_xp", {
+            p_user_id: match.seeker_id,
+            p_match_id: id,
+            p_is_owner: false,
+          }),
+        ]);
+        await Promise.all([
+          supabase.rpc("check_and_award_badges", { p_user_id: match.spot_owner_id }),
+          supabase.rpc("check_and_award_badges", { p_user_id: match.seeker_id }),
+          supabase.rpc("progress_quest", { p_user_id: match.spot_owner_id, p_action_type: "complete_handoff" }),
+          supabase.rpc("progress_quest", { p_user_id: match.seeker_id, p_action_type: "claim_spot" }),
+        ]);
+      } catch {
+        // Game XP is non-critical; don't fail the confirmation
+      }
     } else {
       // Notify the other party that someone confirmed
       const notifyUserId = isOwner ? match.seeker_id : match.spot_owner_id;

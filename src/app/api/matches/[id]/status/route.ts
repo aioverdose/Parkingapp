@@ -124,6 +124,32 @@ export async function POST(
       }
     }
 
+    if (status === "completed") {
+      // Handoff fully complete — award XP, badges, and quest progress for both parties
+      try {
+        await Promise.all([
+          supabase.rpc("award_handoff_xp", {
+            p_user_id: match.spot_owner_id,
+            p_match_id: id,
+            p_is_owner: true,
+          }),
+          supabase.rpc("award_handoff_xp", {
+            p_user_id: match.seeker_id,
+            p_match_id: id,
+            p_is_owner: false,
+          }),
+        ]);
+        await Promise.all([
+          supabase.rpc("check_and_award_badges", { p_user_id: match.spot_owner_id }),
+          supabase.rpc("check_and_award_badges", { p_user_id: match.seeker_id }),
+          supabase.rpc("progress_quest", { p_user_id: match.spot_owner_id, p_action_type: "complete_handoff" }),
+          supabase.rpc("progress_quest", { p_user_id: match.seeker_id, p_action_type: "claim_spot" }),
+        ]);
+      } catch {
+        // Game XP is non-critical; don't fail the status update
+      }
+    }
+
     return NextResponse.json({ success: true, status });
   } catch (err) {
     return NextResponse.json(
