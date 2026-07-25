@@ -857,25 +857,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
           </div>
         )}
 
-        {/* Top-right icon buttons */}
-        <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-          {!user ? (
-            <Button
-              onClick={() => setShowAuth(true)}
-              className="w-12 h-12 p-0 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xl hover:bg-zinc-100 border-none"
-            >
-              <UserIcon size={24} />
-            </Button>
-          ) : (
-            <Button
-              onClick={() => router.push("/profile")}
-              className="w-12 h-12 p-0 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xl hover:bg-zinc-100 border-none"
-            >
-              <UserIcon size={24} />
-            </Button>
-          )}
-        </div>
-
         {/* Street Sweeping Alert Banner */}
         {sweepingData && !showLookingForSpot && !showLeaveForm && !showPostForm && !selectedSpot && !activeChat && (
           <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10 w-full max-w-sm px-4">
