@@ -896,31 +896,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 w-full max-w-xs px-4 flex flex-col gap-2">
           {!showLookingForSpot && !showLeaveForm ? (
             <div className="flex flex-col gap-2">
-              {user && (
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleSaveSpot}
-                    disabled={savingSpot}
-                    className="flex-1 h-12 rounded-full shadow-2xl bg-zinc-700 hover:bg-zinc-800 text-white font-bold flex items-center justify-center gap-2"
-                  >
-                    {savingSpot ? (
-                      <Loader2 className="animate-spin" size={20} />
-                    ) : (
-                      <MapPin size={20} />
-                    )}
-                    {savingSpot
-                      ? saveAccuracy !== null
-                        ? `Saving... (${Math.round(saveAccuracy)}m)`
-                        : "Getting location..."
-                      : "Save Spot"}
-                  </Button>
-                </div>
-              )}
-              {saveSuccess && (
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-2 text-xs text-emerald-700 dark:text-emerald-300 text-center">
-                  {saveSuccess}
-                </div>
-              )}
               {savedSpots.length > 0 && (
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-3 space-y-2 max-h-48 overflow-y-auto">
                   <p className="text-xs font-bold text-zinc-500 uppercase tracking-wide">Saved Spots</p>
@@ -952,25 +927,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
                     </div>
                   ))}
                 </div>
-              )}
-              {user && (
-                <Button
-                  onClick={handleJoinWaitlist}
-                  disabled={joinWaitlistLoading || waitlistJoined}
-                  className={`w-full h-11 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg ${
-                    waitlistJoined
-                      ? "bg-emerald-500 text-white"
-                      : "bg-zinc-700 hover:bg-zinc-800 text-white"
-                  }`}
-                >
-                  {joinWaitlistLoading ? (
-                    <Loader2 className="animate-spin" size={18} />
-                  ) : waitlistJoined ? (
-                    <>Notifying you when spots open here</>
-                  ) : (
-                    <>Notify me when spots open near here</>
-                  )}
-                </Button>
               )}
             </div>
           ) : showLeaveForm && selectedLeaveSpot ? (
