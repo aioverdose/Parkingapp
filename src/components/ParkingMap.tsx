@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Map, { Marker, ViewStateChangeEvent, MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRealtimeSpots } from "@/hooks/useRealtimeSpots";
@@ -28,12 +28,11 @@ import { reverseGeocode } from "@/lib/geocode";
 import type { SavedParkingSpot } from "@/lib/parking-spot";
 import type { User } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import { LocationPermissionOverlay } from "./LocationPermissionOverlay";
-import { TOSModal } from "./TOSModal";
+
+import { CommunityAgreementModal } from "./CommunityAgreementModal";
 
 import { StreetSweepingBanner } from "./StreetSweepingBanner";
 import { PhoneVerificationModal } from "./PhoneVerificationModal";
-import { SafetyWarningModal } from "./SafetyWarningModal";
 import { PilotAreaWarning } from "./PilotAreaWarning";
 import { MatchList } from "./MatchList";
 import { LocationConsentModal } from "./LocationConsentModal";
@@ -56,8 +55,6 @@ type SweepingData = {
   holiday_exemptions: string[];
 };
 
-const LOCATION_SHOWN_KEY = "spotmatch_location_shown";
-
 export interface ParkingMapProps {
   onSpotClick?: (spot: Spot) => void;
   fullHeight?: boolean;
@@ -65,6 +62,7 @@ export interface ParkingMapProps {
 
 export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createBrowserClient();
   const [userVehicleType, setUserVehicleType] = useState<string | null>(null);
   const { spots, loading, error } = useRealtimeSpots(userVehicleType);
@@ -109,14 +107,12 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [trackingEnabled, setTrackingEnabled] = useState(false);
 
-  // Step 1: Location permission overlay
-  const [showLocationOverlay, setShowLocationOverlay] = useState(true);
+  // Map
   const mapRef = useRef<MapRef>(null);
-  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
 
-  // Step 2: TOS modal
-  const [showTosModal, setShowTosModal] = useState(false);
-  const [tosModalMode, setTosModalMode] = useState<"post" | "look">("post");
+  // Step 2: Community Agreement modal (TOS + Safety combined)
+  const [showCommunityAgreement, setShowCommunityAgreement] = useState(false);
+  const [agreementMode, setAgreementMode] = useState<"post" | "look">("post");
   const [tosAccepted, setTosAccepted] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
 
@@ -128,7 +124,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
-  const [showSafetyWarning, setShowSafetyWarning] = useState(false);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [flagCount, setFlagCount] = useState(0);
   const [pilotAreaAllowed, setPilotAreaAllowed] = useState(true);
@@ -216,17 +211,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     }
   });
 
-  // Check if location overlay was already shown this session
-  useEffect(() => {
-    const alreadyShown = localStorage.getItem(LOCATION_SHOWN_KEY);
-    if (!alreadyShown) {
-      setShowLocationOverlay(true);
-    } else {
-      setShowLocationOverlay(false);
-      setLocationPermissionGranted(true);
-    }
-  }, []);
-
   // User custom event from LocationPermissionOverlay
   useEffect(() => {
     const handler = (e: Event) => {
@@ -245,9 +229,8 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     return () => window.removeEventListener("user-location", handler as EventListener);
   }, []);
 
-  // Geolocation for non-first-time users
+  // Geolocation — request on mount
   useEffect(() => {
-    if (!locationPermissionGranted) return;
     if (!("geolocation" in navigator)) return;
 
     const geoOptions = {
@@ -303,7 +286,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [locationPermissionGranted]);
+  }, []);
 
   // Auth session + profile check
   useEffect(() => {
@@ -448,6 +431,18 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     });
   }, [userLocation]);
 
+  // Handle ?signup=success and ?verify_phone=true from redirect
+  useEffect(() => {
+    const signup = searchParams.get("signup");
+    const verifyPhone = searchParams.get("verify_phone");
+    if (signup === "success" && verifyPhone === "true" && user && profileChecked) {
+      setShowPhoneVerification(true);
+      router.replace("/", { scroll: false });
+    } else if (signup === "success") {
+      router.replace("/", { scroll: false });
+    }
+  }, [searchParams, user, profileChecked, router]);
+
   // Gating check: pilot area, rating, flags
   useEffect(() => {
     if (!user || !profileChecked || !userLocation) return;
@@ -499,7 +494,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   }, [user]);
 
   const handleBottomAction = (mode: "post" | "look") => {
-    setTosModalMode(mode);
+    setAgreementMode(mode);
 
     if (!user) {
       setShowAuth(true);
@@ -509,11 +504,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     // Gating checks
     if (!phoneVerified) {
       setShowPhoneVerification(true);
-      return;
-    }
-
-    if (!safetyAcknowledged) {
-      setShowSafetyWarning(true);
       return;
     }
 
@@ -527,8 +517,9 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
       return;
     }
 
-    if (!tosAccepted) {
-      setShowTosModal(true);
+    // Community agreement covers both TOS + safety
+    if (!tosAccepted || !safetyAcknowledged) {
+      setShowCommunityAgreement(true);
       return;
     }
 
@@ -549,7 +540,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     }
   };
 
-  const handleTosAccept = async () => {
+  const handleCommunityAgree = async () => {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     if (!token) return;
 
@@ -559,60 +550,16 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
+      body: JSON.stringify({ safety_acknowledged: true }),
     });
     const data = await res.json();
 
     if (data.success) {
       setTosAccepted(true);
-      setShowTosModal(false);
-      executeAction(tosModalMode);
-    }
-  };
-
-  const handleSafetyAcknowledge = async () => {
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
-    if (!token) return;
-
-    const res = await fetch("/api/tos/accept", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    const data = await res.json();
-
-    if (data.success) {
-      // Also save safety_acknowledged
-      await (supabase as any)
-        .from("users")
-        .update({
-          safety_acknowledged: true,
-          safety_acknowledged_at: new Date().toISOString(),
-        })
-        .eq("id", user?.id);
-
       setSafetyAcknowledged(true);
-      setShowSafetyWarning(false);
-      executeAction(tosModalMode);
+      setShowCommunityAgreement(false);
+      executeAction(agreementMode);
     }
-  };
-
-  const handlePermissionGranted = () => {
-    setLocationPermissionGranted(true);
-    setShowLocationOverlay(false);
-    localStorage.setItem(LOCATION_SHOWN_KEY, "1");
-
-    // Save permission to user profile if logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        (supabase as any)
-          .from("users")
-          .update({ location_permission: true })
-          .eq("id", session.user.id)
-          .then(() => {});
-      }
-    });
   };
 
   const handleSaveSpot = async () => {
@@ -736,14 +683,8 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
 
   return (
     <div className={`relative w-full ${fullHeight ? 'h-full' : 'h-screen'} overflow-hidden bg-zinc-50 dark:bg-zinc-950`}>
-      {/* Step 1: Location Permission Overlay */}
-      <LocationPermissionOverlay
-        show={showLocationOverlay}
-        onPermissionGranted={handlePermissionGranted}
-      />
-
-      {/* Map (hidden behind location overlay) */}
-      <div className={showLocationOverlay ? "hidden" : "w-full h-full"}>
+      {/* Map */}
+      <div className="w-full h-full">
         <Map
           ref={mapRef}
           {...viewState}
@@ -1151,12 +1092,11 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         )}
       </div>
 
-      {/* Step 2: TOS Modal */}
-      <TOSModal
-        open={showTosModal}
-        onAccept={handleTosAccept}
-        onClose={() => setShowTosModal(false)}
-        mode={tosModalMode}
+      {/* Community Agreement Modal (TOS + Safety) */}
+      <CommunityAgreementModal
+        open={showCommunityAgreement}
+        onAccept={handleCommunityAgree}
+        onClose={() => setShowCommunityAgreement(false)}
       />
 
       {/* Phone Verification Modal */}
@@ -1167,18 +1107,11 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
           onVerified={() => {
             setPhoneVerified(true);
             setShowPhoneVerification(false);
-            executeAction(tosModalMode);
+            executeAction(agreementMode);
           }}
           onClose={() => setShowPhoneVerification(false)}
         />
       )}
-
-      {/* Safety Warning Modal */}
-      <SafetyWarningModal
-        open={showSafetyWarning}
-        onAcknowledge={handleSafetyAcknowledge}
-        onClose={() => setShowSafetyWarning(false)}
-      />
 
       {/* Pilot Area Warning */}
       <PilotAreaWarning

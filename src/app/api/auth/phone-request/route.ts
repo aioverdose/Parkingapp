@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { checkRateLimit } from "@/lib/api/rate-limit";
-import { requestOtp } from "@/lib/otp";
+import { requestOtp, isPhoneVerificationEnabled } from "@/lib/otp";
 import { isTwilioConfigured } from "@/lib/twilio";
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isPhoneVerificationEnabled()) {
+      return NextResponse.json({
+        success: true,
+        method: "simulated",
+        warning: "Phone verification is disabled in this environment.",
+      });
+    }
+
     const user = await getAuthenticatedUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

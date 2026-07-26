@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, CheckCircle2, DollarSign, X, Clock, Car, MessageSquare, AlertTriangle, UserCircle, Star, Shield } from "lucide-react";
+import { MapPin, Navigation, CheckCircle2, DollarSign, X, Clock, Car, MessageSquare, AlertTriangle, UserCircle, Star, CalendarClock } from "lucide-react";
 import { useLeavingTimer } from "@/hooks/useLeavingTimer";
 import { useExpirationTimer } from "@/hooks/useExpirationTimer";
 import { claimSpot, sendTip } from "@/lib/api-client";
@@ -141,6 +141,15 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
         </button>
       </div>
 
+      {spot.relay_mode === "scheduled" && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">
+            <CalendarClock size={12} />
+            Scheduled Relay
+          </span>
+        </div>
+      )}
+
       {isSuccess ? (
         <div className="flex flex-col items-center justify-center py-12 animate-in zoom-in duration-300">
           <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 mb-4">
@@ -156,12 +165,24 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
           <div className="flex items-center gap-3">
             <Clock className="text-blue-600" size={24} />
             <div>
-              <p className="text-sm text-blue-600 font-medium">
-                {isExpired ? "Now departing" : "Departs in"}
-              </p>
-              <p className="text-2xl font-black text-blue-700 dark:text-blue-400">
-                {isExpired ? "Now" : formatted}
-              </p>
+              {spot.relay_mode === "scheduled" ? (
+                <>
+                  <p className="text-sm text-blue-600 font-medium">Departs at</p>
+                  <p className="text-lg font-black text-blue-700 dark:text-blue-400">
+                    {new Date(spot.departure_time).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}{" "}
+                    {new Date(spot.departure_time).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-blue-600 font-medium">
+                    {isExpired ? "Now departing" : "Departs in"}
+                  </p>
+                  <p className="text-2xl font-black text-blue-700 dark:text-blue-400">
+                    {isExpired ? "Now" : formatted}
+                  </p>
+                </>
+              )}
               {spot.return_time && (
                 <p className="text-xs text-blue-500 mt-0.5">
                   Returns by {new Date(spot.return_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

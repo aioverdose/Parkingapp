@@ -3,10 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signUpWithTosGate } from "@/actions/tos";
-import { TOSModal } from "@/components/TOSModal";
-import { Loader2, Mail, Lock, User, Car } from "lucide-react";
+import { CommunityAgreementModal } from "@/components/CommunityAgreementModal";
+import { Loader2, Mail, Lock, User, Car, Phone } from "lucide-react";
 import { VEHICLE_TYPES } from "@/lib/vehicle-types";
 import { PrivacyPolicyLink } from "@/components/PrivacyPolicyLink";
+
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -14,6 +22,7 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [showTos, setShowTos] = useState(false);
   const [tosChecked, setTosChecked] = useState(false);
+  const [phone, setPhone] = useState("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -22,6 +31,9 @@ export default function SignUpPage() {
 
     const formData = new FormData(e.currentTarget);
     formData.set("tos_accepted", tosChecked ? "true" : "false");
+    if (phone.replace(/\D/g, "").length >= 10) {
+      formData.set("phone", `+1${phone.replace(/\D/g, "")}`);
+    }
 
     const result = await signUpWithTosGate(formData);
     if (result.error) {
@@ -30,7 +42,12 @@ export default function SignUpPage() {
       return;
     }
 
-    router.push("/?signup=success");
+    // If phone was provided, redirect to verify it
+    if (phone.replace(/\D/g, "").length >= 10) {
+      router.push("/?signup=success&verify_phone=true");
+    } else {
+      router.push("/?signup=success");
+    }
   }
 
   return (
@@ -49,6 +66,17 @@ export default function SignUpPage() {
             <User className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input name="name" type="text" placeholder="Full Name" required
               className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" />
+          </div>
+
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+            <input
+              type="tel"
+              placeholder="Phone number (optional)"
+              value={formatPhone(phone)}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+            />
           </div>
 
           <div className="relative">
@@ -108,7 +136,7 @@ export default function SignUpPage() {
         </p>
       </div>
 
-      {showTos && <TOSModal open={showTos} onAccept={async () => { setShowTos(false); }} onClose={() => setShowTos(false)} mode="post" />}
+      {showTos && <CommunityAgreementModal open={showTos} onAccept={async () => { setShowTos(false); }} onClose={() => setShowTos(false)} />}
     </div>
   );
 }

@@ -9,6 +9,7 @@ const signUpSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
   vehicle_type: z.string().optional(),
+  phone: z.string().optional(),
   tos_accepted: z.boolean().refine((val) => val === true, "You must accept the Terms of Service"),
 });
 
@@ -18,6 +19,7 @@ export async function signUpWithTosGate(formData: FormData) {
     password: formData.get("password"),
     name: formData.get("name"),
     vehicle_type: formData.get("vehicle_type") || undefined,
+    phone: formData.get("phone") || undefined,
     tos_accepted: formData.get("tos_accepted") === "true",
   };
 
@@ -26,7 +28,7 @@ export async function signUpWithTosGate(formData: FormData) {
     return { error: parsed.error.issues.map((e: { message: string }) => e.message).join(". ") };
   }
 
-  const { email, password, name, vehicle_type } = parsed.data;
+  const { email, password, name, vehicle_type, phone } = parsed.data;
   const supabase = createAdminClient();
 
   const { data, error: signUpError } = await supabase.auth.admin.createUser({
@@ -54,6 +56,7 @@ export async function signUpWithTosGate(formData: FormData) {
     email,
     name,
     vehicle_type: vehicle_type || null,
+    phone_number: phone || null,
     tos_version: TOS_VERSION,
     tos_hash: tosHash,
     tos_signed_at: new Date().toISOString(),

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { latitude, longitude, address, departure_time, return_time, tip_message, vehicle_type } = body;
+    const { latitude, longitude, address, departure_time, return_time, tip_message, vehicle_type, relay_mode } = body;
 
     if (typeof latitude !== "number" || typeof longitude !== "number") {
       return NextResponse.json({ error: "latitude and longitude are required" }, { status: 400 });
@@ -96,10 +96,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Set expires_at to return_time if provided, otherwise 2 hours after departure
-    const expiresAt = returnDate
-      ? returnDate.toISOString()
-      : new Date(departDate.getTime() + 2 * 60 * 60 * 1000).toISOString();
+    const mode: "imminent" | "scheduled" = relay_mode === "scheduled" ? "scheduled" : "imminent";
+
+    // Scheduled relays: expires_at = departure_time (valid until departure)
+    // Imminent alerts: expires_at = return_time or departure + 2h
+    const expiresAt = mode === "scheduled"
+      ? departDate.toISOString()
+      : returnDate
+        ? returnDate.toISOString()
+        : new Date(departDate.getTime() + 2 * 60 * 60 * 1000).toISOString();
 
     const supabase = createAdminClient();
     const { data, error } = await supabase
@@ -116,6 +121,7 @@ export async function POST(request: NextRequest) {
         vehicle_type: vehicle_type ?? null,
         expires_at: expiresAt,
         flag_count: 0,
+        relay_mode: mode,
       })
       .select()
       .single();

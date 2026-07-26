@@ -87,10 +87,25 @@ export async function POST(request: NextRequest) {
       if (spot.vehicle_type && req.vehicle_type && spot.vehicle_type !== req.vehicle_type) continue;
 
       // Check schedule overlap
-      // Spot is available during departure_time to return_time
-      // Seeker wants a spot (we'll assume their request window is from now to +2 hours)
-      const seekerFrom = new Date(req.created_at).toISOString();
-      const seekerTo = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+      // For scheduled relays, use a wider window centered on departure_time
+      // For imminent alerts, use the current [created_at, now+2h] window
+      let seekerFrom: string;
+      let seekerTo: string;
+
+      if (spot.relay_mode === "scheduled") {
+        // Match seekers whose request is active during the spot's availability window
+        // Use [departure_time - 30min, return_time or departure + 2h] as the spot's useful window
+        const depTime = new Date(spot.departure_time).getTime();
+        const retTime = spot.return_time
+          ? new Date(spot.return_time).getTime()
+          : depTime + 2 * 60 * 60 * 1000;
+        // Seeker must be looking for parking that overlaps with [depTime - 30min, retTime]
+        seekerFrom = new Date(req.created_at).toISOString();
+        seekerTo = new Date(retTime).toISOString();
+      } else {
+        seekerFrom = new Date(req.created_at).toISOString();
+        seekerTo = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+      }
 
       if (!schedulesOverlap(spot.departure_time, spot.return_time, seekerFrom, seekerTo)) continue;
 

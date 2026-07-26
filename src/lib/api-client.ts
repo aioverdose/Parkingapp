@@ -48,6 +48,7 @@ export function createSpot(data: {
   return_time?: string | null;
   vehicle_type?: string | null;
   lead_minutes?: number;
+  relay_mode?: "imminent" | "scheduled";
 }) {
   return apiFetch<{ spot: unknown }>("/api/spots", {
     method: "POST",

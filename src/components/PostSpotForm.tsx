@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { MapPin, Loader2, X, ShieldX, RefreshCw, Info, Car, Calendar, Clock } from "lucide-react";
+import { MapPin, Loader2, X, ShieldX, RefreshCw, Info, Car, Calendar, Clock, Zap, CalendarClock } from "lucide-react";
 import { createSpot } from "@/lib/api-client";
 import { VEHICLE_TYPES } from "@/lib/vehicle-types";
 
@@ -85,6 +85,7 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
   const [vehicleType, setVehicleType] = useState("any");
   const [departureTime, setDepartureTime] = useState("");
   const [returnTime, setReturnTime] = useState("");
+  const [relayMode, setRelayMode] = useState<"imminent" | "scheduled">("imminent");
 
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -202,6 +203,7 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
         departure_time: departDate.toISOString(),
         return_time: returnDate.toISOString(),
         vehicle_type: vehicleType === "any" ? null : vehicleType,
+        relay_mode: relayMode,
       });
 
       if (error) throw new Error(error);
@@ -314,8 +316,35 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
       </div>
       <div className="flex flex-col gap-4">
         <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-          Set when you&apos;ll depart and return. The system will match you with compatible drivers.
+          {relayMode === "imminent"
+            ? "Set when you'll depart and return. The system will match you with compatible drivers."
+            : "Commit your departure in advance. The system will match you with drivers who need your spot at that time."}
         </p>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setRelayMode("imminent")}
+            className={`flex-1 h-11 rounded-xl text-sm font-bold transition flex items-center justify-center gap-1.5 ${
+              relayMode === "imminent"
+                ? "bg-blue-600 text-white"
+                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+            }`}
+          >
+            <Zap size={14} />
+            Leaving Soon
+          </button>
+          <button
+            onClick={() => setRelayMode("scheduled")}
+            className={`flex-1 h-11 rounded-xl text-sm font-bold transition flex items-center justify-center gap-1.5 ${
+              relayMode === "scheduled"
+                ? "bg-blue-600 text-white"
+                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+            }`}
+          >
+            <CalendarClock size={14} />
+            Scheduled Relay
+          </button>
+        </div>
 
         <div className="space-y-1.5">
           <p className="text-sm text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
@@ -351,10 +380,17 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
 
         <div className="rounded-xl bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-700 dark:text-blue-400 space-y-1.5">
           <p className="font-bold">How matching works</p>
-          <p>
-            Once listed, our system will match you with drivers looking for a spot in your area
-            during your available window. Both parties must confirm the match.
-          </p>
+          {relayMode === "imminent" ? (
+            <p>
+              Your spot is shown in real-time to nearby drivers looking for parking.
+              The sooner you depart, the faster the match.
+            </p>
+          ) : (
+            <p>
+              Your committed departure is matched with drivers who need parking at that
+              time and location. They get certainty; you earn relay points for reliable handoffs.
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">

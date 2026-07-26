@@ -10,18 +10,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const body = await request.json().catch(() => ({}));
+    const includeSafety = body.safety_acknowledged === true;
+
     const supabase = createAdminClient();
     const tosHash = await hashTos(TOS_CONTENT);
 
+    const update: Record<string, unknown> = {
+      tos_accepted: true,
+      tos_accepted_date: new Date().toISOString(),
+      tos_version: TOS_VERSION,
+      tos_hash: tosHash,
+      tos_signed_at: new Date().toISOString(),
+    };
+
+    if (includeSafety) {
+      update.safety_acknowledged = true;
+      update.safety_acknowledged_at = new Date().toISOString();
+    }
+
     const { error } = await (supabase as any)
       .from("users")
-      .update({
-        tos_accepted: true,
-        tos_accepted_date: new Date().toISOString(),
-        tos_version: TOS_VERSION,
-        tos_hash: tosHash,
-        tos_signed_at: new Date().toISOString(),
-      })
+      .update(update)
       .eq("id", user.id);
 
     if (error) {

@@ -173,6 +173,7 @@ export interface Database {
           lead_minutes: number | null;
           expires_at: string | null;
           flag_count: number | null;
+          relay_mode: "imminent" | "scheduled";
         };
         Insert: {
           id?: string;
@@ -190,6 +191,7 @@ export interface Database {
           lead_minutes?: number | null;
           expires_at?: string | null;
           flag_count?: number | null;
+          relay_mode?: "imminent" | "scheduled";
         };
         Update: {
           id?: string;
@@ -207,6 +209,7 @@ export interface Database {
           lead_minutes?: number | null;
           expires_at?: string | null;
           flag_count?: number | null;
+          relay_mode?: "imminent" | "scheduled";
         };
         Relationships: [];
       };

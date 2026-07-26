@@ -1,5 +1,14 @@
 import { createAdminClient } from "./supabaseAdmin";
-import { sendSms } from "./twilio";
+import { sendSms, isTwilioConfigured } from "./twilio";
+
+export function isPhoneVerificationEnabled(): boolean {
+  return process.env.PHONE_VERIFICATION_ENABLED === "true";
+}
+
+export function isPhoneVerificationEnforced(): boolean {
+  // In production, phone verification is enforced only when Twilio is configured
+  return isPhoneVerificationEnabled() && isTwilioConfigured();
+}
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
