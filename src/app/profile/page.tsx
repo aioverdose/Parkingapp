@@ -321,6 +321,73 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Arrival & Departure Time Card */}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-4">
+          <h3 className="font-bold text-sm mb-1 flex items-center gap-2">
+            <Clock size={16} className="text-blue-600" /> Arrival & Departure
+          </h3>
+          <p className="text-[11px] text-zinc-400 mb-4">
+            Set the times you typically arrive at and depart from your parking spot.
+          </p>
+
+          <div className="space-y-3">
+            {/* Arrival Time */}
+            <div>
+              <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Arrival Time</label>
+              <div className="flex gap-1">
+                <select value={schedArrivalHour} onChange={(e) => setSchedArrivalHour(e.target.value)}
+                  className="flex-1 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <span className="text-zinc-400 self-center">:</span>
+                <select value={schedArrivalMin} onChange={(e) => setSchedArrivalMin(e.target.value)}
+                  className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  {["00", "15", "30", "45"].map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={schedArrivalAmPm} onChange={(e) => setSchedArrivalAmPm(e.target.value)}
+                  className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Departure Time */}
+            <div>
+              <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Departure Time</label>
+              <div className="flex gap-1">
+                <select value={schedDepartureHour} onChange={(e) => setSchedDepartureHour(e.target.value)}
+                  className="flex-1 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <span className="text-zinc-400 self-center">:</span>
+                <select value={schedDepartureMin} onChange={(e) => setSchedDepartureMin(e.target.value)}
+                  className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  {["00", "15", "30", "45"].map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={schedDepartureAmPm} onChange={(e) => setSchedDepartureAmPm(e.target.value)}
+                  className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+            </div>
+
+            {scheduleSaved && (
+              <div className="flex items-center justify-center gap-2 text-emerald-600 text-xs font-bold">
+                <CheckCircle2 size={14} /> Times saved!
+              </div>
+            )}
+
+            <button
+              onClick={handleSaveSchedule}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition"
+            >
+              Save Times
+            </button>
+          </div>
+        </div>
+
         {/* Rank Card */}
         {ranking && (
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-4">
