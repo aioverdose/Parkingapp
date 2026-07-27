@@ -229,63 +229,18 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     return () => window.removeEventListener("user-location", handler as EventListener);
   }, []);
 
-  // Geolocation — request on mount
-  useEffect(() => {
+  // Center on user location (on-demand, not automatic)
+  const centerOnMe = useCallback(() => {
     if (!("geolocation" in navigator)) return;
-
-    const geoOptions = {
-      enableHighAccuracy: true,
-      maximumAge: 30000,
-      timeout: 8000,
-    };
-
-    const fallbackOptions = {
-      enableHighAccuracy: false,
-      maximumAge: 60000,
-      timeout: 5000,
-    };
-
-    const gotPosition = (pos: GeolocationPosition) => {
-      const { latitude, longitude, accuracy } = pos.coords;
-      setUserLocation({ latitude, longitude, accuracy });
-    };
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        gotPosition(pos);
-        setViewState((prev) => ({
-          ...prev,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          zoom: 13,
-        }));
+        const { latitude, longitude, accuracy } = pos.coords;
+        setUserLocation({ latitude, longitude, accuracy });
+        setViewState((prev) => ({ ...prev, latitude, longitude, zoom: 13 }));
       },
-      () => {
-        // Fallback: try less accurate but faster
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            gotPosition(pos);
-            setViewState((prev) => ({
-              ...prev,
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              zoom: 13,
-            }));
-          },
-          () => {},
-          fallbackOptions,
-        );
-      },
-      geoOptions,
-    );
-
-    const watchId = navigator.geolocation.watchPosition(
-      gotPosition,
       () => {},
       { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 },
     );
-
-    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   // Auth session + profile check
@@ -692,13 +647,20 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
           mapStyle={satelliteView ? SATELLITE_STYLE : MAP_STYLE_URL}
           style={{ width: "100%", height: "100%" }}
         >
-          <div className="absolute top-2 left-14 z-10">
+          <div className="absolute top-2 left-14 z-10 flex gap-1.5">
             <button
               onClick={() => setSatelliteView((v) => !v)}
               className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-[11px] font-bold shadow-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition"
               title={satelliteView ? "Switch to street view" : "Switch to satellite view"}
             >
               {satelliteView ? "Street" : "Satellite"}
+            </button>
+            <button
+              onClick={centerOnMe}
+              className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-[11px] font-bold shadow-md hover:bg-zinc-50 dark:hover:bg-zinc-700 transition"
+              title="Center on my location"
+            >
+              📍 My Location
             </button>
           </div>
           {clusters.map((item) =>
