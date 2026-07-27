@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { ArrowLeft, CheckCircle2, XCircle, Loader2, AlertCircle, PartyPopper, Trophy } from "lucide-react";
@@ -22,6 +22,7 @@ export default function CourseDetailPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [allCoursesPassed, setAllCoursesPassed] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
+  const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -58,12 +59,16 @@ export default function CourseDetailPage() {
     }
   }, [result?.passed, redirectCountdown, allCoursesPassed, router]);
 
-  const handleAnswer = (questionIndex: number, optionIndex: number) => {
+  const handleAnswer = useCallback((questionIndex: number, optionIndex: number) => {
     if (result) return;
     const next = [...answers];
     next[questionIndex] = optionIndex;
     setAnswers(next);
-  };
+    const nextRef = questionRefs.current[questionIndex + 1];
+    if (nextRef) {
+      nextRef.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [result, answers]);
 
   const handleSubmit = async () => {
     if (!course || submitting) return;
@@ -205,7 +210,7 @@ export default function CourseDetailPage() {
           </h2>
 
           {questions.map((q, qi) => (
-            <div key={qi} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
+            <div key={qi} ref={(el) => { questionRefs.current[qi] = el; }} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
               <p className="font-bold text-sm mb-3">
                 {qi + 1}. {q.question}
               </p>
