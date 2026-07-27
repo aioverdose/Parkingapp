@@ -15,7 +15,7 @@ import { reverseGeocode } from "@/lib/geocode";
 import {
   ArrowLeft, MapPin, Clock, Star, TrendingUp, CheckCircle2,
   BookOpen, Settings, GraduationCap, Loader2, Trash2, Award,
-  User as UserIcon, AlertCircle, Plus, LogOut,
+  User as UserIcon, AlertCircle, Plus, LogOut, Shield,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -30,6 +30,7 @@ export default function ProfilePage() {
     created_at: string | null;
     average_rating: number | null;
     flag_count: number;
+    role: string | null;
   } | null>(null);
   const [ranking, setRanking] = useState<UserRanking | null>(null);
   const [stats, setStats] = useState<{
@@ -62,7 +63,7 @@ export default function ProfilePage() {
       const [profileRes, rankingRes, stat, spotsRes, coursesRes, courseCountRes] = await Promise.all([
         supabase
           .from("users")
-          .select("name, email, vehicle_type, created_at, average_rating, flag_count")
+          .select("name, email, vehicle_type, created_at, average_rating, flag_count, role")
           .eq("id", session.user.id)
           .single(),
         supabase
@@ -386,6 +387,15 @@ export default function ProfilePage() {
               <Settings size={22} />
               <span className="text-[11px] font-bold">Settings</span>
             </a>
+            {userData?.role === "admin" && (
+              <a
+                href="/admin"
+                className="flex flex-col items-center gap-1.5 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition"
+              >
+                <Shield size={22} />
+                <span className="text-[11px] font-bold">Admin Dashboard</span>
+              </a>
+            )}
             <a
               href="/"
               className="flex flex-col items-center gap-1.5 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 transition"
