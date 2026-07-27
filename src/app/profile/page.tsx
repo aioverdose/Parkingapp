@@ -44,6 +44,14 @@ export default function ProfilePage() {
   const [savedSpots, setSavedSpots] = useState<SavedParkingSpot[]>([]);
   const [coursesCompleted, setCoursesCompleted] = useState(0);
   const [totalCourses, setTotalCourses] = useState(0);
+  const [schedArrivalHour, setSchedArrivalHour] = useState("8");
+  const [schedArrivalMin, setSchedArrivalMin] = useState("00");
+  const [schedArrivalAmPm, setSchedArrivalAmPm] = useState("AM");
+  const [schedDepartureHour, setSchedDepartureHour] = useState("5");
+  const [schedDepartureMin, setSchedDepartureMin] = useState("00");
+  const [schedDepartureAmPm, setSchedDepartureAmPm] = useState("PM");
+  const [schedDays, setSchedDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [scheduleSaved, setScheduleSaved] = useState(false);
   const [schedules, setSchedules] = useState<any[]>([]);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [scheduleLabel, setScheduleLabel] = useState("");
@@ -75,7 +83,7 @@ export default function ProfilePage() {
       const [profileRes, rankingRes, stat, spotsRes, coursesRes, courseCountRes] = await Promise.all([
         supabase
           .from("users")
-          .select("name, email, vehicle_type, created_at, average_rating, flag_count, role")
+          .select("name, email, vehicle_type, created_at, average_rating, flag_count, role, schedule_arrival, schedule_departure, schedule_days")
           .eq("id", session.user.id)
           .single(),
         supabase
@@ -100,6 +108,22 @@ export default function ProfilePage() {
       setCoursesCompleted(coursesRes.data?.length ?? 0);
       setTotalCourses(courseCountRes.data?.length ?? 0);
 
+      if (profileRes.data?.schedule_days) setSchedDays(profileRes.data.schedule_days);
+      if (profileRes.data?.schedule_arrival) {
+        const [h, m] = profileRes.data.schedule_arrival.split(":").map(Number);
+        const ampm = h >= 12 ? "PM" : "AM";
+        setSchedArrivalHour(String(h % 12 || 12));
+        setSchedArrivalMin(String(m).padStart(2, "0"));
+        setSchedArrivalAmPm(ampm);
+      }
+      if (profileRes.data?.schedule_departure) {
+        const [h, m] = profileRes.data.schedule_departure.split(":").map(Number);
+        const ampm = h >= 12 ? "PM" : "AM";
+        setSchedDepartureHour(String(h % 12 || 12));
+        setSchedDepartureMin(String(m).padStart(2, "0"));
+        setSchedDepartureAmPm(ampm);
+      }
+
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (token) {
         const schedRes = await fetch("/api/schedules", { headers: { Authorization: `Bearer ${token}` } });
@@ -116,16 +140,30 @@ export default function ProfilePage() {
     setSavedSpots((prev) => prev.filter((s) => s.id !== spotId));
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
-  };
-
   const to24h = (h: string, min: string, ampm: string) => {
     let hour = parseInt(h, 10);
     if (ampm === "AM" && hour === 12) hour = 0;
     else if (ampm === "PM" && hour !== 12) hour += 12;
     return `${String(hour).padStart(2, "0")}:${min}`;
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!userId) return;
+    const arrival = to24h(schedArrivalHour, schedArrivalMin, schedArrivalAmPm);
+    const departure = to24h(schedDepartureHour, schedDepartureMin, schedDepartureAmPm);
+    const { error } = await supabase
+      .from("users")
+      .update({ schedule_arrival: arrival, schedule_departure: departure, schedule_days: schedDays })
+      .eq("id", userId);
+    if (!error) {
+      setScheduleSaved(true);
+      setTimeout(() => setScheduleSaved(false), 3000);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
   };
 
   const handleAddSchedule = async () => {
@@ -357,6 +395,93 @@ export default function ProfilePage() {
               {pinSuccess}
             </div>
           )}
+        </div>
+
+        {/* Schedule Matching Profile */}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-4">
+          <h3 className="font-bold text-sm mb-1 flex items-center gap-2">
+            <Clock size={16} className="text-blue-600" /> Schedule Matching Profile
+          </h3>
+          <p className="text-[11px] text-zinc-400 mb-4">
+            Set your typical arrival & departure times so we can match you with compatible spots.
+          </p>
+
+          <div className="space-y-3">
+            {/* Days */}
+            <div>
+              <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Days</label>
+              <div className="flex gap-1">
+                {DAY_LABELS.map((day, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSchedDays((prev) => prev.includes(i) ? prev.filter((d) => d !== i) : [...prev, i].sort())}
+                    className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition ${
+                      schedDays.includes(i)
+                        ? "bg-blue-600 text-white"
+                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Arrival Time */}
+            <div>
+              <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Arrive at</label>
+              <div className="flex gap-1">
+                <select value={schedArrivalHour} onChange={(e) => setSchedArrivalHour(e.target.value)}
+                  className="flex-1 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <span className="text-zinc-400 self-center">:</span>
+                <select value={schedArrivalMin} onChange={(e) => setSchedArrivalMin(e.target.value)}
+                  className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  {["00", "15", "30", "45"].map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={schedArrivalAmPm} onChange={(e) => setSchedArrivalAmPm(e.target.value)}
+                  className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Departure Time */}
+            <div>
+              <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Leave at</label>
+              <div className="flex gap-1">
+                <select value={schedDepartureHour} onChange={(e) => setSchedDepartureHour(e.target.value)}
+                  className="flex-1 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => <option key={h} value={h}>{h}</option>)}
+                </select>
+                <span className="text-zinc-400 self-center">:</span>
+                <select value={schedDepartureMin} onChange={(e) => setSchedDepartureMin(e.target.value)}
+                  className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  {["00", "15", "30", "45"].map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={schedDepartureAmPm} onChange={(e) => setSchedDepartureAmPm(e.target.value)}
+                  className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+            </div>
+
+            {scheduleSaved && (
+              <div className="flex items-center justify-center gap-2 text-emerald-600 text-xs font-bold">
+                <CheckCircle2 size={14} /> Schedule saved!
+              </div>
+            )}
+
+            <button
+              onClick={handleSaveSchedule}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition"
+            >
+              Save Schedule
+            </button>
+          </div>
         </div>
 
         {/* Contribution Stats */}

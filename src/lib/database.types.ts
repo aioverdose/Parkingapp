@@ -121,6 +121,9 @@ export interface Database {
           phone_number: string | null;
           phone_verified: boolean | null;
           phone_verified_at: string | null;
+          schedule_arrival: string | null;
+          schedule_departure: string | null;
+          schedule_days: number[] | null;
         };
         Insert: {
           id?: string;
@@ -137,6 +140,9 @@ export interface Database {
           phone_number?: string | null;
           phone_verified?: boolean | null;
           phone_verified_at?: string | null;
+          schedule_arrival?: string | null;
+          schedule_departure?: string | null;
+          schedule_days?: number[] | null;
         };
         Update: {
           id?: string;
@@ -153,6 +159,9 @@ export interface Database {
           phone_number?: string | null;
           phone_verified?: boolean | null;
           phone_verified_at?: string | null;
+          schedule_arrival?: string | null;
+          schedule_departure?: string | null;
+          schedule_days?: number[] | null;
         };
         Relationships: [];
       };
