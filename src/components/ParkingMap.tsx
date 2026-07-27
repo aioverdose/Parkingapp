@@ -39,7 +39,6 @@ import { LocationConsentModal } from "./LocationConsentModal";
 import { LiveTrackingOverlay } from "./LiveTrackingOverlay";
 import { useLocationSharing } from "@/hooks/useLocationSharing";
 import { useLiveTracking } from "@/hooks/useLiveTracking";
-import { usePresencePing } from "@/hooks/usePresencePing";
 import { reverseGeocodeStreet } from "@/lib/reverse-geocode";
 import { checkPilotArea } from "@/lib/pilot-area";
 import { SpotQuestOverlay } from "./spotquest/SpotQuestOverlay";
@@ -144,9 +143,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     activeTrackingMatch?.spotLat,
     activeTrackingMatch?.spotLng,
   );
-
-  // Presence ping — sends location to admin control tower
-  usePresencePing(!!user);
 
   const handleTrackOpen = useCallback((matchId: string, _spotId: string, partnerName: string, spotAddress: string, spotLat: number, spotLng: number) => {
     setShowMatches(false);
