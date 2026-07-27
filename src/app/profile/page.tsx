@@ -44,6 +44,18 @@ export default function ProfilePage() {
   const [savedSpots, setSavedSpots] = useState<SavedParkingSpot[]>([]);
   const [coursesCompleted, setCoursesCompleted] = useState(0);
   const [totalCourses, setTotalCourses] = useState(0);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [scheduleLabel, setScheduleLabel] = useState("");
+  const [scheduleDays, setScheduleDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [scheduleDepartHour, setScheduleDepartHour] = useState("8");
+  const [scheduleDepartMin, setScheduleDepartMin] = useState("00");
+  const [scheduleDepartAmPm, setScheduleDepartAmPm] = useState("AM");
+  const [scheduleReturnHour, setScheduleReturnHour] = useState("5");
+  const [scheduleReturnMin, setScheduleReturnMin] = useState("00");
+  const [scheduleReturnAmPm, setScheduleReturnAmPm] = useState("PM");
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   // Map state
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
@@ -87,6 +99,14 @@ export default function ProfilePage() {
       setSavedSpots(spotsRes.spots ?? []);
       setCoursesCompleted(coursesRes.data?.length ?? 0);
       setTotalCourses(courseCountRes.data?.length ?? 0);
+
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (token) {
+        const schedRes = await fetch("/api/schedules", { headers: { Authorization: `Bearer ${token}` } });
+        const schedData = await schedRes.json();
+        setSchedules(schedData.schedules ?? []);
+      }
+
       setLoading(false);
     });
   }, []);
@@ -100,6 +120,65 @@ export default function ProfilePage() {
     await supabase.auth.signOut();
     router.push("/");
   };
+
+  const to24h = (h: string, min: string, ampm: string) => {
+    let hour = parseInt(h, 10);
+    if (ampm === "AM" && hour === 12) hour = 0;
+    else if (ampm === "PM" && hour !== 12) hour += 12;
+    return `${String(hour).padStart(2, "0")}:${min}`;
+  };
+
+  const handleAddSchedule = async () => {
+    if (!userId) return;
+    setScheduleSaving(true);
+    setScheduleError(null);
+    try {
+      const { latitude, longitude } = viewState;
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) { setScheduleError("Not authenticated"); setScheduleSaving(false); return; }
+
+      const res = await fetch("/api/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          latitude,
+          longitude,
+          label: scheduleLabel.trim() || "Recurring Spot",
+          days_of_week: scheduleDays,
+          departure_time: to24h(scheduleDepartHour, scheduleDepartMin, scheduleDepartAmPm),
+          return_time: to24h(scheduleReturnHour, scheduleReturnMin, scheduleReturnAmPm),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setScheduleError(data.error || "Failed"); setScheduleSaving(false); return; }
+      setSchedules((prev) => [data.schedule, ...prev]);
+      setShowScheduleForm(false);
+      setScheduleLabel("");
+      setScheduleDepartHour("8"); setScheduleDepartMin("00"); setScheduleDepartAmPm("AM");
+      setScheduleReturnHour("5"); setScheduleReturnMin("00"); setScheduleReturnAmPm("PM");
+      setScheduleDays([1, 2, 3, 4, 5]);
+    } catch {
+      setScheduleError("Failed to save schedule");
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    if (!token) return;
+    await fetch(`/api/schedules?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    setSchedules((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const formatTime12h = (time24: string) => {
+    const [h, m] = time24.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const hour = h % 12 || 12;
+    return `${hour}:${String(m).padStart(2, "0")} ${ampm}`;
+  };
+
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const handleMapClick = async (evt: any) => {
     const { lngLat } = evt;
@@ -415,19 +494,133 @@ export default function ProfilePage() {
 
         {/* Recurring Schedules */}
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-4">
-          <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
-            <Clock size={16} className="text-blue-600" /> Recurring Schedule
-          </h3>
-          <p className="text-xs text-zinc-500 mb-3">
-            Set a recurring schedule and we&apos;ll remind you to list your spot every day at the same time.
-          </p>
-          <a
-            href="/settings?schedules=1"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition"
-          >
-            <Clock size={16} />
-            Set Up Recurring
-          </a>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <Clock size={16} className="text-blue-600" /> Recurring Schedule
+            </h3>
+            {!showScheduleForm && (
+              <button
+                onClick={() => setShowScheduleForm(true)}
+                className="text-xs font-bold text-blue-600 hover:text-blue-700"
+              >
+                + Add
+              </button>
+            )}
+          </div>
+
+          {schedules.length === 0 && !showScheduleForm && (
+            <p className="text-xs text-zinc-500 mb-3">
+              No recurring schedules yet. Add one to auto-list your spot at the same time every day.
+            </p>
+          )}
+
+          {schedules.map((sched) => (
+            <div key={sched.id} className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl mb-2">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-bold">{sched.label || "Recurring Spot"}</p>
+                <button onClick={() => handleDeleteSchedule(sched.id)} className="text-xs text-red-500 hover:text-red-600 font-bold">Remove</button>
+              </div>
+              <p className="text-xs text-zinc-500">
+                {formatTime12h(sched.departure_time)} – {formatTime12h(sched.return_time)}
+              </p>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                {(sched.days_of_week || []).sort().map((d: number) => DAY_LABELS[d]).join(", ") || "No days"}
+              </p>
+            </div>
+          ))}
+
+          {showScheduleForm && (
+            <div className="mt-2 space-y-3">
+              {scheduleError && (
+                <p className="text-xs text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-xl">{scheduleError}</p>
+              )}
+
+              <div>
+                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Label</label>
+                <input
+                  type="text" value={scheduleLabel} onChange={(e) => setScheduleLabel(e.target.value)}
+                  placeholder="e.g. Work, Gym"
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Days</label>
+                <div className="flex gap-1">
+                  {DAY_LABELS.map((day, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setScheduleDays((prev) => prev.includes(i) ? prev.filter((d) => d !== i) : [...prev, i].sort())}
+                      className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition ${
+                        scheduleDays.includes(i)
+                          ? "bg-blue-600 text-white"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Departure Time</label>
+                <div className="flex gap-1">
+                  <select value={scheduleDepartHour} onChange={(e) => setScheduleDepartHour(e.target.value)}
+                    className="flex-1 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <span className="text-zinc-400 self-center">:</span>
+                  <select value={scheduleDepartMin} onChange={(e) => setScheduleDepartMin(e.target.value)}
+                    className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                    {["00", "15", "30", "45"].map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select value={scheduleDepartAmPm} onChange={(e) => setScheduleDepartAmPm(e.target.value)}
+                    className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide mb-1 block">Return Time</label>
+                <div className="flex gap-1">
+                  <select value={scheduleReturnHour} onChange={(e) => setScheduleReturnHour(e.target.value)}
+                    className="flex-1 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <span className="text-zinc-400 self-center">:</span>
+                  <select value={scheduleReturnMin} onChange={(e) => setScheduleReturnMin(e.target.value)}
+                    className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                    {["00", "15", "30", "45"].map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select value={scheduleReturnAmPm} onChange={(e) => setScheduleReturnAmPm(e.target.value)}
+                    className="w-16 px-2 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold appearance-none focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => { setShowScheduleForm(false); setScheduleError(null); }}
+                  className="flex-1 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-sm font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddSchedule}
+                  disabled={scheduleSaving || scheduleDays.length === 0}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {scheduleSaving ? <Loader2 className="animate-spin" size={14} /> : null}
+                  {scheduleSaving ? "Saving..." : "Save Schedule"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Links */}
