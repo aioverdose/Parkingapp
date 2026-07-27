@@ -1,8 +1,8 @@
 export const TEST_USERS = [
-  { id: "00000000-0000-0000-0000-000000000001", email: "test-device-1@parkingmeeters.test", label: "Device 1", vehicleType: "sedan" as const },
-  { id: "00000000-0000-0000-0000-000000000002", email: "test-device-2@parkingmeeters.test", label: "Device 2", vehicleType: "suv" as const },
-  { id: "00000000-0000-0000-0000-000000000003", email: "test-device-3@parkingmeeters.test", label: "Device 3", vehicleType: "compact" as const },
-  { id: "00000000-0000-0000-0000-000000000004", email: "test-device-4@parkingmeeters.test", label: "Device 4", vehicleType: "truck" as const },
+  { id: "8871a8d2-0388-4c30-bcca-86e9b91d9822", email: "test-device-1@parkingmeeters.test", label: "Device 1", vehicleType: "sedan" as const },
+  { id: "42111728-79fe-46b4-a608-070b290b666f", email: "test-device-2@parkingmeeters.test", label: "Device 2", vehicleType: "suv" as const },
+  { id: "ff1d49cd-52fb-40b4-8b6d-8529f1bb49f9", email: "test-device-3@parkingmeeters.test", label: "Device 3", vehicleType: "compact" as const },
+  { id: "3b6c187c-f064-4355-bbbb-85a9f490378f", email: "test-device-4@parkingmeeters.test", label: "Device 4", vehicleType: "truck" as const },
 ] as const;
 
 export const TEST_USER_PASSWORD = "test-device-password-2024";
