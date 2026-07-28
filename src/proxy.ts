@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/auth-helpers-nextjs";
+
+const ADMIN_EMAIL = "spotimization@proton.me";
 
 const PUBLIC_API_ROUTES = [
   "/api/courses",
@@ -17,7 +20,29 @@ function isAgentRoute(pathname: string): boolean {
   return AGENT_ROUTES.some((route) => pathname.startsWith(route));
 }
 
-export function proxy(request: NextRequest) {
+async function isAdminSession(req: NextRequest, res: NextResponse): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return false;
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          res.cookies.set(name, value, options);
+        });
+      },
+    },
+  });
+
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.email === ADMIN_EMAIL;
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/")) {
@@ -28,12 +53,24 @@ export function proxy(request: NextRequest) {
       }
     }
 
-    if (!isPublicApiRoute(pathname)) {
+    if (!isPublicApiRoute(pathname) && !pathname.startsWith("/api/admin")) {
       const authHeader = request.headers.get("Authorization");
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     }
+  }
+
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
+    const res = NextResponse.next();
+    const authorized = await isAdminSession(request, res);
+    if (!authorized) {
+      if (pathname.startsWith("/api/admin")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return res;
   }
 
   const response = NextResponse.next();
@@ -53,5 +90,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/api/:path*",
+    "/admin/:path*",
   ],
 };
