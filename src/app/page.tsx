@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ParkingMap } from "@/components/ParkingMap";
 import { BottomNav } from "@/components/BottomNav";
@@ -44,9 +45,11 @@ export default function Home() {
 
       {/* Hero + Map */}
       <main className="flex-1 relative">
-        <ErrorBoundary>
-          <ParkingMap fullHeight />
-        </ErrorBoundary>
+        <Suspense fallback={<div className="h-full w-full bg-zinc-50 dark:bg-zinc-950 animate-pulse" />}>
+          <ErrorBoundary>
+            <ParkingMap fullHeight />
+          </ErrorBoundary>
+        </Suspense>
 
         {/* Hero text overlay */}
         <div className="absolute inset-0 z-20 pointer-events-none">
