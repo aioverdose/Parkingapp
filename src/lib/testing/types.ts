@@ -66,3 +66,30 @@ export interface PlaybackState {
   speedMultiplier: number;
   percent: number;
 }
+
+export interface PhoneNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  timestamp: string;
+}
+
+export interface VoiceNavInstruction {
+  text: string;
+  timestamp: string;
+}
+
+export interface DualPhoneState {
+  userId: string;
+  label: string;
+  lat: number;
+  lng: number;
+  speed: number;
+  heading: number;
+  accuracy: number;
+  status: DeviceStatus;
+  notifications: PhoneNotification[];
+  voiceInstructions: VoiceNavInstruction[];
+  currentInstruction: string | null;
+}
