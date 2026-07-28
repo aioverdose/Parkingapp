@@ -17,12 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         router.push("/auth/login");
         return;
       }
-      const { data, error } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", session.user.id)
-        .single();
-      if (error || (data?.role !== "admin" && data?.role !== "moderator")) {
+      if (session.user.email !== "spotimization@proton.me") {
         router.push("/");
         return;
       }
