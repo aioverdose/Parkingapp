@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const rateCheck = checkRateLimit(`presence:${user.id}`, 6, 60_000);
+    const rateCheck = checkRateLimit(`presence:${user.id}`, 12, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Rate limited" }, { status: 429 });
     }

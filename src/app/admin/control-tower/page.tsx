@@ -192,8 +192,9 @@ export default function ControlTowerPage() {
             );
           } else {
             setUserLocations((prev) => {
+              const existing = prev.find((u) => u.user_id === loc.user_id);
               const filtered = prev.filter((u) => u.user_id !== loc.user_id);
-              return [{ ...loc, user_name: null, user_email: null }, ...filtered];
+              return [{ ...loc, user_name: existing?.user_name ?? null, user_email: existing?.user_email ?? null }, ...filtered];
             });
           }
         },
