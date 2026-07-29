@@ -62,7 +62,7 @@ export default function SignUpPage() {
   }
 
   if (signedUp) {
-    return <PostSignupSetup verifyPhone={phone.replace(/\D/g, "").length >= 10} />;
+    return <PostSignupSetup phone={phone.replace(/\D/g, "").length >= 10 ? phone : undefined} />;
   }
 
   return (
