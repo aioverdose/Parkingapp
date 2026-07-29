@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signUpWithTosGate } from "@/actions/tos";
 import { CommunityAgreementModal } from "@/components/CommunityAgreementModal";
+import { PostSignupSetup } from "@/components/PostSignupSetup";
 import { Loader2, Mail, Lock, User, Car, Phone } from "lucide-react";
 import { VEHICLE_TYPES } from "@/lib/vehicle-types";
 import { PrivacyPolicyLink } from "@/components/PrivacyPolicyLink";
@@ -23,6 +24,7 @@ export default function SignUpPage() {
   const [showTos, setShowTos] = useState(false);
   const [tosChecked, setTosChecked] = useState(false);
   const [phone, setPhone] = useState("");
+  const [signedUp, setSignedUp] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,12 +44,11 @@ export default function SignUpPage() {
       return;
     }
 
-    // If phone was provided, redirect to verify it
-    if (phone.replace(/\D/g, "").length >= 10) {
-      router.push("/?signup=success&verify_phone=true");
-    } else {
-      router.push("/?signup=success");
-    }
+    setSignedUp(true);
+  }
+
+  if (signedUp) {
+    return <PostSignupSetup verifyPhone={phone.replace(/\D/g, "").length >= 10} />;
   }
 
   return (
