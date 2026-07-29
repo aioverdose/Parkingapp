@@ -399,7 +399,7 @@ export default function ControlTowerPage() {
                 onClick={() => { setSelectedUser(userLoc); setSelectedMatch(null); }}
                 pitchAlignment="map"
               >
-                <div className="relative cursor-pointer">
+                <div className="relative cursor-pointer group">
                   <div
                     className="w-4 h-4 rounded-full bg-amber-500 border-2 border-white shadow-md flex items-center justify-center"
                     style={{
@@ -409,6 +409,9 @@ export default function ControlTowerPage() {
                     <Navigation size={10} className="text-white" />
                   </div>
                   <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-green-400 border border-white" />
+                  <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-amber-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm pointer-events-none">
+                    {userLoc.user_name || userLoc.user_email?.split("@")[0] || "User"}
+                  </span>
                 </div>
               </Marker>
             ))}
