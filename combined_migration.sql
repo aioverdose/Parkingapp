@@ -13,10 +13,12 @@ CREATE TABLE IF NOT EXISTS public.users (
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read their own profile" ON public.users;
 CREATE POLICY "Users can read their own profile"
   ON public.users FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.users;
 CREATE POLICY "Users can update their own profile"
   ON public.users FOR UPDATE
   USING (auth.uid() = id);
@@ -28,27 +30,30 @@ CREATE TABLE IF NOT EXISTS public.parking_spots (
   latitude DOUBLE PRECISION NOT NULL,
   longitude DOUBLE PRECISION NOT NULL,
   address TEXT NOT NULL,
-  leaving_at TIMESTAMPTZ NOT NULL,
+  departure_time TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'taken', 'expired')),
   tip_message TEXT,
   claimed_by UUID REFERENCES public.users(id) ON DELETE SET NULL
 );
 
-CREATE INDEX idx_parking_spots_status ON public.parking_spots(status);
-CREATE INDEX idx_parking_spots_leaving_at ON public.parking_spots(leaving_at);
-CREATE INDEX idx_parking_spots_user_id ON public.parking_spots(user_id);
+CREATE INDEX IF NOT EXISTS idx_parking_spots_status ON public.parking_spots(status);
+CREATE INDEX IF NOT EXISTS idx_parking_spots_departure_time ON public.parking_spots(departure_time);
+CREATE INDEX IF NOT EXISTS idx_parking_spots_user_id ON public.parking_spots(user_id);
 
 ALTER TABLE public.parking_spots ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read active spots" ON public.parking_spots;
 CREATE POLICY "Anyone can read active spots"
   ON public.parking_spots FOR SELECT
   USING (status = 'active');
 
+DROP POLICY IF EXISTS "Users can insert their own spots" ON public.parking_spots;
 CREATE POLICY "Users can insert their own spots"
   ON public.parking_spots FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own spots" ON public.parking_spots;
 CREATE POLICY "Users can update their own spots"
   ON public.parking_spots FOR UPDATE
   USING (auth.uid() = user_id);
@@ -65,10 +70,12 @@ CREATE TABLE IF NOT EXISTS public.tips (
 
 ALTER TABLE public.tips ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can insert tips" ON public.tips;
 CREATE POLICY "Users can insert tips"
   ON public.tips FOR INSERT
   WITH CHECK (auth.uid() = sender_id);
 
+DROP POLICY IF EXISTS "Users can read tips they sent or received" ON public.tips;
 CREATE POLICY "Users can read tips they sent or received"
   ON public.tips FOR SELECT
   USING (
@@ -87,15 +94,17 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_notifications_user_id ON public.notifications(user_id);
-CREATE INDEX idx_notifications_read ON public.notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(read);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read their own notifications" ON public.notifications;
 CREATE POLICY "Users can read their own notifications"
   ON public.notifications FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
 CREATE POLICY "Users can update their own notifications"
   ON public.notifications FOR UPDATE
   USING (auth.uid() = user_id);
@@ -107,7 +116,7 @@ LANGUAGE sql
 AS $$
   UPDATE public.parking_spots
   SET status = 'expired'
-  WHERE status = 'active' AND leaving_at < now();
+  WHERE status = 'active' AND departure_time < now();
 $$;
 
 -- You can set up a cron job to call this periodically:
@@ -144,10 +153,12 @@ CREATE TABLE IF NOT EXISTS public.contribution_stats (
 
 ALTER TABLE public.contribution_stats ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read contribution_stats" ON public.contribution_stats;
 CREATE POLICY "Anyone can read contribution_stats"
   ON public.contribution_stats FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "System can insert/update contribution_stats" ON public.contribution_stats;
 CREATE POLICY "System can insert/update contribution_stats"
   ON public.contribution_stats FOR ALL
   USING (true)
@@ -178,14 +189,17 @@ CREATE INDEX IF NOT EXISTS idx_ephemeral_chats_expires ON public.ephemeral_chats
 
 ALTER TABLE public.ephemeral_chats ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Participants can read chat" ON public.ephemeral_chats;
 CREATE POLICY "Participants can read chat"
   ON public.ephemeral_chats FOR SELECT
   USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
+DROP POLICY IF EXISTS "Participants can insert chat" ON public.ephemeral_chats;
 CREATE POLICY "Participants can insert chat"
   ON public.ephemeral_chats FOR INSERT
   WITH CHECK (auth.uid() = sender_id);
 
+DROP POLICY IF EXISTS "Participants can update chat" ON public.ephemeral_chats;
 CREATE POLICY "Participants can update chat"
   ON public.ephemeral_chats FOR UPDATE
   USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
@@ -203,6 +217,7 @@ CREATE INDEX IF NOT EXISTS idx_ephemeral_messages_chat ON public.ephemeral_messa
 
 ALTER TABLE public.ephemeral_messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Chat participants can read messages" ON public.ephemeral_messages;
 CREATE POLICY "Chat participants can read messages"
   ON public.ephemeral_messages FOR SELECT
   USING (
@@ -212,6 +227,7 @@ CREATE POLICY "Chat participants can read messages"
     )
   );
 
+DROP POLICY IF EXISTS "Chat participants can insert messages" ON public.ephemeral_messages;
 CREATE POLICY "Chat participants can insert messages"
   ON public.ephemeral_messages FOR INSERT
   WITH CHECK (
@@ -239,10 +255,12 @@ CREATE INDEX IF NOT EXISTS idx_departure_pings_expires ON public.departure_pings
 
 ALTER TABLE public.departure_pings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read active departure pings" ON public.departure_pings;
 CREATE POLICY "Anyone can read active departure pings"
   ON public.departure_pings FOR SELECT
   USING (expires_at > now());
 
+DROP POLICY IF EXISTS "Users can insert their own pings" ON public.departure_pings;
 CREATE POLICY "Users can insert their own pings"
   ON public.departure_pings FOR INSERT
   WITH CHECK (auth.uid() = user_id);
@@ -339,7 +357,7 @@ AS $$
 DECLARE
   hours NUMERIC(10,2);
 BEGIN
-  hours := EXTRACT(EPOCH FROM (NEW.leaving_at - OLD.leaving_at)) / 3600;
+  hours := EXTRACT(EPOCH FROM (NEW.departure_time - OLD.departure_time)) / 3600;
   INSERT INTO public.contribution_stats (user_id, spots_claimed, hours_saved, updated_at)
   VALUES (OLD.user_id, 1, hours, now())
   ON CONFLICT (user_id) DO UPDATE SET
@@ -383,10 +401,12 @@ CREATE TABLE IF NOT EXISTS public.ads (
 
 ALTER TABLE public.ads ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read active ads" ON public.ads;
 CREATE POLICY "Anyone can read active ads"
   ON public.ads FOR SELECT
   USING (active = true AND (start_date IS NULL OR start_date <= now()) AND (end_date IS NULL OR end_date > now()));
 
+DROP POLICY IF EXISTS "Admins can manage ads" ON public.ads;
 CREATE POLICY "Admins can manage ads"
   ON public.ads FOR ALL
   USING (
@@ -421,18 +441,22 @@ CREATE TABLE IF NOT EXISTS public.spot_requests (
 
 ALTER TABLE public.spot_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read active spot requests" ON public.spot_requests;
 CREATE POLICY "Anyone can read active spot requests"
   ON public.spot_requests FOR SELECT
   USING (status = 'active' AND expires_at > now());
 
+DROP POLICY IF EXISTS "Users can create their own spot requests" ON public.spot_requests;
 CREATE POLICY "Users can create their own spot requests"
   ON public.spot_requests FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own spot requests" ON public.spot_requests;
 CREATE POLICY "Users can update their own spot requests"
   ON public.spot_requests FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own spot requests" ON public.spot_requests;
 CREATE POLICY "Users can delete their own spot requests"
   ON public.spot_requests FOR DELETE
   USING (auth.uid() = user_id);
@@ -488,7 +512,7 @@ BEGIN
   FROM auth.users WHERE id = OLD.user_id
   ON CONFLICT (id) DO NOTHING;
 
-  hours := EXTRACT(EPOCH FROM (NEW.leaving_at - OLD.leaving_at)) / 3600;
+  hours := EXTRACT(EPOCH FROM (NEW.departure_time - OLD.departure_time)) / 3600;
   INSERT INTO public.contribution_stats (user_id, spots_claimed, hours_saved, updated_at)
   VALUES (OLD.user_id, 1, hours, now())
   ON CONFLICT (user_id) DO UPDATE SET
@@ -520,18 +544,22 @@ CREATE TABLE IF NOT EXISTS public.spot_requests (
 
 ALTER TABLE public.spot_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read active spot requests" ON public.spot_requests;
 CREATE POLICY "Anyone can read active spot requests"
   ON public.spot_requests FOR SELECT
   USING (status = 'active' AND expires_at > now());
 
+DROP POLICY IF EXISTS "Users can create their own spot requests" ON public.spot_requests;
 CREATE POLICY "Users can create their own spot requests"
   ON public.spot_requests FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own spot requests" ON public.spot_requests;
 CREATE POLICY "Users can update their own spot requests"
   ON public.spot_requests FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own spot requests" ON public.spot_requests;
 CREATE POLICY "Users can delete their own spot requests"
   ON public.spot_requests FOR DELETE
   USING (auth.uid() = user_id);
@@ -588,7 +616,7 @@ BEGIN
   FROM auth.users WHERE id = OLD.user_id
   ON CONFLICT (id) DO NOTHING;
 
-  hours := EXTRACT(EPOCH FROM (NEW.leaving_at - OLD.leaving_at)) / 3600;
+  hours := EXTRACT(EPOCH FROM (NEW.departure_time - OLD.departure_time)) / 3600;
   INSERT INTO public.contribution_stats (user_id, spots_claimed, hours_saved, updated_at)
   VALUES (OLD.user_id, 1, hours, now())
   ON CONFLICT (user_id) DO UPDATE SET
@@ -615,10 +643,12 @@ CREATE INDEX IF NOT EXISTS idx_congestion_created ON public.congestion_alerts(cr
 
 ALTER TABLE public.congestion_alerts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read congestion alerts" ON public.congestion_alerts;
 CREATE POLICY "Anyone can read congestion alerts"
   ON public.congestion_alerts FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Admin can insert congestion alerts" ON public.congestion_alerts;
 CREATE POLICY "Admin can insert congestion alerts"
   ON public.congestion_alerts FOR INSERT
   WITH CHECK (auth.uid() IN (SELECT id FROM public.users WHERE role = 'admin'));
@@ -640,10 +670,12 @@ CREATE INDEX IF NOT EXISTS idx_ad_analytics_event ON public.ad_analytics(event_t
 
 ALTER TABLE public.ad_analytics ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admin can read ad analytics" ON public.ad_analytics;
 CREATE POLICY "Admin can read ad analytics"
   ON public.ad_analytics FOR SELECT
   USING (auth.uid() IN (SELECT id FROM public.users WHERE role = 'admin'));
 
+DROP POLICY IF EXISTS "System can insert ad analytics" ON public.ad_analytics;
 CREATE POLICY "System can insert ad analytics"
   ON public.ad_analytics FOR INSERT
   WITH CHECK (true);
@@ -666,10 +698,12 @@ CREATE INDEX IF NOT EXISTS idx_spot_predictions_converted ON public.spot_predict
 
 ALTER TABLE public.spot_predictions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admin can read spot predictions" ON public.spot_predictions;
 CREATE POLICY "Admin can read spot predictions"
   ON public.spot_predictions FOR SELECT
   USING (auth.uid() IN (SELECT id FROM public.users WHERE role = 'admin'));
 
+DROP POLICY IF EXISTS "System can insert spot predictions" ON public.spot_predictions;
 CREATE POLICY "System can insert spot predictions"
   ON public.spot_predictions FOR INSERT
   WITH CHECK (true);
@@ -689,10 +723,12 @@ CREATE INDEX IF NOT EXISTS idx_invite_converted ON public.invite_conversions(con
 
 ALTER TABLE public.invite_conversions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admin can read invites" ON public.invite_conversions;
 CREATE POLICY "Admin can read invites"
   ON public.invite_conversions FOR SELECT
   USING (auth.uid() IN (SELECT id FROM public.users WHERE role = 'admin'));
 
+DROP POLICY IF EXISTS "System can insert invites" ON public.invite_conversions;
 CREATE POLICY "System can insert invites"
   ON public.invite_conversions FOR INSERT
   WITH CHECK (true);
@@ -718,18 +754,22 @@ CREATE INDEX IF NOT EXISTS idx_user_parking_spots_user ON public.user_parking_sp
 
 ALTER TABLE public.user_parking_spots ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read their own parking spots" ON public.user_parking_spots;
 CREATE POLICY "Users can read their own parking spots"
   ON public.user_parking_spots FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own parking spots" ON public.user_parking_spots;
 CREATE POLICY "Users can insert their own parking spots"
   ON public.user_parking_spots FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own parking spots" ON public.user_parking_spots;
 CREATE POLICY "Users can update their own parking spots"
   ON public.user_parking_spots FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own parking spots" ON public.user_parking_spots;
 CREATE POLICY "Users can delete their own parking spots"
   ON public.user_parking_spots FOR DELETE
   USING (auth.uid() = user_id);
@@ -757,6 +797,7 @@ CREATE INDEX IF NOT EXISTS idx_street_sweeping_name_city ON public.street_sweepi
 
 ALTER TABLE public.street_sweeping ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read street_sweeping" ON public.street_sweeping;
 CREATE POLICY "Anyone can read street_sweeping"
   ON public.street_sweeping FOR SELECT
   USING (true);
@@ -776,18 +817,22 @@ CREATE INDEX IF NOT EXISTS idx_sweeping_alerts_notified ON public.street_sweepin
 
 ALTER TABLE public.street_sweeping_alerts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read own sweeping alerts" ON public.street_sweeping_alerts;
 CREATE POLICY "Users can read own sweeping alerts"
   ON public.street_sweeping_alerts FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own sweeping alerts" ON public.street_sweeping_alerts;
 CREATE POLICY "Users can insert own sweeping alerts"
   ON public.street_sweeping_alerts FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own sweeping alerts" ON public.street_sweeping_alerts;
 CREATE POLICY "Users can update own sweeping alerts"
   ON public.street_sweeping_alerts FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own sweeping alerts" ON public.street_sweeping_alerts;
 CREATE POLICY "Users can delete own sweeping alerts"
   ON public.street_sweeping_alerts FOR DELETE
   USING (auth.uid() = user_id);
@@ -853,10 +898,12 @@ CREATE INDEX IF NOT EXISTS idx_user_ratings_spot ON public.user_ratings(spot_id)
 
 ALTER TABLE public.user_ratings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read user_ratings" ON public.user_ratings;
 CREATE POLICY "Anyone can read user_ratings"
   ON public.user_ratings FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Users can insert own ratings" ON public.user_ratings;
 CREATE POLICY "Users can insert own ratings"
   ON public.user_ratings FOR INSERT
   WITH CHECK (auth.uid() = rated_by_user_id);
@@ -912,10 +959,12 @@ CREATE INDEX IF NOT EXISTS idx_spot_flags_user ON public.spot_flags(flagged_by_u
 
 ALTER TABLE public.spot_flags ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read spot_flags" ON public.spot_flags;
 CREATE POLICY "Anyone can read spot_flags"
   ON public.spot_flags FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Users can insert spot_flags" ON public.spot_flags;
 CREATE POLICY "Users can insert spot_flags"
   ON public.spot_flags FOR INSERT
   WITH CHECK (auth.uid() = flagged_by_user_id);
@@ -958,16 +1007,16 @@ ADD COLUMN IF NOT EXISTS safety_acknowledged_at TIMESTAMPTZ;
 ALTER TABLE public.parking_spots
 ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 
--- Set expires_at for existing rows (leaving_at + 60 min or now + 60 min)
+-- Set expires_at for existing rows (departure_time + 60 min or now + 60 min)
 UPDATE public.parking_spots
-SET expires_at = COALESCE(leaving_at, created_at, now()) + INTERVAL '1 hour'
+SET expires_at = COALESCE(departure_time, created_at, now()) + INTERVAL '1 hour'
 WHERE expires_at IS NULL;
 
 -- Function to auto-set expires_at on insert
 CREATE OR REPLACE FUNCTION public.set_spot_expiry()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  NEW.expires_at := COALESCE(NEW.leaving_at, now()) + INTERVAL '1 hour';
+  NEW.expires_at := COALESCE(NEW.departure_time, now()) + INTERVAL '1 hour';
   RETURN NEW;
 END;
 $$;
@@ -991,11 +1040,13 @@ CREATE TABLE IF NOT EXISTS public.pilot_areas (
 
 ALTER TABLE public.pilot_areas ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read pilot_areas" ON public.pilot_areas;
 CREATE POLICY "Anyone can read pilot_areas"
   ON public.pilot_areas FOR SELECT
   USING (true);
 
 -- Admin can manage
+DROP POLICY IF EXISTS "Admins can manage pilot_areas" ON public.pilot_areas;
 CREATE POLICY "Admins can manage pilot_areas"
   ON public.pilot_areas FOR ALL
   USING (true)
@@ -1035,6 +1086,7 @@ CREATE TABLE IF NOT EXISTS public.courses (
 
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read courses" ON public.courses;
 CREATE POLICY "Anyone can read courses"
   ON public.courses FOR SELECT
   USING (true);
@@ -1054,14 +1106,17 @@ CREATE TABLE IF NOT EXISTS public.user_course_progress (
 
 ALTER TABLE public.user_course_progress ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read own course progress" ON public.user_course_progress;
 CREATE POLICY "Users can read own course progress"
   ON public.user_course_progress FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own course progress" ON public.user_course_progress;
 CREATE POLICY "Users can insert own course progress"
   ON public.user_course_progress FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own course progress" ON public.user_course_progress;
 CREATE POLICY "Users can update own course progress"
   ON public.user_course_progress FOR UPDATE
   USING (auth.uid() = user_id);
@@ -1085,10 +1140,12 @@ CREATE TABLE IF NOT EXISTS public.user_ranking (
 
 ALTER TABLE public.user_ranking ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read user_ranking" ON public.user_ranking;
 CREATE POLICY "Anyone can read user_ranking"
   ON public.user_ranking FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Users can update own ranking" ON public.user_ranking;
 CREATE POLICY "Users can update own ranking"
   ON public.user_ranking FOR UPDATE
   USING (auth.uid() = user_id);
@@ -1310,7 +1367,7 @@ INSERT INTO public.courses (title, description, content, quiz_questions, points,
 (
   'App Risks & Best Practices',
   'Understand the risks of using community-driven parking apps and how to protect yourself.',
-  E'## App Risks & Best Practices\n\n### Common Risks\nLike any community-driven platform, this app has risks:\n- **Fake spots:** Someone may post a spot that does not exist\n- **Stale data:** A spot may already be taken by the time you arrive\n- **Trolling:** Users may post misleading information\n- **Bad actors:** Some users may not follow the rules\n\n### How We Mitigate These Risks\n- **Short lead times (5-15 minutes):** Fresh alerts only. Old alerts expire quickly.\n- **Flag system:** You can flag misleading or dangerous spots, which reduces the poster trust score.\n- **Ranking system:** Trusted users earn higher ranks and visibility.\n- **Rate limiting:** Prevents spam and abuse.\n\n### Best Practices for You\n- Always verify the spot before claiming\n- Do not rely solely on the app — look for physical cues (car in spot, person leaving)\n- Report suspicious behavior using the flag system\n- Complete courses to earn higher trust and unlock features\n- Keep your app updated for the latest safety features',
+  E'## App Risks & Best Practices\n\n### Common Risks\nLike any community-driven platform, this app has risks:\n- **Fake spots:** Someone may post a spot that does not exist\n- **Stale data:** A spot may already be taken by the time you arrive\n- **Trolling:** Users may post misleading information\n- **Bad actors:** Some users may not follow the rules\n\n### How We Mitigate These Risks\n- **Short lead times (5-15 minutes):** Fresh alerts only. Old alerts expire quickly.\n- **Flag system:** You can flag misleading or dangerous spots, which reduces the poster trust score.\n- **Ranking system:** Trusted users earn higher ranks and visibility.\n- **Rate limiting:** Prevents spam and abuse.\n\n### Best Practices for You\n- Always verify the spot before claiming\n- Do not rely solely on the app G�� look for physical cues (car in spot, person leaving)\n- Report suspicious behavior using the flag system\n- Complete courses to earn higher trust and unlock features\n- Keep your app updated for the latest safety features',
   '[{"question":"What is a common risk of community parking apps?","options":["The app might crash","Fake or misleading spot alerts","Parking tickets","Battery drain"],"correct":1},{"question":"How does the app protect against stale data?","options":["It sends email reminders","Short lead times (5-15 minutes) with auto-expiration","It requires phone verification","It uses AI to predict availability"],"correct":1},{"question":"What should you do if you see a suspicious spot?","options":["Ignore it","Flag it using the report system","Post your own spot nearby","Leave the app"],"correct":1},{"question":"Why are short lead times important?","options":["They keep the app popular","They ensure alerts are fresh and relevant","They save server costs","They make the app faster"],"correct":1}]'::jsonb,
   100,
   false
@@ -1326,7 +1383,7 @@ INSERT INTO public.courses (title, description, content, quiz_questions, points,
 (
   'Street Sweeping & Legal Parking',
   'Learn about street sweeping rules in Long Beach and how to avoid tickets.',
-  E'## Street Sweeping & Legal Parking\n\n### Long Beach Street Sweeping\nLong Beach has regular street sweeping on designated days. Signs are posted on each block indicating the schedule.\n\n### Common Rules\n- Street sweeping is typically once or twice per week per side of the street\n- Parking is prohibited during posted sweeping hours (usually 2-3 hour windows)\n- Violations result in fines (typically $40-$60)\n- Vehicles must be moved to the opposite side or another legal parking location\n\n### Avoiding Tickets\n- Check street sweeping signs before parking\n- Use the Street Sweeping Alert feature in this app\n- Set reminders for sweeping days in your area\n- Note that sweeping schedules change — check periodically\n\n### Legal Parking Tips\n- Always park within 18 inches of the curb\n- Do not park within 15 feet of a fire hydrant\n- Do not park in red, white, or blue zones\n- Check for time-limited parking signs\n- Residential permit parking areas require a permit during posted hours',
+  E'## Street Sweeping & Legal Parking\n\n### Long Beach Street Sweeping\nLong Beach has regular street sweeping on designated days. Signs are posted on each block indicating the schedule.\n\n### Common Rules\n- Street sweeping is typically once or twice per week per side of the street\n- Parking is prohibited during posted sweeping hours (usually 2-3 hour windows)\n- Violations result in fines (typically $40-$60)\n- Vehicles must be moved to the opposite side or another legal parking location\n\n### Avoiding Tickets\n- Check street sweeping signs before parking\n- Use the Street Sweeping Alert feature in this app\n- Set reminders for sweeping days in your area\n- Note that sweeping schedules change G�� check periodically\n\n### Legal Parking Tips\n- Always park within 18 inches of the curb\n- Do not park within 15 feet of a fire hydrant\n- Do not park in red, white, or blue zones\n- Check for time-limited parking signs\n- Residential permit parking areas require a permit during posted hours',
   '[{"question":"How often does street sweeping typically occur on each side?","options":["Once a month","Once or twice per week","Every day","Only on weekends"],"correct":1},{"question":"What is a typical fine for a street sweeping violation?","options":["$20-$30","$40-$60","$100-$150","$200-$300"],"correct":1},{"question":"How far from the curb should you park?","options":["6 inches","12 inches","18 inches","24 inches"],"correct":2},{"question":"What should you use to track street sweeping schedules?","options":["The city website only","The app Street Sweeping Alert feature","A calendar reminder","All of the above"],"correct":1}]'::jsonb,
   100,
   false
@@ -1351,9 +1408,9 @@ CREATE TRIGGER trg_init_ranking
   EXECUTE FUNCTION public.init_user_ranking();
 
 
--- SpotMatch: rename leaving_at to departure_time, add return_time, add spot_matches table
+-- SpotMatch: add return_time, add spot_matches table
 
-ALTER TABLE parking_spots RENAME COLUMN leaving_at TO departure_time;
+
 
 ALTER TABLE parking_spots ADD COLUMN IF NOT EXISTS return_time TIMESTAMPTZ;
 
@@ -1380,6 +1437,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_spot_matches_updated_at ON spot_matches;
 CREATE TRIGGER set_spot_matches_updated_at
   BEFORE UPDATE ON spot_matches
   FOR EACH ROW
@@ -1397,6 +1455,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS on_match_created ON spot_matches;
 CREATE TRIGGER on_match_created
   AFTER INSERT ON spot_matches
   FOR EACH ROW
@@ -1416,9 +1475,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS on_match_confirmed ON spot_matches;
 CREATE TRIGGER on_match_confirmed
   AFTER UPDATE ON spot_matches
   FOR EACH ROW
   EXECUTE FUNCTION notify_match_confirmed();
+
 
 
