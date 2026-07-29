@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef } from "react";
+import { createBrowserClient } from "@/lib/supabaseClient";
 import { signUpWithTosGate } from "@/actions/tos";
 import { CommunityAgreementModal } from "@/components/CommunityAgreementModal";
 import { PostSignupSetup } from "@/components/PostSignupSetup";
@@ -18,13 +18,15 @@ function formatPhone(value: string): string {
 }
 
 export default function SignUpPage() {
-  const router = useRouter();
+  const supabase = createBrowserClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTos, setShowTos] = useState(false);
   const [tosChecked, setTosChecked] = useState(false);
   const [phone, setPhone] = useState("");
   const [signedUp, setSignedUp] = useState(false);
+  const emailRef = useRef<string>("");
+  const passwordRef = useRef<string>("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,6 +34,8 @@ export default function SignUpPage() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
     formData.set("tos_accepted", tosChecked ? "true" : "false");
     if (phone.replace(/\D/g, "").length >= 10) {
       formData.set("phone", `+1${phone.replace(/\D/g, "")}`);
@@ -40,6 +44,16 @@ export default function SignUpPage() {
     const result = await signUpWithTosGate(formData);
     if (result.error) {
       setError(result.error);
+      setLoading(false);
+      return;
+    }
+
+    // Auto-login so session is available for location ping & phone verification
+    emailRef.current = email;
+    passwordRef.current = password;
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+      setError("Account created but auto-login failed. Please log in manually.");
       setLoading(false);
       return;
     }
