@@ -17,7 +17,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         router.push("/auth/login");
         return;
       }
-      if (session.user.email !== "spotimization@proton.me") {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+      if (profile?.role !== "admin" && profile?.role !== "moderator") {
         router.push("/");
         return;
       }

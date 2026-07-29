@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
 
-const ADMIN_EMAIL = "spotimization@proton.me";
-
 const PUBLIC_API_ROUTES = [
   "/api/courses",
   "/api/ads",
@@ -39,7 +37,15 @@ async function isAdminSession(req: NextRequest, res: NextResponse): Promise<bool
   });
 
   const { data: { session } } = await supabase.auth.getSession();
-  return session?.user?.email === ADMIN_EMAIL;
+  if (!session?.user) return false;
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", session.user.id)
+    .single();
+
+  return profile?.role === "admin" || profile?.role === "moderator";
 }
 
 export async function proxy(request: NextRequest) {
