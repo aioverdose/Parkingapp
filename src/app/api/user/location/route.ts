@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    await supabase.rpc("ensure_user_exists", { p_user_id: user.id });
     const { error } = await supabase.from("driver_locations").insert({
       user_id: user.id,
       match_id: null,
