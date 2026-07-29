@@ -142,7 +142,11 @@ export default function ControlTowerPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/control-tower");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const res = await fetch("/api/admin/control-tower", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
       if (!res.ok) return;
       const json = await res.json();
       setMatches(json.matches || []);

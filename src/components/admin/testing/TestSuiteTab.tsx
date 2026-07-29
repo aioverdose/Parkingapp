@@ -12,7 +12,8 @@ import { TrackingMonitor } from "./TrackingMonitor";
 import { EtaTester } from "./EtaTester";
 import { GeofenceTester } from "./GeofenceTester";
 import { ScenarioRunner } from "./ScenarioRunner";
-import { Map, Route, Gauge, Radar, MapPin, Fence, Play, RotateCcw, AlertTriangle, ChevronDown } from "lucide-react";
+import { MatchScenario } from "./MatchScenario";
+import { Map, Route, Gauge, Radar, MapPin, Fence, Play, RotateCcw, AlertTriangle, ChevronDown, Navigation } from "lucide-react";
 
 const PANELS: { key: TestingPanel; label: string; icon: React.ReactNode; phase: 1 | 2 }[] = [
   { key: "gps", label: "GPS Simulator", icon: <Map size={16} />, phase: 1 },
@@ -22,6 +23,7 @@ const PANELS: { key: TestingPanel; label: string; icon: React.ReactNode; phase: 
   { key: "eta", label: "ETA Tester", icon: <MapPin size={16} />, phase: 2 },
   { key: "geofence", label: "Geofence Tester", icon: <Fence size={16} />, phase: 2 },
   { key: "scenarios", label: "Scenario Runner", icon: <Play size={16} />, phase: 2 },
+  { key: "match", label: "Match Scenario", icon: <Navigation size={16} />, phase: 2 },
 ];
 
 export function TestSuiteTab() {
@@ -131,6 +133,7 @@ export function TestSuiteTab() {
         {activePanel === "eta" && <EtaTester />}
         {activePanel === "geofence" && <GeofenceTester device={getDevice()} />}
         {activePanel === "scenarios" && <ScenarioRunner device={getDevice()} />}
+        {activePanel === "match" && <MatchScenario />}
       </div>
     </div>
   );
