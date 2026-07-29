@@ -20,7 +20,6 @@ const GEOFENCE_COOLDOWN_MS = 5 * 60_000;
 
 export function usePresencePing(enabled: boolean = true, intervalMs: number = 10_000) {
   const supabase = createBrowserClient();
-  const watchIdRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [active, setActive] = useState(false);
   const lastGeofenceRef = useRef<Record<string, number>>({});
@@ -93,41 +92,38 @@ export function usePresencePing(enabled: boolean = true, intervalMs: number = 10
   useEffect(() => {
     if (!enabled || !("geolocation" in navigator)) return;
 
-    let lastPing = 0;
+    let stopped = false;
+    let activated = false;
 
-    const startWatch = () => {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude, heading, speed, accuracy } = pos.coords;
-          const now = Date.now();
-          if (now - lastPing >= intervalMs || lastPing === 0) {
-            lastPing = now;
-            sendPing(latitude, longitude, heading ?? undefined, speed ?? undefined, accuracy);
-          }
-        },
-        () => {},
-        { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
-      );
+    const ping = async () => {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            maximumAge: 5_000,
+            timeout: 15_000,
+          });
+        });
+        if (stopped) return;
+        const { latitude, longitude, heading, speed, accuracy } = pos.coords;
+        sendPing(latitude, longitude, heading ?? undefined, speed ?? undefined, accuracy);
+        if (!activated) {
+          activated = true;
+          setActive(true);
+        }
+      } catch {
+        // position unavailable, try again next interval
+      }
     };
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude, heading, speed, accuracy } = pos.coords;
-        lastPing = Date.now();
-        sendPing(latitude, longitude, heading ?? undefined, speed ?? undefined, accuracy);
-        setActive(true);
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
-    );
-
-    startWatch();
+    ping();
+    intervalRef.current = setInterval(ping, intervalMs);
 
     return () => {
-      if (watchIdRef.current != null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
+      stopped = true;
+      if (intervalRef.current != null) {
+        clearInterval(intervalRef.current);
       }
-      if (intervalRef.current) clearInterval(intervalRef.current);
       setActive(false);
     };
   }, [enabled, intervalMs, sendPing]);

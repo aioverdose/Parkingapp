@@ -412,6 +412,7 @@ export default function ControlTowerPage() {
                   <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-green-400 border border-white" />
                   <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-amber-700 whitespace-nowrap bg-white/80 px-1 rounded shadow-sm pointer-events-none">
                     {userLoc.user_name || userLoc.user_email?.split("@")[0] || "User"}
+                    <span className="text-[9px] text-zinc-400 ml-1 font-normal">{timeAgo(userLoc.recorded_at)}</span>
                   </span>
                 </div>
               </Marker>
