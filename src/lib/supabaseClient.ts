@@ -11,8 +11,8 @@ export const isSupabaseConfigured = (): boolean => {
 export const createBrowserClient = (): SupabaseClient<any> => {
   if (cachedClient) return cachedClient;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 
   if (!url || !key) {
     configured = false;

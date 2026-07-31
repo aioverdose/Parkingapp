@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "seen" && badge_id) {
       const { error } = await supabase
-        .from("user_badges" as any)
+        .from("user_badges")
         .update({ seen: true })
         .eq("user_id", user.id)
         .eq("badge_id", badge_id);

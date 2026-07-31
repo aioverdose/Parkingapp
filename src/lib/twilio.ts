@@ -22,7 +22,8 @@ export async function sendSms(to: string, body: string): Promise<boolean> {
   try {
     await twilioClient.messages.create({ to, from, body });
     return true;
-  } catch {
+  } catch (err) {
+    console.error("Twilio SMS send failed:", err instanceof Error ? err.message : err);
     return false;
   }
 }

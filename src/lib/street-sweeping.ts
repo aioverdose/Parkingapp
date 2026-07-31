@@ -14,7 +14,7 @@ export interface SweepingSchedule {
 export async function getStreetSweeping(street: string, city: string | null): Promise<SweepingSchedule | null> {
   const supabase = createAdminClient();
 
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from("street_sweeping")
     .select("*")
     .eq("street_name", street)
@@ -27,7 +27,7 @@ export async function getStreetSweeping(street: string, city: string | null): Pr
 export async function getNextSweepingForUser(userId: string): Promise<SweepingSchedule | null> {
   const supabase = createAdminClient();
 
-  const { data: alert } = await (supabase as any)
+  const { data: alert } = await supabase
     .from("street_sweeping_alerts")
     .select("street_name")
     .eq("user_id", userId)
@@ -38,7 +38,7 @@ export async function getNextSweepingForUser(userId: string): Promise<SweepingSc
 
   if (!alert) return null;
 
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from("street_sweeping")
     .select("*")
     .eq("street_name", alert.street_name)

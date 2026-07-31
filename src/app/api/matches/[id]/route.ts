@@ -2,6 +2,41 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const supabase = createAdminClient();
+
+    const { data: match, error } = await supabase
+      .from("spot_matches")
+      .select("*, spot:spot_id(*), spot_owner:spot_owner_id(id, name, email), seeker:seeker_id(id, name, email)")
+      .eq("id", id)
+      .single();
+
+    if (error || !match) {
+      return NextResponse.json({ error: "Match not found" }, { status: 404 });
+    }
+
+    const isOwner = match.spot_owner_id === user.id;
+    const isSeeker = match.seeker_id === user.id;
+    if (!isOwner && !isSeeker) {
+      return NextResponse.json({ error: "Not authorized for this match" }, { status: 403 });
+    }
+
+    return NextResponse.json({ match });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getAuthenticatedUser(request);
@@ -81,8 +116,42 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // If confirmed, notify and update spot
+    // If confirmed, deduct credits and finalize
     if (newStatus === "confirmed") {
+      // Check and deduct match credits from both parties
+      const { data: ownerCredits } = await supabase
+        .from("users")
+        .select("match_credits")
+        .eq("id", match.spot_owner_id)
+        .single();
+      const { data: seekerCredits } = await supabase
+        .from("users")
+        .select("match_credits")
+        .eq("id", match.seeker_id)
+        .single();
+
+      const ownerHas = (ownerCredits?.match_credits ?? 0) >= 1;
+      const seekerHas = (seekerCredits?.match_credits ?? 0) >= 1;
+
+      if (!ownerHas || !seekerHas) {
+        // Revert status back since credits are insufficient
+        await supabase
+          .from("spot_matches")
+          .update({ status: "pending" })
+          .eq("id", id);
+
+        return NextResponse.json({
+          error: "Insufficient match credits. Each party needs at least 1 credit to confirm. Purchase more from your profile.",
+          needs_credits: true,
+          owner_short: !ownerHas,
+          seeker_short: !seekerHas,
+        }, { status: 402 });
+      }
+
+      // Deduct 1 credit from each party
+      await supabase.rpc("deduct_match_credit", { p_user_id: match.spot_owner_id });
+      await supabase.rpc("deduct_match_credit", { p_user_id: match.seeker_id });
+
       await supabase
         .from("parking_spots")
         .update({ status: "taken", claimed_by: match.seeker_id })

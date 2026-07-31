@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ParkingMap } from "@/components/ParkingMap";
 import { BottomNav } from "@/components/BottomNav";
+import { AdBanner } from "@/components/AdBanner";
 
 export default function Home() {
 
@@ -42,6 +43,11 @@ export default function Home() {
           </div>
         </div>
       </nav>
+
+      {/* Top ad banner */}
+      <div className="relative z-30 px-4 py-2 max-w-6xl mx-auto w-full">
+        <AdBanner />
+      </div>
 
       {/* Hero + Map */}
       <main className="flex-1 relative">

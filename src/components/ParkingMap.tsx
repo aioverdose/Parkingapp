@@ -30,6 +30,7 @@ import type { User } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
 import { CommunityAgreementModal } from "./CommunityAgreementModal";
+import { NotificationConsent } from "./NotificationConsent";
 
 import { StreetSweepingBanner } from "./StreetSweepingBanner";
 import { PhoneVerificationModal } from "./PhoneVerificationModal";
@@ -42,6 +43,12 @@ import { useLiveTracking } from "@/hooks/useLiveTracking";
 import { reverseGeocodeStreet } from "@/lib/reverse-geocode";
 import { checkPilotArea } from "@/lib/pilot-area";
 import { SpotQuestOverlay } from "./spotquest/SpotQuestOverlay";
+import { LocationPermissionOverlay } from "./LocationPermissionOverlay";
+
+const LOCATION_PERMISSION_KEY = "spotmatch_location_granted";
+import { useCarLocation } from "@/hooks/useCarLocation";
+import { CarLocationMarker } from "./CarLocationMarker";
+import { CarLocationPanel } from "./CarLocationPanel";
 
 type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 type SweepingData = {
@@ -110,11 +117,18 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   // Map
   const mapRef = useRef<MapRef>(null);
 
+  // Location permission on open
+  const [showLocationPermission, setShowLocationPermission] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem(LOCATION_PERMISSION_KEY);
+  });
+
   // Step 2: Community Agreement modal (TOS + Safety combined)
   const [showCommunityAgreement, setShowCommunityAgreement] = useState(false);
   const [agreementMode, setAgreementMode] = useState<"post" | "look">("post");
   const [tosAccepted, setTosAccepted] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
+  const [showNotificationConsent, setShowNotificationConsent] = useState(false);
 
   // Step 3: Street sweeping
   const [sweepingData, setSweepingData] = useState<SweepingData | null>(null);
@@ -143,6 +157,8 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     activeTrackingMatch?.spotLat,
     activeTrackingMatch?.spotLng,
   );
+
+  const carLocationState = useCarLocation(user?.id ?? null, !!user);
 
   const handleTrackOpen = useCallback((matchId: string, _spotId: string, partnerName: string, spotAddress: string, spotLat: number, spotLng: number) => {
     setShowMatches(false);
@@ -513,6 +529,8 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
       setTosAccepted(true);
       setSafetyAcknowledged(true);
       setShowCommunityAgreement(false);
+      // Show notification consent after community agreement is accepted
+      setShowNotificationConsent(true);
       executeAction(agreementMode);
     }
   };
@@ -591,6 +609,40 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     setSavedSpots((prev) => prev.filter((s) => s.id !== spotId));
   };
 
+  const handleCarLocationPost = useCallback(async () => {
+    const cl = carLocationState.carLocation;
+    if (!cl || !user) return;
+    setPostingLeave(true);
+
+    const leavingAt = new Date(Date.now() + 60_000).toISOString();
+    const address = await reverseGeocode(cl.latitude, cl.longitude).catch(() => "Car Location");
+
+    const res = await fetch("/api/spots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        latitude: cl.latitude,
+        longitude: cl.longitude,
+        address: address || "Car Location",
+        departure_time: leavingAt,
+        lead_minutes: 1,
+      }),
+    });
+    const data = await res.json();
+
+    setPostingLeave(false);
+    if (data.spot) {
+      setSaveSuccess("Spot posted! Opening in 1 minute.");
+      setTimeout(() => setSaveSuccess(null), 4000);
+
+      fetch(`/api/car-locations/${cl.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "departed", departed_at: new Date().toISOString() }),
+      }).catch(() => {});
+    }
+  }, [carLocationState.carLocation, user]);
+
   const clusters = useSpotClusters(spots, viewState.zoom);
 
   const handleClusterClick = useCallback((cluster: { lat: number; lng: number }) => {
@@ -637,7 +689,15 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   );
 
   return (
-    <div className={`relative w-full ${fullHeight ? 'h-full' : 'h-screen'} overflow-hidden bg-zinc-50 dark:bg-zinc-950`}>
+    <>
+      <LocationPermissionOverlay
+        show={showLocationPermission}
+        onPermissionGranted={() => {
+          localStorage.setItem(LOCATION_PERMISSION_KEY, "true");
+          setShowLocationPermission(false);
+        }}
+      />
+      <div className={`relative w-full ${fullHeight ? 'h-full' : 'h-screen'} overflow-hidden bg-zinc-50 dark:bg-zinc-950`}>
       {/* Map */}
       <div className="w-full h-full">
         <Map
@@ -695,6 +755,13 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
               onClick={(p) => setSelectedDeparturePing(p)}
             />
           ))}
+          {carLocationState.carLocation && (carLocationState.parkingDetection === "parked" || carLocationState.parkingDetection === "walking_back") && (
+            <CarLocationMarker
+              latitude={carLocationState.carLocation.latitude}
+              longitude={carLocationState.carLocation.longitude}
+              status={carLocationState.carLocation.status as "parked" | "walking_back" | "departed"}
+            />
+          )}
           {userLocation && (
             <Marker latitude={userLocation.latitude} longitude={userLocation.longitude} anchor="center">
               <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -778,8 +845,27 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
 
         {/* Bottom section */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 w-full max-w-xs px-4 flex flex-col gap-2">
-          {!showLookingForSpot && !showLeaveForm ? (
+          {!showLookingForSpot && !showLeaveForm && !showPostForm ? (
             <div className="flex flex-col gap-2">
+              {carLocationState.parkingDetection !== "off" && (
+                <CarLocationPanel
+                  parkingDetection={carLocationState.parkingDetection}
+                  detectionProgress={carLocationState.detectionProgress}
+                  walkingEtaFormatted={carLocationState.walkingEtaFormatted}
+                  distanceToCar={carLocationState.distanceToCar}
+                  onPostSpot={handleCarLocationPost}
+                  onClearCarLocation={() => {
+                    if (carLocationState.carLocation?.id) {
+                      fetch(`/api/car-locations/${carLocationState.carLocation.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "departed" }),
+                      }).catch(() => {});
+                    }
+                  }}
+                  loading={carLocationState.loading}
+                />
+              )}
               {savedSpots.length > 0 && (
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-3 space-y-2 max-h-48 overflow-y-auto">
                   <p className="text-xs font-bold text-zinc-500 uppercase tracking-wide">Saved Spots</p>
@@ -1061,6 +1147,12 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         onClose={() => setShowCommunityAgreement(false)}
       />
 
+      {/* Push Notification Consent */}
+      <NotificationConsent
+        open={showNotificationConsent}
+        onDismiss={() => setShowNotificationConsent(false)}
+      />
+
       {/* Phone Verification Modal */}
       {user && (
         <PhoneVerificationModal
@@ -1094,5 +1186,6 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         />
       )}
     </div>
+    </>
   );
 }

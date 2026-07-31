@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("user_ratings")
       .insert({
         rated_by_user_id: user.id,
@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get updated average
-    const avg = await (supabase as any).rpc("recalc_average_rating", { rated_user_id });
+    const avg = await supabase.rpc("recalc_average_rating", { rated_user_id });
 
     // SpotQuest: Progress rating quest for the rater (fire-and-forget)
     try {
-      await (supabase as any).rpc("progress_quest", {
+      await supabase.rpc("progress_quest", {
         p_user_id: user.id,
         p_action_type: "rate_user",
       });

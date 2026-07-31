@@ -28,7 +28,7 @@ export async function runUserGrowth(spot: NewSpot) {
   let invited = 0;
 
   for (const nonUser of nearbyNonUsers.slice(0, 10)) {
-    await supabase.from("invite_conversions" as any).insert({
+    await supabase.from("invite_conversions").insert({
       inviter_id: spot.user_id,
       invitee_phone: nonUser.phone,
       invited_via: "sms",

@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const permissionGranted = body.permission_granted === true;
 
     const supabase = createAdminClient();
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("users")
       .update({ location_permission: permissionGranted })
       .eq("id", user.id);

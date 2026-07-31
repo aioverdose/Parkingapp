@@ -33,25 +33,29 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Try Supabase phone auth OTP first
+    // Use app Twilio directly when configured (more reliable than Supabase SMS)
+    if (isTwilioConfigured()) {
+      const result = await requestOtp(phone, user.id);
+      await supabase
+        .from("users")
+        .update({ phone_number: phone })
+        .eq("id", user.id);
+      return NextResponse.json({ success: true, method: "twilio", expires_at: result.expires_at });
+    }
+
+    // Fall back to Supabase phone auth OTP
     const { error: supabaseError } = await supabase.auth.signInWithOtp({
       phone,
       options: { shouldCreateUser: false },
     });
 
     if (!supabaseError) {
-      await (supabase as any)
+      await supabase
         .from("users")
         .update({ phone_number: phone })
         .eq("id", user.id);
 
       return NextResponse.json({ success: true, method: "supabase" });
-    }
-
-    // Fall back to Twilio direct SMS
-    if (isTwilioConfigured()) {
-      const result = await requestOtp(phone, user.id);
-      return NextResponse.json({ success: true, method: "twilio", expires_at: result.expires_at });
     }
 
     // No SMS provider configured — dev mode

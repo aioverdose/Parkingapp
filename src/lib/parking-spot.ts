@@ -27,7 +27,7 @@ export async function saveParkingSpot(
   const spotLabel = label || "Current Spot";
 
   const { data: existing } = await (supabase
-    .from("user_parking_spots" as any)
+    .from("user_parking_spots")
     .select("id")
     .eq("user_id", userId)
     .eq("label", spotLabel)
@@ -35,7 +35,7 @@ export async function saveParkingSpot(
 
   if (existing) {
     const { data, error } = await supabase
-      .from("user_parking_spots" as any)
+      .from("user_parking_spots")
       .update({
         latitude,
         longitude,
@@ -52,7 +52,7 @@ export async function saveParkingSpot(
   }
 
   const { data, error } = await supabase
-    .from("user_parking_spots" as any)
+    .from("user_parking_spots")
     .insert({
       user_id: userId,
       label: spotLabel,
@@ -71,7 +71,7 @@ export async function saveParkingSpot(
 export async function getParkingSpots(userId: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from("user_parking_spots" as any)
+    .from("user_parking_spots")
     .select("*")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
@@ -83,7 +83,7 @@ export async function getParkingSpots(userId: string) {
 export async function deleteParkingSpot(spotId: string) {
   const supabase = createAdminClient();
   const { error } = await supabase
-    .from("user_parking_spots" as any)
+    .from("user_parking_spots")
     .delete()
     .eq("id", spotId);
 
@@ -94,7 +94,7 @@ export async function deleteParkingSpot(spotId: string) {
 export async function updateParkingSpotLabel(spotId: string, label: string) {
   const supabase = createAdminClient();
   const { error } = await supabase
-    .from("user_parking_spots" as any)
+    .from("user_parking_spots")
     .update({ label, updated_at: new Date().toISOString() })
     .eq("id", spotId);
 

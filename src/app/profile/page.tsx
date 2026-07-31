@@ -12,6 +12,7 @@ import Map, { Marker, ViewStateChangeEvent } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { INITIAL_VIEW_STATE, MAP_STYLE_URL } from "@/lib/map";
 import { reverseGeocode } from "@/lib/geocode";
+import { CreditBalance } from "@/components/CreditBalance";
 import {
   ArrowLeft, MapPin, Clock, Star, TrendingUp, CheckCircle2,
   BookOpen, Settings, GraduationCap, Loader2, Trash2, Award,
@@ -44,6 +45,8 @@ export default function ProfilePage() {
   const [savedSpots, setSavedSpots] = useState<SavedParkingSpot[]>([]);
   const [coursesCompleted, setCoursesCompleted] = useState(0);
   const [totalCourses, setTotalCourses] = useState(0);
+  const [matchCredits, setMatchCredits] = useState(0);
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
   const [schedArrivalHour, setSchedArrivalHour] = useState("8");
   const [schedArrivalMin, setSchedArrivalMin] = useState("00");
   const [schedArrivalAmPm, setSchedArrivalAmPm] = useState("AM");
@@ -83,7 +86,7 @@ export default function ProfilePage() {
       const [profileRes, rankingRes, stat, spotsRes, coursesRes, courseCountRes] = await Promise.all([
         supabase
           .from("users")
-          .select("name, email, vehicle_type, created_at, average_rating, flag_count, role, schedule_arrival, schedule_departure, schedule_days")
+          .select("name, email, vehicle_type, created_at, average_rating, flag_count, role, match_credits, schedule_arrival, schedule_departure, schedule_days")
           .eq("id", session.user.id)
           .single(),
         supabase
@@ -102,8 +105,25 @@ export default function ProfilePage() {
       ]);
 
       setUserData(profileRes.data as typeof userData);
+      setMatchCredits(profileRes.data?.match_credits ?? 0);
       setRanking(rankingRes.data as UserRanking);
       setStats(stat);
+
+      // Check purchase status from URL
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("purchase") === "success") {
+        setPurchaseMessage("Credits purchased! Your balance has been updated.");
+        setTimeout(() => {
+          window.history.replaceState({}, "", "/profile");
+          setPurchaseMessage(null);
+        }, 5000);
+      } else if (params.get("purchase") === "cancelled") {
+        setPurchaseMessage("Purchase cancelled.");
+        setTimeout(() => {
+          window.history.replaceState({}, "", "/profile");
+          setPurchaseMessage(null);
+        }, 5000);
+      }
       setSavedSpots(spotsRes.spots ?? []);
       setCoursesCompleted(coursesRes.data?.length ?? 0);
       setTotalCourses(courseCountRes.data?.length ?? 0);
@@ -387,6 +407,16 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+
+        {/* Purchase status message */}
+        {purchaseMessage && (
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 mb-4 text-sm text-emerald-700 dark:text-emerald-300 font-medium text-center">
+            {purchaseMessage}
+          </div>
+        )}
+
+        {/* Match Credits */}
+        <CreditBalance credits={matchCredits} />
 
         {/* Rank Card */}
         {ranking && (

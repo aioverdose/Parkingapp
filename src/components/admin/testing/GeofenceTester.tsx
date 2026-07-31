@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import Map, { Marker, Source, Layer, NavigationControl } from "react-map-gl/maplibre";
+import { useState, useCallback, useRef, useEffect } from "react";
+import Map, { Marker, Source, Layer, NavigationControl, MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { SimulatedDevice } from "@/lib/testing/simulatedDevice";
 import { LONG_BEACH_CENTER } from "@/lib/testing/constants";
 import type { GeofenceZone, GeofenceEvent } from "@/lib/testing/types";
-import { Fence, Plus, Trash2, LogIn, LogOut, Clock } from "lucide-react";
+import { MAP_STYLE_URL } from "@/lib/map";
+import { Fence, Plus, Trash2, LogIn, LogOut, Clock, Crosshair } from "lucide-react";
 
 interface Props {
   device: SimulatedDevice | null;
@@ -15,6 +16,7 @@ interface Props {
 const GEOFENCE_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 export function GeofenceTester({ device }: Props) {
+  const mapRef = useRef<MapRef>(null);
   const [viewState, setViewState] = useState({ latitude: LONG_BEACH_CENTER.lat, longitude: LONG_BEACH_CENTER.lng, zoom: 14 });
   const [geofences, setGeofences] = useState<GeofenceZone[]>([]);
   const [events, setEvents] = useState<GeofenceEvent[]>([]);
@@ -23,14 +25,34 @@ export function GeofenceTester({ device }: Props) {
   const [geofenceName, setGeofenceName] = useState("");
   const [selectedGeofence, setSelectedGeofence] = useState<string | null>(null);
   const [devicePos, setDevicePos] = useState<{ lat: number; lng: number } | null>(null);
+  const drawingRef = useRef(false);
+  const currentDrawRef = useRef<{ lat: number; lng: number }[]>([]);
 
-  const handleMapClick = useCallback(
-    (e: { lngLat: { lat: number; lng: number } }) => {
-      if (!drawing) return;
-      setCurrentDraw((prev) => [...prev, { lat: e.lngLat.lat, lng: e.lngLat.lng }]);
-    },
-    [drawing],
-  );
+  // Sync refs with state
+  useEffect(() => { drawingRef.current = drawing; }, [drawing]);
+  useEffect(() => { currentDrawRef.current = currentDraw; }, [currentDraw]);
+
+  // Register native map click handler once map is loaded
+  const handleMapLoad = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+
+    const handler = (e: any) => {
+      if (!drawingRef.current) return;
+      const lngLat = e.lngLat;
+      currentDrawRef.current = [...currentDrawRef.current, { lat: lngLat.lat, lng: lngLat.lng }];
+      setCurrentDraw(currentDrawRef.current);
+    };
+
+    map.on("click", handler);
+  }, []);
+
+  // Update cursor based on drawing mode
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    map.getCanvas().style.cursor = drawing ? "crosshair" : "";
+  }, [drawing]);
 
   const handleFinishDrawing = useCallback(() => {
     if (currentDraw.length < 3) return;
@@ -40,6 +62,7 @@ export function GeofenceTester({ device }: Props) {
       { id, name: geofenceName || `Geofence ${prev.length + 1}`, coordinates: currentDraw, color: GEOFENCE_COLORS[prev.length % GEOFENCE_COLORS.length] },
     ]);
     setCurrentDraw([]);
+    currentDrawRef.current = [];
     setDrawing(false);
     setGeofenceName("");
   }, [currentDraw, geofenceName]);
@@ -99,7 +122,9 @@ export function GeofenceTester({ device }: Props) {
     [device, geofences],
   );
 
-  const drawPolygon = currentDraw.length >= 2 ? { type: "Feature" as const, geometry: { type: "Polygon" as const, coordinates: [[...currentDraw.map((c) => [c.lng, c.lat]), [currentDraw[0].lng, currentDraw[0].lat]]] }, properties: {} } : null;
+  const drawPolygon = currentDraw.length >= 2
+    ? { type: "Feature" as const, geometry: { type: "Polygon" as const, coordinates: [[...currentDraw.map((c) => [c.lng, c.lat]), [currentDraw[0].lng, currentDraw[0].lat]]] }, properties: {} }
+    : null;
 
   return (
     <div className="h-full flex">
@@ -110,24 +135,49 @@ export function GeofenceTester({ device }: Props) {
         </h3>
 
         <div className="space-y-2">
-          <input type="text" value={geofenceName} onChange={(e) => setGeofenceName(e.target.value)} placeholder="Geofence name" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm" />
+          <input
+            type="text"
+            value={geofenceName}
+            onChange={(e) => setGeofenceName(e.target.value)}
+            placeholder="Geofence name"
+            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm"
+          />
           <div className="flex gap-2">
-            <button onClick={() => { setDrawing(!drawing); setCurrentDraw([]); }} className={`flex-1 text-sm font-medium py-2 rounded-lg transition ${drawing ? "bg-red-600 text-white" : "bg-blue-600 text-white hover:bg-blue-700"}`}>
-              {drawing ? "Cancel Draw" : "Draw Geofence"}
+            <button
+              onClick={() => { setDrawing(!drawing); if (!drawing) { setCurrentDraw([]); currentDrawRef.current = []; } }}
+              className={`flex-1 text-sm font-medium py-2 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                drawing
+                  ? "bg-red-600 text-white"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
+            >
+              <Crosshair size={14} />
+              {drawing ? "Cancel" : "Draw Geofence"}
             </button>
             {drawing && currentDraw.length >= 3 && (
-              <button onClick={handleFinishDrawing} className="flex-1 bg-emerald-600 text-white text-sm font-medium py-2 rounded-lg transition">
+              <button
+                onClick={handleFinishDrawing}
+                className="flex-1 bg-emerald-600 text-white text-sm font-medium py-2 rounded-lg transition"
+              >
                 Finish ({currentDraw.length} pts)
               </button>
             )}
           </div>
-          {drawing && <p className="text-[10px] text-zinc-400 text-center">Click on the map to add points. Min 3 points.</p>}
+          {drawing && (
+            <p className="text-[10px] text-zinc-400 text-center">
+              Click on the map to place vertices. {currentDraw.length} point(s) placed.
+            </p>
+          )}
         </div>
 
         {/* Geofence list */}
         <div className="space-y-2">
           {geofences.map((gf) => (
-            <div key={gf.id} className={`rounded-lg p-3 text-xs border ${selectedGeofence === gf.id ? "border-blue-300 bg-blue-50 dark:bg-blue-900/20" : "border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50"}`}>
+            <div key={gf.id} className={`rounded-lg p-3 text-xs border ${
+              selectedGeofence === gf.id
+                ? "border-blue-300 bg-blue-50 dark:bg-blue-900/20"
+                : "border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50"
+            }`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: gf.color }} />
@@ -146,15 +196,33 @@ export function GeofenceTester({ device }: Props) {
               </div>
             </div>
           ))}
+          {geofences.length === 0 && !drawing && (
+            <p className="text-xs text-zinc-400 text-center mt-4">
+              Click "Draw Geofence" then click the map to add vertices.
+            </p>
+          )}
         </div>
       </div>
 
       {/* Map */}
       <div className="flex-1 relative">
-        <Map {...viewState} onMove={(e) => setViewState(e.viewState)} onClick={handleMapClick} style={{ width: "100%", height: "100%" }} mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">
+        <Map
+          ref={mapRef}
+          {...viewState}
+          onMoveEnd={(e) => {
+            if (!drawingRef.current) setViewState(e.viewState);
+          }}
+          onLoad={handleMapLoad}
+          mapStyle={MAP_STYLE_URL}
+          style={{ width: "100%", height: "100%" }}
+        >
           <NavigationControl position="top-right" />
           {geofences.map((gf) => {
-            const polygon = { type: "Feature" as const, geometry: { type: "Polygon" as const, coordinates: [[...gf.coordinates.map((c) => [c.lng, c.lat]), [gf.coordinates[0].lng, gf.coordinates[0].lat]]] }, properties: {} };
+            const polygon = {
+              type: "Feature" as const,
+              geometry: { type: "Polygon" as const, coordinates: [[...gf.coordinates.map((c) => [c.lng, c.lat]), [gf.coordinates[0].lng, gf.coordinates[0].lat]]] },
+              properties: {},
+            };
             return (
               <Source key={gf.id} id={`gf-${gf.id}`} type="geojson" data={polygon}>
                 <Layer id={`gf-fill-${gf.id}`} type="fill" paint={{ "fill-color": gf.color, "fill-opacity": 0.15 }} />
@@ -170,7 +238,9 @@ export function GeofenceTester({ device }: Props) {
           )}
           {currentDraw.map((c, i) => (
             <Marker key={i} latitude={c.lat} longitude={c.lng}>
-              <div className="w-3 h-3 bg-blue-600 rounded-full border border-white" />
+              <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md flex items-center justify-center">
+                <span className="text-[8px] text-white font-bold">{i + 1}</span>
+              </div>
             </Marker>
           ))}
           {devicePos && (
@@ -189,7 +259,11 @@ export function GeofenceTester({ device }: Props) {
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {events.length === 0 && <p className="text-xs text-zinc-400 text-center mt-8">No geofence events yet</p>}
           {events.map((evt, i) => (
-            <div key={i} className={`rounded-lg p-2.5 text-xs border ${evt.type === "entry" ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"}`}>
+            <div key={i} className={`rounded-lg p-2.5 text-xs border ${
+              evt.type === "entry"
+                ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
+                : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+            }`}>
               <div className="flex items-center gap-1.5 mb-1">
                 {evt.type === "entry" ? <LogIn size={12} className="text-emerald-600" /> : <LogOut size={12} className="text-red-600" />}
                 <span className="font-bold uppercase">{evt.type}</span>

@@ -1,249 +1,91 @@
-# SpotMatch — Complete Codebase Summary
+# SpotMatch — Parking App Summary
 
 ## Overview
+SpotMatch is a mobile-first progressive web app for sharing real-time parking spot departures. Built with Next.js 16, Supabase (PostgreSQL + realtime), and MapLibre GL (OpenFreeMap tiles). Designed for Long Beach, CA. It's an "imminent departure alert" system — not a reservation platform.
 
-SpotMatch is a street parking matching service. Drivers list their parking spots with scheduled departure and return times. The system proactively matches them with compatible drivers based on three criteria: location proximity, schedule overlap, and vehicle type. Both parties must confirm the match bidirectionally before they can coordinate via ephemeral chat.
+## How It Works
+1. **Post a spot**: User taps "LEAVING SOON", selects a 5/10/15-min lead time, and their spot appears as a blue pin on the map with a live countdown.
+2. **Claim a spot**: Another user taps a pin, sees details (owner rank, lead time), starts an ephemeral chat, or claims it. Atomic claim — first come, first served.
+3. **Auto-expiration**: Spots expire after the lead time elapses. All alerts are ephemeral by design (prevents neighborhood disruption).
+4. **Real-time**: Supabase Realtime channels push live spot updates, notifications, and chat messages.
 
-The app was originally "ParkingShare" (a real-time neighbor parking handoff app) and was fully rebranded and refactored into SpotMatch.
+## Key Features
+- **Map-centric UI** — Full-screen MapLibre GL map with spot markers, user location, spot-request markers, departure pings, satellite/street toggle
+- **Ranking & Trust System** — 5 educational courses with quizzes (street parking law, safety, privacy, street sweeping). Rank tiers: Bronze (1 post/day), Silver (unlimited), Gold (priority), Community Partner (mod potential). Points from courses (+100), handoffs (+10), flags (-20). Trust score starts at 5.0
+- **Safety-first** — Max 15-min lead time, phone verification, safety acknowledgment modal, TOS gate, flag system for bad spots, rate limiting (10 spots/60s per IP), pilot area gating
+- **Social** — Ephemeral chat between poster/claimer (auto-closes after handoff or 30min), departure pings broadcast to nearby users, peer-to-peer tips ($1/$2/$5)
+- **Street Sweeping** — Long Beach street sweeping schedule integrated with alerts
+- **Saved Spots** — Save parking locations with GPS accuracy check
+- **Ad Platform** — Geo-targeted ads with impression/click tracking and admin management
 
----
+## Admin Dashboard
+Role-based (admin/moderator) panel accessible from the profile page with full sidebar navigation:
+
+- **Dashboard** — Aggregated metrics: total users, active spots, active ads, active chats. Agent metrics (18 cards) covering active users, alerts, retention, congestion, ad impressions/clicks, predictions, and invites. Top 5 neighborhoods bar chart. Ad performance table with CTR.
+- **Control Tower** — Full-screen real-time GPS map showing active matches with owner/seeker locations (color-coded markers), spot locations, dashed route lines, and ETA. Sidebar with Matches/Users tabs. Live via Supabase Realtime + 10s polling. Rate-limited (30 req/60s).
+- **Ad Campaigns** — Full CRUD for ads. Fields: title, business name, tagline, image URL, link URL, end date, active toggle. List view with impression/click/CTR metrics. Impression and click tracking API routes. AI-powered ad insights agent generates weekly performance reports.
+- **Users** — Search by name/email. View all users with avatar, vehicle type, role. Toggle admin/moderator roles inline.
+- **Flags** — Moderate spot flags (wrong location, fake spot, rude user, dangerous, other). Searchable by type/address/comment/flagger. Resolve flags or delete flagged spots. Tracks resolved_by and resolved_at.
+- **Pilot Areas** — CRUD for geographic beta zones defined by bounding box coordinates. Used to gate app access by location.
+- **Street Sweeping** — CRUD for street sweeping schedules. Fields: street name, city, day of week, time range, zone. Searchable.
+
+RLS policies enforce role-based access. Service-role Supabase client used for admin API routes. `is_admin()` SECURITY DEFINER function at the database level.
+
+## Test Suite
+Two tiers of testing:
+
+### Automated Tests (Vitest)
+- **Framework**: Vitest 4.1.9 with global test APIs, Node environment, `@` path alias to `src/`
+- **Commands**: `npm test` (single run), `npm run test:watch`
+- **Test files**: 2 files, 8 test cases total
+  - `src/lib/__tests__/utils.test.ts` — Tests the `cn()` classname utility (4 tests)
+  - `src/lib/__tests__/rate-limit.test.ts` — Tests `checkRateLimit()` — allows within limit, blocks exceeding, resets after expiry, tracks remaining (4 tests)
+- **No component tests, E2E tests, or integration tests exist yet**
+
+### Manual Testing Tools (In-App Admin Test Suite)
+Accessed via `/admin/testing`. Contains 8 interactive panels with a device selector (4 simulated test devices), "TEST MODE" banner, and real-time Supabase integration:
+
+1. **GPS Simulator** — Manual coordinate entry, preset locations dropdown, speed slider (0-60 mph), heading compass, accuracy slider, GPS noise toggle (±50m), underground mode toggle (simulated GPS loss), broadcast controls, click-to-set-position map
+2. **Route Playback** — 3 preset test routes (Downtown Loop, Garage Entry, Multi-Stop Errand), GPX XML paste-and-parse, Play/Pause/Stop/Step controls, 1x-10x speed multiplier, progress bar with waypoint markers
+3. **Parking Tester** — Speed slider, "Simulate Parking (30s)" / "Simulate Driving (25 mph)" buttons, GPS noise/underground toggles, real-time speed monitoring, detection window logic (30s below threshold = parked), event log
+4. **Tracking Monitor** — Live map showing all 4 test devices with color-coded status markers (driving=blue, parked=red, idle=gray, offline=light gray), device list with broadcast counts, speed, heading, accuracy. Live via Supabase Realtime on `driver_locations`
+5. **ETA Tester** — Tests ETA calculations via OSRM routing API with fallback straight-line estimation. Single/batch destination modes. Rush hour (+30%) and off-peak (-10%) multipliers. Sortable results table
+6. **Geofence Tester** — Draw geofence polygons on map (click vertices, 3+ to close), multiple fences with different colors, Simulate Entry/Exit buttons, event log
+7. **Scenario Runner** — Build multi-step test scenarios with step types: set_location, start_route, set_speed, wait, check_parking, check_geofence, log. Runs across 2 simulated devices simultaneously. Pass/Fail results panel, export to JSON
+8. **Match Scenario** — End-to-end parking handoff simulation: owner posts spot, seeker navigates, match created/confirmed, owner departs, seeker arrives. Voice navigation via Web Speech API. Dual phone view showing both users' device UIs side-by-side
+
+**Testing infrastructure modules**: `SimulatedDevice` class (GPS sim, route playback, noise/underground modes), `testRoutes.ts` (route data), `presetLocations.ts` (7 GPS presets), `gpxParser.ts` (GPX XML parser), `osrmClient.ts` (ETA calc with haversine fallback), `constants.ts` (test user IDs, thresholds), `types.ts` (TypeScript interfaces). Seed script at `scripts/create-test-users.js` creates 4 test auth accounts.
+
+## Monetization Options
+
+### Already partially built:
+1. **Freemium Gold subscription** ($4.99/mo) — Ranking system exists; gate Gold tier behind payment for unlimited posts, priority visibility, extended lead time, analytics
+2. **Tip platform fee** — Tips table exists; add a $0.50 platform fee on top of tips
+3. **In-app advertising** — Ads table + admin panel + geo-targeting exist; render as sponsored map pins
+
+### Need Stripe integration:
+4. **Match fee** — $0.50 per successful handoff or 5% of tips
+5. **Priority matching** — Premium radius expansion (200m → 500m), early access, SMS alerts
+
+### Longer term:
+6. **Business subscriptions** — $29/mo per location for apt complexes/event venues
+7. **Street sweeping data licensing** — Sell anonymized data to delivery co's, city planners
+8. **Surge pricing during events** — $1-2 extra per match near venues
+9. **White-label SaaS** — License to other cities ($500-2000/mo)
+
+### Revenue estimate at small scale: ~$1,750/mo
+### At 10k users: ~$8k-12k/mo
 
 ## Tech Stack
+- **Frontend**: Next.js 16, React 19, Turbopack, Tailwind CSS, lucide-react
+- **Map**: MapLibre GL (react-map-gl), OpenFreeMap tiles, Nominatim geocoding
+- **Backend**: Supabase (PostgreSQL, RLS, Realtime, Auth)
+- **Auth**: Supabase Auth (email/password + phone)
+- **Testing**: Vitest 4
+- **Deploy**: Vercel
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 16.2.9 (App Router) |
-| Language | TypeScript (strict mode) |
-| UI | React 19.2.4, Tailwind CSS 3.4.19 |
-| Icons | Lucide React 1.18.0 |
-| Map Engine | MapLibre GL 5.24.0 via react-map-gl 8.1.1 |
-| Map Tiles | OpenFreeMap (free, no API key) + ArcGIS satellite fallback |
-| Backend | Supabase (PostgreSQL, Auth, Realtime) |
-| Auth | Supabase Auth (email/password) |
-| Database | PostgreSQL with Row Level Security |
-| Realtime | Supabase Realtime subscriptions (WebSocket) |
-| SMS | Twilio (with fallback to dev-mode: any 6-digit code accepted) |
-| Linting | ESLint 9 with eslint-config-next |
-| Testing | Vitest 4.1.9 |
-| PWA | Service Worker + manifest.json |
-| Deployment | Vercel (auto-deploys from GitHub push) |
+## Database
+15 SQL migrations. Key tables: users, parking_spots, tips, notifications, ephemeral_chats, spot_flags, user_ratings, departure_pings, spot_requests, ads, pilot_areas, street_sweeping, contribution_stats, courses, user_course_progress, user_ranking, driver_locations, active_sessions.
 
----
-
-## Project Structure
-
-```
-G:\parkingapp\
-├── src/
-│   ├── app/
-│   │   ├── layout.tsx           # Root layout (fonts, PWA, globals)
-│   │   ├── page.tsx             # Home page (full-screen map + hero "Street Parking Logistics")
-│   │   ├── error.tsx            # Global error boundary
-│   │   ├── auth/signup/         # Sign-up page with vehicle type
-│   │   ├── admin/
-│   │   │   ├── layout.tsx       # Admin layout with sidebar + mobile nav
-│   │   │   ├── page.tsx         # Admin dashboard
-│   │   │   ├── ads/             # Ad campaign management
-│   │   │   ├── control-tower/   # Live GPS tracking map (owner/seeker positions, ETAs, connection lines)
-│   │   │   ├── users/           # User management
-│   │   │   ├── flags/           # Flagged content moderation
-│   │   │   ├── pilot-areas/     # Geographic boundary configuration
-│   │   │   └── street-sweeping/ # Street cleaning schedule management
-│   │   ├── api/
-│   │   │   ├── spots/           # CRUD for parking spots (triggers matching engine on create)
-│   │   │   ├── spots/[id]/claim/# Legacy claim (now via match confirmation)
-│   │   │   ├── spots/[id]/cancel/
-│   │   │   ├── spots/[id]/tip/
-│   │   │   ├── matches/         # List matches for current user
-│   │   │   ├── matches/find/    # Matching engine (Haversine, schedule overlap, vehicle type)
-│   │   │   ├── matches/[id]/    # Bidirectional confirm/reject
-│   │   │   ├── matches/[id]/status/  # Lifecycle: en_route → arrived → departed (with no-show)
-│   │   │   ├── location/update/ # GPS ping ingestion + ETA calculation
-│   │   │   ├── location/permission/
-│   │   │   ├── auth/            # Auth check
-│   │   │   ├── auth/phone-request/  # SMS OTP request (Supabase → Twilio → dev fallback)
-│   │   │   ├── auth/phone-verify/   # OTP verify (Supabase → Twilio → dev fallback)
-│   │   │   ├── admin/control-tower/ # Enriched active matches with driver locations + sessions
-│   │   │   ├── admin/run-migration/ # Migration check/apply endpoint
-│   │   │   ├── flags/add/       # Flag inappropriate spots
-│   │   │   ├── ratings/add/     # Post-handoff rating
-│   │   │   ├── tos/accept/      # Accept Terms of Service
-│   │   │   ├── stats/           # User statistics
-│   │   │   ├── courses/         # Educational courses + quizzes
-│   │   │   ├── street-sweeping/ # Street cleaning schedule
-│   │   │   ├── ads/[id]/click|impression/  # Ad analytics
-│   │   │   └── agents/          # 5 AI agent endpoints
-│   │   ├── profile/             # User profile with map + stats
-│   │   ├── settings/            # Name, vehicle type, support link
-│   │   ├── courses/             # Educational courses + quizzes
-│   │   ├── notifications/       # Notification history
-│   │   ├── rankings/            # Leaderboard by neighborhood
-│   │   ├── tos/                 # Terms of Service
-│   │   ├── support/             # Support center hub + getting-started + reporting guides
-│   │   └── ...                  # FAQ, privacy-policy, members/profile, etc.
-│   ├── components/
-│   │   ├── ParkingMap.tsx       # Main full-screen map (1200 lines, core orchestrator)
-│   │   ├── PostSpotForm.tsx     # Spot listing (location + departure/return time pickers)
-│   │   ├── MatchList.tsx        # Match management (accept/reject, status badges, chat link)
-│   │   ├── ActionButtons.tsx    # "List My Spot" / "My Matches" buttons
-│   │   ├── SpotMarker.tsx       # Map marker with countdown + vehicle badge
-│   │   ├── SpotDetails.tsx      # Bottom sheet when tapping a spot
-│   │   ├── EphemeralChat.tsx    # Temporary chat (30min auto-expire)
-│   │   ├── Auth.tsx             # Login/signup
-│   │   ├── TOSModal.tsx         # Terms of Service agreement
-│   │   ├── SafetyWarningModal.tsx
-│   │   ├── PhoneVerificationModal.tsx  # Step flow (phone input → code → verified)
-│   │   ├── StatsDashboard.tsx
-│   │   ├── AdBanner.tsx         # Geo-targeted ads
-│   │   ├── SpotRequestMarker.tsx
-│   │   ├── DeparturePingMarker.tsx
-│   │   ├── StreetSweepingBanner.tsx
-│   │   ├── PilotAreaWarning.tsx
-│   │   └── ...
-│   ├── hooks/
-│   │   ├── useRealtimeSpots.ts
-│   │   ├── useNotifications.ts
-│   │   ├── useLeavingTimer.ts
-│   │   └── useExpirationTimer.ts
-│   ├── lib/
-│   │   ├── database.types.ts    # Full Supabase TypeScript types (all 18 tables)
-│   │   ├── supabaseClient.ts    # Browser Supabase client (typed as any — build optimization)
-│   │   ├── supabaseAdmin.ts     # Admin client (service role key)
-│   │   ├── haversine.ts         # Shared Haversine distance utility
-│   │   ├── error-logger.ts      # Error logging utility
-│   │   ├── rate-limit.ts        # In-memory rate limiter
-│   │   ├── otp.ts               # OTP generation, E.164 validation, request/verify logic
-│   │   ├── twilio.ts            # Twilio client factory
-│   │   ├── tracking/useLocationTracking.ts  # GPS tracking hook for Control Tower
-│   │   ├── vehicle-types.ts
-│   │   ├── map.ts, geocode.ts, reverse-geocode.ts
-│   │   ├── parking-spot.ts, pilot-area.ts, street-sweeping.ts
-│   │   ├── ranking.ts, tos.ts
-│   │   ├── utils.ts
-│   │   ├── api/auth-helpers.ts
-│   │   └── agents/              # 5 AI agents
-│   └── actions/                 # Server actions (social chat, rankings, TOS)
-├── supabase/migrations/
-│   ├── 00001-00015              # Base schema → various features
-│   ├── 00016_spotmatch.sql      # Rename leaving_at→departure_time, add return_time, spot_matches
-│   ├── 00017_phone_otp.sql      # phone_otps table for Twilio OTP storage
-│   └── 00018_control_tower.sql  # driver_locations + active_sessions tables with Realtime
-├── public/
-│   ├── manifest.json            # PWA manifest
-│   ├── sw.js                    # Service Worker (navigation + static assets only)
-│   └── icons/
-└── package.json
-```
-
----
-
-## Database Schema (Supabase PostgreSQL)
-
-### Core Tables
-
-**users** — `id` (UUID PK), `email`, `name`, `avatar_url`, `phone`, `phone_verified`, `phone_verified_at`, `vehicle_type`, `role` (user/admin/moderator), `tos_version`, `tos_hash`, `tos_signed_at`, `created_at`
-
-**parking_spots** — `id` (UUID PK), `user_id` (FK), `latitude`, `longitude`, `address`, `departure_time`, `return_time` (nullable), `status` (active/taken/expired), `vehicle_type`, `claimed_by`, `flag_count`, `lead_minutes`, `expires_at`, `tip_message`, `created_at`
-
-**spot_matches** — `id` (UUID PK), `spot_id` (FK), `spot_owner_id` (FK), `seeker_id` (FK), `status` (pending/confirmed_by_owner/confirmed_by_seeker/confirmed/rejected/expired), `created_at`, `updated_at`
-- Triggers: auto-notify both parties on create + on confirmed
-
-### Control Tower Tables (NEW in 00018)
-
-**driver_locations** — Realtime GPS pings
-- `id` (UUID PK), `user_id` (FK), `match_id` (FK, nullable), `latitude`, `longitude`, `heading`, `speed`, `accuracy`, `recorded_at`
-- Realtime publication enabled (live map updates)
-- Indexed on (user_id, recorded_at DESC) and (match_id, recorded_at DESC)
-
-**active_sessions** — Per-user-per-match lifecycle
-- `id` (UUID PK), `user_id` (FK), `match_id` (FK), `role` (owner/seeker), `status` (en_route/arrived/departed/no_show/completed), `eta_seconds`, `grace_period_ends_at`, `arrived_at`, `departed_at`, `created_at`, `updated_at`
-
-### Supporting Tables
-
-notifications, ephemeral_chats, ephemeral_messages, spot_requests, departure_pings, phone_otps, tips, user_ranking, user_parking_spots, contribution_stats, courses, user_course_progress, ads, ad_analytics, pilot_areas, street_sweeping, user_ratings, spot_flags
-
----
-
-## Core App Flow
-
-### 1. Onboarding
-Home page (full-screen map + "Street Parking Logistics" hero) → Signup (name, email, password, vehicle type) → Location permission overlay → TOS acceptance → Safety acknowledgment → Phone verification (Twilio SMS or dev fallback)
-
-### 2. Listing a Spot
-Tap "List My Spot" → GPS getCurrentPosition (high accuracy, timeout → fallback) → Reverse geocode via Nominatim → Set departure time + return time (datetime-local pickers) → Select vehicle type → POST `/api/spots` → Server validates + inserts → Async trigger `/api/matches/find`
-
-### 3. Matching Engine (`/api/matches/find`)
-Loads new spot → Fetches active spot_requests → For each: Haversine ≤200m, schedule overlap, vehicle type match → Creates spot_matches (skip existing/rejected) → DB triggers auto-notify both parties
-
-### 4. Bidirectional Confirmation
-Both receive notification → Open "My Matches" → See spot address, schedule, other party → Confirm → State machine: pending → confirmed_by_owner|seeker → confirmed (both needed) → On confirmed: spot → taken, seeker = claimed_by, notify both → Chat opens
-
-### 5. Control Tower (Admin)
-Admin goes to `/admin/control-tower` → Live map with: owner markers (purple, heading arrow), seeker markers (blue, heading arrow), spot markers (green), dashed connection lines, ETAs, status badges → Sidebar lists all active matches → Real-time via Supabase Realtime subscriptions to driver_locations + active_sessions + spot_matches → Client: useLocationTracking hook with watchPosition + 15s interval
-
-### 6. No-Show Handling
-Matched user status lifecycle: en_route → arrived → departed → no_show (with grace period). Departed (owner) → notifies seeker "Spot is ready!". Arrived (seeker) → notifies owner "Driver arrived". No-show → releases match, notifies other party, re-activates spot.
-
----
-
-## API Routes (33 total)
-
-| Method | Path | Rate Limit | Purpose |
-|--------|------|------------|---------|
-| GET | `/api/spots` | — | List active spots |
-| POST | `/api/spots` | 10/min per IP | Create spot + trigger matching |
-| POST | `/api/spots/[id]/claim` | 20/min per IP | Legacy claim |
-| POST | `/api/spots/[id]/cancel` | 10/min per user | Cancel listing |
-| POST | `/api/spots/[id]/tip` | 10/min per IP | Send tip |
-| GET | `/api/matches` | — | List user matches |
-| POST | `/api/matches/find` | — | Run matching engine |
-| POST | `/api/matches/[id]` | — | Confirm/reject match |
-| POST | `/api/matches/[id]/status` | 30/min per user | Update lifecycle status |
-| POST | `/api/location/update` | 60/min per user | GPS ping + ETA calculation |
-| GET | `/api/admin/control-tower` | 30/min per admin | Active matches + driver locations |
-| POST | `/api/admin/run-migration` | — | Migration check tool |
-| POST | `/api/auth/phone-request` | 5/min per IP | Request SMS OTP |
-| POST | `/api/auth/phone-verify` | 10/min per IP | Verify OTP code |
-| POST | `/api/flags/add` | 5/min per user | Flag spot |
-| ... | *others* | — | ratings, courses, ads, agents, etc. |
-
----
-
-## Phone Verification (Triple-Fallback)
-1. Try Supabase `signInWithOtp()` (built-in SMS via Twilio configured in Supabase dashboard)
-2. Fall back to direct Twilio SDK call + local `phone_otps` table (if Twilio env vars set)
-3. Fall back to dev mode (any 6-digit code accepted, with warning banner)
-
----
-
-## Key Decisions
-- **No state library** — pure React useState + useEffect
-- **Supabase as `any`** — `createClient<any>()` to avoid generated-type incompatibility
-- **Fire-and-forget matching** — matching engine triggered async after spot creation
-- **In-memory rate limiting** — simple Map-based, resets every 60s (cleaned up by interval)
-- **Service worker** — only intercepts navigation + static assets (NOT API calls to avoid "offline" errors)
-- **MapLibre + OpenFreeMap** — free tiles, no API key required
-- **Shared Haversine** — extracted to `lib/haversine.ts` (used by matching engine + control tower ETA)
-
----
-
-## Edge Cases & Constraints
-- Max 3 active listings per user
-- Schedule overlap matching (departure→return overlaps seeker's window)
-- Haversine distance ≤ 200m for location matching
-- Match deduplication (existing non-rejected matches prevent duplicates)
-- Spots expire at return_time (or departure + 2h)
-- Low-rated users (<3.0) blocked from posting
-- 5+ flags on a spot triggers moderation
-- Pilot area boundary gating
-- TOS must be accepted before posting
-- Phone must be verified before posting
-
----
-
-## Deployment
-- **Hosting**: Vercel (auto-deploys on git push to main branch)
-- **URL**: https://parkingapp-pi.vercel.app
-- **Build**: 51 pages, 33 API routes, zero errors
-- **Supabase**: 18 migrations applied, project `gxncvraqqxlfziiymsxb.supabase.co`
-- **Git**: `origin → https://github.com/aioverdose/Parkingapp.git`
+## Build Status
+42 routes (17 pages + 25 API routes). Clean build — zero TS errors, zero lint errors.

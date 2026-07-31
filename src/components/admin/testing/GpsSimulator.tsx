@@ -7,6 +7,7 @@ import { SimulatedDevice } from "@/lib/testing/simulatedDevice";
 import { PRESET_LOCATIONS } from "@/lib/testing/presetLocations";
 import { LONG_BEACH_CENTER, MS_TO_MPH, MPH_TO_MS } from "@/lib/testing/constants";
 import type { SimulatedPosition } from "@/lib/testing/types";
+import { MAP_STYLE_URL } from "@/lib/map";
 import { MapPin, Radio, RadioOff, Zap, ArrowDown, Compass } from "lucide-react";
 
 interface Props {
@@ -297,7 +298,7 @@ export function GpsSimulator({ device, onPositionUpdate }: Props) {
           onMove={(e) => setViewState(e.viewState)}
           onClick={handleMapClick}
           style={{ width: "100%", height: "100%" }}
-          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          mapStyle={MAP_STYLE_URL}
         >
           <NavigationControl position="top-right" />
           {devicePos && (

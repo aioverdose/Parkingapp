@@ -6,6 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { SimulatedDevice } from "@/lib/testing/simulatedDevice";
 import { LONG_BEACH_CENTER, PARKING_SPEED_THRESHOLD, PARKING_DETECTION_WINDOW, MPH_TO_MS, MS_TO_MPH } from "@/lib/testing/constants";
 import type { SimulatedPosition, ParkingDetectionEvent } from "@/lib/testing/types";
+import { MAP_STYLE_URL } from "@/lib/map";
 import { Gauge, Car, AlertTriangle, CheckCircle, XCircle, Clock, Zap, ArrowDown, Play, Square } from "lucide-react";
 
 interface Props {
@@ -239,7 +240,7 @@ export function ParkingTester({ device, events, onParkingEvent, onPositionUpdate
           longitude={LONG_BEACH_CENTER.lng}
           zoom={14}
           style={{ width: "100%", height: "100%" }}
-          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          mapStyle={MAP_STYLE_URL}
         >
           <NavigationControl position="top-right" />
           {devicePos && (

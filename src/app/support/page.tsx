@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Shield, MessageCircle, User, Wrench, HelpCircle, ChevronDown, ChevronUp, Mail, ExternalLink } from "lucide-react";
+import { ArrowLeft, BookOpen, Shield, MessageCircle, User, Wrench, HelpCircle, ChevronDown, ChevronUp, Mail, ExternalLink, Terminal } from "lucide-react";
 
 const CATEGORIES = [
   {
@@ -40,6 +40,12 @@ const CATEGORIES = [
     title: "FAQ",
     desc: "Frequently asked questions about ParkingMeeters.",
     href: "/faq",
+  },
+  {
+    icon: Terminal,
+    title: "Testing Guide",
+    desc: "How to run and write tests for the app.",
+    href: "/support/testing",
   },
 ];
 

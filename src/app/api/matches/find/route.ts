@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { sendPushToUser } from "@/lib/push";
 
 const MATCH_RADIUS_METERS = 200;
 
@@ -130,16 +131,43 @@ export async function POST(request: NextRequest) {
 
       if (existing) continue;
 
-      const { error: insertError } = await supabase
+      // Check blocks
+      const { data: blocked } = await supabase.rpc("is_user_blocked", { check_user_id: match.seeker_id, by_user_id: spot.user_id });
+      const { data: blocked2 } = await supabase.rpc("is_user_blocked", { check_user_id: spot.user_id, by_user_id: match.seeker_id });
+      if (blocked || blocked2) continue;
+
+      const { data: inserted, error: insertError } = await supabase
         .from("spot_matches")
         .insert({
           spot_id,
           spot_owner_id: spot.user_id,
           seeker_id: match.seeker_id,
           status: "pending",
-        });
+        })
+        .select("id")
+        .single();
 
-      if (!insertError) matchesCreated++;
+      if (!insertError && inserted) {
+        matchesCreated++;
+
+        // Send Web Push notification to the seeker
+        const { data: ownerUser } = await supabase
+          .from("users")
+          .select("name")
+          .eq("id", spot.user_id)
+          .single();
+
+        sendPushToUser(match.seeker_id, {
+          type: "match_found",
+          title: "Parking Match Found!",
+          body: `${ownerUser?.name || "Someone"} is leaving a spot${spot.address ? ` on ${spot.address}` : ""}. Accept to navigate!`,
+          match_id: inserted.id,
+          spot_lat: spot.latitude,
+          spot_lon: spot.longitude,
+          spot_street: spot.address,
+          departing_user_name: ownerUser?.name || "Someone",
+        });
+      }
     }
 
     return NextResponse.json({

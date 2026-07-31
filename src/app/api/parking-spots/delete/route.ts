@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
     const { error } = await supabase
-      .from("user_parking_spots" as any)
+      .from("user_parking_spots")
       .delete()
       .eq("id", spot_id)
       .eq("user_id", user.id);

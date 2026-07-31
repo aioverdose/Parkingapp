@@ -14,14 +14,14 @@ export async function runAdInsights() {
 
   for (const ad of ads) {
     const { data: impressions } = await supabase
-      .from("ad_analytics" as any)
+      .from("ad_analytics")
       .select("id", { count: "exact", head: true })
       .eq("ad_id", ad.id)
       .eq("event_type", "impression")
       .gt("created_at", weekAgo);
 
     const { data: clicks } = await supabase
-      .from("ad_analytics" as any)
+      .from("ad_analytics")
       .select("id", { count: "exact", head: true })
       .eq("ad_id", ad.id)
       .eq("event_type", "click")

@@ -6,6 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { TEST_USERS, LONG_BEACH_CENTER, IDLE_TIMEOUT_MS, PARKING_SPEED_THRESHOLD } from "@/lib/testing/constants";
 import type { DeviceStatus } from "@/lib/testing/types";
+import { MAP_STYLE_URL } from "@/lib/map";
 import { Radar, Wifi, WifiOff, Clock, Car, Coffee, Moon } from "lucide-react";
 
 interface DeviceState {
@@ -202,7 +203,7 @@ export function TrackingMonitor() {
           {...viewState}
           onMove={(e) => setViewState(e.viewState)}
           style={{ width: "100%", height: "100%" }}
-          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          mapStyle={MAP_STYLE_URL}
         >
           <NavigationControl position="top-right" />
           {deviceArray.map((d) => (

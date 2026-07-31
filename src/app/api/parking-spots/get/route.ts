@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
     const { data, error } = await supabase
-      .from("user_parking_spots" as any)
+      .from("user_parking_spots")
       .select("*")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });

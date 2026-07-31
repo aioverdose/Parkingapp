@@ -124,6 +124,8 @@ export interface Database {
           schedule_arrival: string | null;
           schedule_departure: string | null;
           schedule_days: number[] | null;
+          match_credits: number;
+          notification_prefs: { [key: string]: boolean };
         };
         Insert: {
           id?: string;
@@ -143,6 +145,8 @@ export interface Database {
           schedule_arrival?: string | null;
           schedule_departure?: string | null;
           schedule_days?: number[] | null;
+          match_credits?: number;
+          notification_prefs?: { [key: string]: boolean };
         };
         Update: {
           id?: string;
@@ -162,6 +166,8 @@ export interface Database {
           schedule_arrival?: string | null;
           schedule_departure?: string | null;
           schedule_days?: number[] | null;
+          match_credits?: number;
+          notification_prefs?: { [key: string]: boolean };
         };
         Relationships: [];
       };
@@ -819,6 +825,532 @@ export interface Database {
         };
         Relationships: [];
       };
+      credit_purchases: {
+        Row: {
+          id: string;
+          user_id: string;
+          quantity: number;
+          unit_price: number;
+          total_cents: number;
+          stripe_session_id: string | null;
+          stripe_payment_intent_id: string | null;
+          status: string;
+          created_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          quantity: number;
+          unit_price: number;
+          total_cents: number;
+          stripe_session_id?: string | null;
+          stripe_payment_intent_id?: string | null;
+          status?: string;
+          created_at?: string;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          quantity?: number;
+          unit_price?: number;
+          total_cents?: number;
+          stripe_session_id?: string | null;
+          stripe_payment_intent_id?: string | null;
+          status?: string;
+          created_at?: string;
+          completed_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "credit_purchases_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      device_push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth_key: string;
+          user_agent: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth_key: string;
+          user_agent?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth_key?: string;
+          user_agent?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      car_locations: {
+        Row: {
+          id: string;
+          user_id: string;
+          latitude: number;
+          longitude: number;
+          parked_at: string;
+          status: string;
+          walking_eta_seconds: number | null;
+          walking_back_detected_at: string | null;
+          departed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          latitude: number;
+          longitude: number;
+          parked_at?: string;
+          status?: string;
+          walking_eta_seconds?: number | null;
+          walking_back_detected_at?: string | null;
+          departed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          latitude?: number;
+          longitude?: number;
+          parked_at?: string;
+          status?: string;
+          walking_eta_seconds?: number | null;
+          walking_back_detected_at?: string | null;
+          departed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "car_locations_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_parking_spots: {
+        Row: {
+          id: string;
+          user_id: string;
+          label: string;
+          latitude: number;
+          longitude: number;
+          address: string | null;
+          accuracy: number | null;
+          saved_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          label?: string;
+          latitude: number;
+          longitude: number;
+          address?: string | null;
+          accuracy?: number | null;
+          saved_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          label?: string;
+          latitude?: number;
+          longitude?: number;
+          address?: string | null;
+          accuracy?: number | null;
+          saved_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      recurring_schedules: {
+        Row: {
+          id: string;
+          user_id: string;
+          saved_spot_id: string | null;
+          latitude: number;
+          longitude: number;
+          label: string | null;
+          days_of_week: number[];
+          departure_time: string;
+          return_time: string;
+          vehicle_type: string | null;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          saved_spot_id?: string | null;
+          latitude: number;
+          longitude: number;
+          label?: string | null;
+          days_of_week?: number[];
+          departure_time: string;
+          return_time: string;
+          vehicle_type?: string | null;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          saved_spot_id?: string | null;
+          latitude?: number;
+          longitude?: number;
+          label?: string | null;
+          days_of_week?: number[];
+          departure_time?: string;
+          return_time?: string;
+          vehicle_type?: string | null;
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      pilot_areas: {
+        Row: {
+          id: string;
+          name: string;
+          min_lat: number;
+          max_lat: number;
+          min_lng: number;
+          max_lng: number;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          min_lat: number;
+          max_lat: number;
+          min_lng: number;
+          max_lng: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          min_lat?: number;
+          max_lat?: number;
+          min_lng?: number;
+          max_lng?: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      street_sweeping: {
+        Row: {
+          id: string;
+          street_name: string;
+          city: string;
+          day_of_week: string;
+          time_start: string;
+          time_end: string;
+          zone: string;
+          holiday_exemptions: string[];
+        };
+        Insert: {
+          id?: string;
+          street_name: string;
+          city?: string;
+          day_of_week: string;
+          time_start: string;
+          time_end: string;
+          zone?: string;
+          holiday_exemptions?: string[];
+        };
+        Update: {
+          id?: string;
+          street_name?: string;
+          city?: string;
+          day_of_week?: string;
+          time_start?: string;
+          time_end?: string;
+          zone?: string;
+          holiday_exemptions?: string[];
+        };
+        Relationships: [];
+      };
+      street_sweeping_alerts: {
+        Row: {
+          id: string;
+          user_id: string;
+          street_name: string;
+          alert_time: string;
+          notified: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          street_name: string;
+          alert_time: string;
+          notified?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          street_name?: string;
+          alert_time?: string;
+          notified?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      spot_flags: {
+        Row: {
+          id: string;
+          spot_id: string;
+          flagged_by_user_id: string;
+          flag_type: "wrong_location" | "fake_spot" | "rude_user" | "dangerous_behavior" | "other";
+          comment: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          spot_id: string;
+          flagged_by_user_id: string;
+          flag_type: "wrong_location" | "fake_spot" | "rude_user" | "dangerous_behavior" | "other";
+          comment?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          spot_id?: string;
+          flagged_by_user_id?: string;
+          flag_type?: "wrong_location" | "fake_spot" | "rude_user" | "dangerous_behavior" | "other";
+          comment?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      spot_waitlist: {
+        Row: {
+          id: string;
+          user_id: string;
+          latitude: number;
+          longitude: number;
+          radius_meters: number;
+          vehicle_type: string | null;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          latitude: number;
+          longitude: number;
+          radius_meters?: number;
+          vehicle_type?: string | null;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          latitude?: number;
+          longitude?: number;
+          radius_meters?: number;
+          vehicle_type?: string | null;
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_ratings: {
+        Row: {
+          id: string;
+          rated_by_user_id: string;
+          rated_user_id: string;
+          rating: number;
+          comment: string;
+          spot_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          rated_by_user_id: string;
+          rated_user_id: string;
+          rating: number;
+          comment?: string;
+          spot_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          rated_by_user_id?: string;
+          rated_user_id?: string;
+          rating?: number;
+          comment?: string;
+          spot_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      congestion_alerts: {
+        Row: {
+          id: string;
+          neighborhood: string;
+          alert_count: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          neighborhood: string;
+          alert_count?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          neighborhood?: string;
+          alert_count?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      ad_analytics: {
+        Row: {
+          id: string;
+          ad_id: string;
+          user_id: string | null;
+          event_type: "impression" | "click";
+          location_lat: number | null;
+          location_lng: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ad_id: string;
+          user_id?: string | null;
+          event_type: "impression" | "click";
+          location_lat?: number | null;
+          location_lng?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          ad_id?: string;
+          user_id?: string | null;
+          event_type?: "impression" | "click";
+          location_lat?: number | null;
+          location_lng?: number | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      spot_predictions: {
+        Row: {
+          id: string;
+          predicted_lat: number;
+          predicted_lng: number;
+          predicted_time: string;
+          neighborhood: string | null;
+          sent_to_user_id: string | null;
+          converted: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          predicted_lat: number;
+          predicted_lng: number;
+          predicted_time: string;
+          neighborhood?: string | null;
+          sent_to_user_id?: string | null;
+          converted?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          predicted_lat?: number;
+          predicted_lng?: number;
+          predicted_time?: string;
+          neighborhood?: string | null;
+          sent_to_user_id?: string | null;
+          converted?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      invite_conversions: {
+        Row: {
+          id: string;
+          inviter_id: string;
+          invitee_phone: string | null;
+          invited_via: "sms" | "share";
+          converted: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          inviter_id: string;
+          invitee_phone?: string | null;
+          invited_via?: "sms" | "share";
+          converted?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          inviter_id?: string;
+          invitee_phone?: string | null;
+          invited_via?: "sms" | "share";
+          converted?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_blocks: {
+        Row: {
+          id: string;
+          blocker_id: string;
+          blocked_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          blocker_id: string;
+          blocked_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          blocker_id?: string;
+          blocked_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_: string]: {
@@ -827,6 +1359,10 @@ export interface Database {
       };
     };
     Functions: {
+      deduct_match_credit: {
+        Args: { p_user_id: string };
+        Returns: unknown;
+      };
       cleanup_ephemeral_chats: {
         Args: Record<string, never>;
         Returns: unknown;
@@ -842,6 +1378,18 @@ export interface Database {
       ensure_user_exists: {
         Args: { p_user_id: string };
         Returns: unknown;
+      };
+      recalc_average_rating: {
+        Args: { rated_user_id: string };
+        Returns: unknown;
+      };
+      progress_quest: {
+        Args: { p_user_id: string; p_action_type: string };
+        Returns: unknown;
+      };
+      is_user_blocked: {
+        Args: { check_user_id: string; by_user_id: string };
+        Returns: boolean;
       };
       phone_otps: {
         Row: {
@@ -883,7 +1431,14 @@ export interface Database {
       };
     };
     Enums: {
-      [_: string]: never;
+      parking_spot_status: "active" | "taken" | "expired";
+      relay_mode: "imminent" | "scheduled";
+      match_status: "pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired";
+      chat_status: "active" | "completed" | "expired";
+      user_role: "user" | "admin";
+      flag_type: "wrong_location" | "fake_spot" | "rude_user" | "dangerous_behavior" | "other";
+      ad_event_type: "impression" | "click";
+      invite_method: "sms" | "share";
     };
   };
 }

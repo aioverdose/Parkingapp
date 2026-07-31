@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
-    const { data: sweeping } = await (supabase as any)
+    const { data: sweeping } = await supabase
       .from("street_sweeping")
       .select("*")
       .eq("street_name", street)

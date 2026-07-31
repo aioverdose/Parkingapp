@@ -13,7 +13,9 @@ import { EtaTester } from "./EtaTester";
 import { GeofenceTester } from "./GeofenceTester";
 import { ScenarioRunner } from "./ScenarioRunner";
 import { MatchScenario } from "./MatchScenario";
-import { Map, Route, Gauge, Radar, MapPin, Fence, Play, RotateCcw, AlertTriangle, ChevronDown, Navigation } from "lucide-react";
+import { AiTestRunner } from "./AiTestRunner";
+import { VirtualEnvironmentSandbox } from "./VirtualEnvironment";
+import { Map, Route, Gauge, Radar, MapPin, Fence, Play, RotateCcw, AlertTriangle, ChevronDown, Navigation, Brain, Target } from "lucide-react";
 
 const PANELS: { key: TestingPanel; label: string; icon: React.ReactNode; phase: 1 | 2 }[] = [
   { key: "gps", label: "GPS Simulator", icon: <Map size={16} />, phase: 1 },
@@ -24,6 +26,8 @@ const PANELS: { key: TestingPanel; label: string; icon: React.ReactNode; phase: 
   { key: "geofence", label: "Geofence Tester", icon: <Fence size={16} />, phase: 2 },
   { key: "scenarios", label: "Scenario Runner", icon: <Play size={16} />, phase: 2 },
   { key: "match", label: "Match Scenario", icon: <Navigation size={16} />, phase: 2 },
+  { key: "ai-test", label: "AI Test", icon: <Brain size={16} />, phase: 2 },
+  { key: "venv", label: "Virtual Env", icon: <Target size={16} />, phase: 2 },
 ];
 
 export function TestSuiteTab() {
@@ -134,6 +138,8 @@ export function TestSuiteTab() {
         {activePanel === "geofence" && <GeofenceTester device={getDevice()} />}
         {activePanel === "scenarios" && <ScenarioRunner device={getDevice()} />}
         {activePanel === "match" && <MatchScenario />}
+        {activePanel === "ai-test" && <AiTestRunner />}
+        {activePanel === "venv" && <VirtualEnvironmentSandbox />}
       </div>
     </div>
   );

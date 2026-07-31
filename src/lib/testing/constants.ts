@@ -17,8 +17,6 @@ export const AUTO_BROADCAST_INTERVAL_MS = 1000;
 
 export const PARKING_DETECTION_WINDOW = 30; // seconds of slow speed to confirm parking
 
-export const DEFAULT_MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
-
 export const TEST_BANNER_BG = "bg-amber-500";
 
 export const OSRM_BASE_URL = "http://localhost:5000";

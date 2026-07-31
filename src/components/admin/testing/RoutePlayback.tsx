@@ -8,6 +8,7 @@ import { TEST_ROUTES } from "@/lib/testing/testRoutes";
 import { parseGpx, waypointsToGeoJson } from "@/lib/testing/gpxParser";
 import { LONG_BEACH_CENTER } from "@/lib/testing/constants";
 import type { SimulatedPosition, RouteWaypoint, PlaybackState } from "@/lib/testing/types";
+import { MAP_STYLE_URL } from "@/lib/map";
 import { Route, Play, Pause, Square, SkipForward, SkipBack, Upload, ChevronDown } from "lucide-react";
 
 interface Props {
@@ -289,7 +290,7 @@ export function RoutePlayback({ device, onPositionUpdate }: Props) {
           {...viewState}
           onMove={(e) => setViewState(e.viewState)}
           style={{ width: "100%", height: "100%" }}
-          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          mapStyle={MAP_STYLE_URL}
         >
           <NavigationControl position="top-right" />
           {lineGeoJson && (

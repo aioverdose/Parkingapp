@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const spotLabel = label || "Current Spot";
 
     const { data: existing } = await (supabase
-      .from("user_parking_spots" as any)
+      .from("user_parking_spots")
       .select("id")
       .eq("user_id", user.id)
       .eq("label", spotLabel)
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       const { data, error } = await supabase
-        .from("user_parking_spots" as any)
+        .from("user_parking_spots")
         .update({
           latitude,
           longitude,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from("user_parking_spots" as any)
+      .from("user_parking_spots")
       .insert({
         user_id: user.id,
         label: spotLabel,

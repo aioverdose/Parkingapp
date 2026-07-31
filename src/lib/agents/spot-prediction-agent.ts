@@ -73,7 +73,7 @@ export async function runSpotPrediction() {
   let savedPredictions = 0;
 
   for (const pred of predictions) {
-    await supabase.from("spot_predictions" as any).insert({
+    await supabase.from("spot_predictions").insert({
       predicted_lat: pred.lat,
       predicted_lng: pred.lng,
       predicted_time: new Date(now.getFullYear(), now.getMonth(), now.getDate(), pred.hour).toISOString(),

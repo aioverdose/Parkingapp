@@ -3,7 +3,7 @@ export async function checkPilotArea(lat: number, lng: number): Promise<{ allowe
     const { createAdminClient } = await import("@/lib/supabaseAdmin");
     const supabase = createAdminClient();
 
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("pilot_areas")
       .select("*")
       .eq("active", true)
@@ -28,7 +28,7 @@ export async function getPilotArea(): Promise<{ name: string; minLat: number; ma
     const { createAdminClient } = await import("@/lib/supabaseAdmin");
     const supabase = createAdminClient();
 
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("pilot_areas")
       .select("*")
       .eq("active", true)

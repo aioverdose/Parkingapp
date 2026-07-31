@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("spot_flags")
       .insert({
         spot_id,
@@ -45,14 +45,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Increment flag_count on the spot
-    const { data: currentSpot } = await (supabase as any)
+    const { data: currentSpot } = await supabase
       .from("parking_spots")
       .select("flag_count")
       .eq("id", spot_id)
       .single();
 
     const newCount = (currentSpot?.flag_count ?? 0) + 1;
-    await (supabase as any)
+    await supabase
       .from("parking_spots")
       .update({ flag_count: newCount })
       .eq("id", spot_id);

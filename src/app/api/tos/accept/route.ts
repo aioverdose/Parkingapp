@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       update.safety_acknowledged_at = new Date().toISOString();
     }
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("users")
       .update(update)
       .eq("id", user.id);

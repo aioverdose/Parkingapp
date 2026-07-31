@@ -36,7 +36,7 @@ export async function requestOtp(phone: string, userId: string) {
   const code = generateOtp();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  await (supabase as any)
+  await supabase
     .from("phone_otps")
     .insert({
       user_id: userId,
@@ -57,7 +57,7 @@ export async function verifyOtp(phone: string, code: string, userId: string) {
   const supabase = createAdminClient();
   const cleanPhone = sanitizePhone(phone);
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("phone_otps")
     .select("*")
     .eq("user_id", userId)
@@ -71,7 +71,7 @@ export async function verifyOtp(phone: string, code: string, userId: string) {
 
   if (error || !data) {
     // Check if code exists but expired
-    const { data: expired } = await (supabase as any)
+    const { data: expired } = await supabase
       .from("phone_otps")
       .select("expires_at")
       .eq("user_id", userId)
@@ -88,12 +88,12 @@ export async function verifyOtp(phone: string, code: string, userId: string) {
     throw new Error("Invalid verification code.");
   }
 
-  await (supabase as any)
+  await supabase
     .from("phone_otps")
     .update({ used: true })
     .eq("id", data.id);
 
-  await (supabase as any)
+  await supabase
     .from("users")
     .update({
       phone_number: cleanPhone,

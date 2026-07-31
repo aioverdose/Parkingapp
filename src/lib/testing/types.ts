@@ -57,7 +57,7 @@ export interface TestScenarioResult {
 
 export type DeviceStatus = "driving" | "parked" | "idle" | "offline";
 
-export type TestingPanel = "gps" | "routes" | "parking" | "tracking" | "eta" | "geofence" | "scenarios" | "match";
+export type TestingPanel = "gps" | "routes" | "parking" | "tracking" | "eta" | "geofence" | "scenarios" | "match" | "ai-test" | "venv";
 
 export interface PlaybackState {
   playing: boolean;

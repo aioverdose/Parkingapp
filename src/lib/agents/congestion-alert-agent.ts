@@ -36,7 +36,7 @@ export async function runCongestionCheck() {
   if (tightZones.length === 0) return { tight_zones: [] };
 
   for (const zone of tightZones) {
-    await (supabase.from("congestion_alerts" as any) as any).insert({
+    await supabase.from("congestion_alerts").insert({
       neighborhood: zone.neighborhood,
       alert_count: zone.count,
     });

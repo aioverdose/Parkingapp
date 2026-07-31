@@ -17,14 +17,13 @@ import {
   ChevronRight,
   Wifi,
 } from "lucide-react";
+import { MAP_STYLE_URL } from "@/lib/map";
 
 const BELMONT_SHORE = {
   latitude: 33.7692,
   longitude: -118.0943,
   zoom: 14,
 };
-
-const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 interface DriverLocation {
   id: string;
@@ -297,7 +296,7 @@ export default function ControlTowerPage() {
             ref={mapRef}
             {...viewState}
             onMove={(evt) => setViewState(evt.viewState)}
-            mapStyle={MAP_STYLE}
+            mapStyle={MAP_STYLE_URL}
             style={{ width: "100%", height: "100%" }}
             reuseMaps
           >

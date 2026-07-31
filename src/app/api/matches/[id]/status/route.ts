@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
+import { sendPushToUser } from "@/lib/push";
 
 export async function POST(
   request: NextRequest,
@@ -99,6 +100,13 @@ export async function POST(
         title: "Driver arrived",
         message: "The matched driver has arrived at your spot.",
         type: "match",
+      });
+
+      sendPushToUser(match.spot_owner_id, {
+        type: "partner_arrived",
+        title: "They have arrived!",
+        body: "The driver has arrived at your parking spot. You can now leave.",
+        match_id: id,
       });
     }
 
