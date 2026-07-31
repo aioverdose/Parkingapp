@@ -1,8 +1,35 @@
 import Stripe from "stripe";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-07-29.dahlia",
-});
+let lazyStripe: Stripe | null = null;
+
+function getKey(): string {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("Stripe not configured");
+  return key;
+}
+
+export function getStripe(): Stripe {
+  if (!lazyStripe) {
+    lazyStripe = new Stripe(getKey(), { apiVersion: "2026-07-29.dahlia" });
+  }
+  return lazyStripe;
+}
+
+function createLazyProxy(): Stripe {
+  const handler: ProxyHandler<Stripe> = {
+    get(_target, prop) {
+      const s = getStripe();
+      const value = (s as unknown as Record<string | symbol, unknown>)[prop];
+      if (typeof value === "function") {
+        return value.bind(s);
+      }
+      return value;
+    },
+  };
+  return new Proxy({} as Stripe, handler);
+}
+
+export const stripe = createLazyProxy();
 
 const CREDIT_PRICE_CENTS = 599; // $5.99 per match credit
 
