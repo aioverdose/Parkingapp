@@ -20,6 +20,11 @@ export default function InvitePage() {
   const [invites, setInvites] = useState<InviteRecord[]>([]);
   const [copied, setCopied] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -38,7 +43,7 @@ export default function InvitePage() {
     });
   }, [router, supabase]);
 
-  const shareLink = `${window.location.origin}?ref=${userId}`;
+  const shareLink = origin ? `${origin}?ref=${userId}` : "";
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -108,10 +113,12 @@ export default function InvitePage() {
             </button>
           </div>
 
-          <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 flex items-center justify-between">
-            <code className="text-xs text-zinc-500 truncate max-w-[80%]">{shareLink}</code>
-            {copied && <span className="text-[10px] text-emerald-600 font-medium">Copied!</span>}
-          </div>
+          {shareLink && (
+            <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 flex items-center justify-between">
+              <code className="text-xs text-zinc-500 truncate max-w-[80%]">{shareLink}</code>
+              {copied && <span className="text-[10px] text-emerald-600 font-medium">Copied!</span>}
+            </div>
+          )}
 
           {shareError && <p className="text-red-500 text-xs mt-2">{shareError}</p>}
         </div>
