@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { LayoutDashboard, Megaphone, Users, AlertTriangle, Globe, Truck, ArrowLeft, Radar, FlaskConical, Bell, GitCompare } from "lucide-react";
+import { LayoutDashboard, Megaphone, Users, AlertTriangle, Globe, Truck, ArrowLeft, Radar, FlaskConical, Bell, GitCompare, Share2 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createBrowserClient();
@@ -78,6 +78,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <a href="/admin/broadcast" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
           <Bell size={18} /> Broadcast
         </a>
+        <a href="/marketing" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+          <Share2 size={18} /> Marketing
+        </a>
         <div className="flex-1" />
         <a href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
           <ArrowLeft size={18} /> Back to App
@@ -96,6 +99,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <a href="/admin/street-sweeping" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Truck size={20} />Sweeping</a>
         <a href="/admin/potential-matches" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><GitCompare size={20} />Matches</a>
         <a href="/admin/broadcast" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Bell size={20} />Broadcast</a>
+        <a href="/marketing" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Share2 size={20} />Marketing</a>
         <a href="/" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><ArrowLeft size={20} />App</a>
       </div>
 

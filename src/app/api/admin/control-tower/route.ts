@@ -101,14 +101,14 @@ export async function GET(request: NextRequest) {
 
     const uniqueUserIds = [...latestUserLocs.keys()].filter((id) => !matchUserIds.has(id));
 
-    let userProfileMap = new Map<string, { name: string | null; email: string | null }>();
+    let userProfileMap = new Map<string, { name: string | null; email: string | null; device_id: string | null }>();
     if (uniqueUserIds.length > 0) {
       const { data: profiles } = await supabase
         .from("users")
-        .select("id, name, email")
+        .select("id, name, email, device_id")
         .in("id", uniqueUserIds);
       for (const p of profiles ?? []) {
-        userProfileMap.set(p.id, { name: p.name, email: p.email });
+        userProfileMap.set(p.id, { name: p.name, email: p.email, device_id: p.device_id });
       }
     }
 
@@ -119,6 +119,7 @@ export async function GET(request: NextRequest) {
         ...loc,
         user_name: profile?.name || null,
         user_email: profile?.email || null,
+        device_id: profile?.device_id || null,
       };
     });
 

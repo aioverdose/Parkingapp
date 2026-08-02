@@ -16,7 +16,7 @@ import { CreditBalance } from "@/components/CreditBalance";
 import {
   ArrowLeft, MapPin, Clock, Star, TrendingUp, CheckCircle2,
   BookOpen, Settings, GraduationCap, Loader2, Trash2, Award,
-  User as UserIcon, AlertCircle, Plus, LogOut, Shield,
+  User as UserIcon, AlertCircle, Plus, LogOut, Shield, Handshake,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -67,6 +67,8 @@ export default function ProfilePage() {
   const [scheduleReturnAmPm, setScheduleReturnAmPm] = useState("PM");
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleMatching, setScheduleMatching] = useState(false);
+  const [scheduleMatchMessage, setScheduleMatchMessage] = useState<string | null>(null);
 
   // Map state
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
@@ -227,6 +229,32 @@ export default function ProfilePage() {
     if (!token) return;
     await fetch(`/api/schedules?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     setSchedules((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const handleRunScheduleMatch = async () => {
+    if (scheduleMatching) return;
+    setScheduleMatching(true);
+    setScheduleMatchMessage(null);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) { setScheduleMatchMessage("Not authenticated"); return; }
+      const res = await fetch("/api/matches/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setScheduleMatchMessage(data.error || "Failed to run schedule matching.");
+      } else if (data.matches_created > 0) {
+        setScheduleMatchMessage(`Handoff matched! ${data.matches_created} driver${data.matches_created === 1 ? "" : "s"} notified to confirm.`);
+      } else {
+        setScheduleMatchMessage("No matching handoff found right now. Try again later or add more schedule detail.");
+      }
+    } catch {
+      setScheduleMatchMessage("Failed to run schedule matching.");
+    } finally {
+      setScheduleMatching(false);
+    }
   };
 
   const formatTime12h = (time24: string) => {
@@ -750,6 +778,31 @@ export default function ProfilePage() {
               </p>
             </div>
           ))}
+
+          {schedules.length > 0 && (
+            <div className="mt-3">
+              <button
+                onClick={handleRunScheduleMatch}
+                disabled={scheduleMatching}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white text-sm font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {scheduleMatching ? <Loader2 className="animate-spin" size={16} /> : <Handshake size={16} />}
+                {scheduleMatching ? "Matching Drivers..." : "Run Handoff Matching"}
+              </button>
+              <p className="text-[10px] text-zinc-400 text-center mt-1.5">
+                Air-traffic-control style: pairs your departure with drivers arriving in your area.
+              </p>
+              {scheduleMatchMessage && (
+                <p className={`text-xs mt-2 px-3 py-2 rounded-xl text-center font-bold ${
+                  scheduleMatchMessage.startsWith("Handoff matched")
+                    ? "bg-green-50 dark:bg-green-900/20 text-green-700"
+                    : "bg-amber-50 dark:bg-amber-900/20 text-amber-700"
+                }`}>
+                  {scheduleMatchMessage}
+                </p>
+              )}
+            </div>
+          )}
 
           {showScheduleForm && (
             <div className="mt-2 space-y-3">

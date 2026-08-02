@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { latitude, longitude, heading, speed, accuracy } = body;
+    const { latitude, longitude, heading, speed, accuracy, device_id } = body;
 
     if (typeof latitude !== "number" || typeof longitude !== "number") {
       return NextResponse.json(
@@ -34,6 +34,9 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
     await supabase.rpc("ensure_user_exists", { p_user_id: user.id });
+    if (device_id && typeof device_id === "string" && device_id.length <= 200) {
+      await supabase.from("users").update({ device_id }).eq("id", user.id);
+    }
     const { error } = await supabase.from("driver_locations").insert({
       user_id: user.id,
       match_id: null,

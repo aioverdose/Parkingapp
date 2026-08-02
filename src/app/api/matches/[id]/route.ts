@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { data: match, error } = await supabase
       .from("spot_matches")
-      .select("*, spot:spot_id(*), spot_owner:spot_owner_id(id, name, email), seeker:seeker_id(id, name, email)")
+      .select("*, spot:spot_id(*), spot_owner:spot_owner_id(id, name, email, vehicle_type), seeker:seeker_id(id, name, email, vehicle_type)")
       .eq("id", id)
       .single();
 

@@ -40,6 +40,7 @@ interface DriverLocation {
 interface UserLocation extends DriverLocation {
   user_name: string | null;
   user_email: string | null;
+  device_id: string | null;
 }
 
 interface ActiveSession {
@@ -193,7 +194,7 @@ export default function ControlTowerPage() {
             setUserLocations((prev) => {
               const existing = prev.find((u) => u.user_id === loc.user_id);
               const filtered = prev.filter((u) => u.user_id !== loc.user_id);
-              return [{ ...loc, user_name: existing?.user_name ?? null, user_email: existing?.user_email ?? null }, ...filtered];
+              return [{ ...loc, user_name: existing?.user_name ?? null, user_email: existing?.user_email ?? null, device_id: existing?.device_id ?? null }, ...filtered];
             });
           }
         },
@@ -474,6 +475,11 @@ export default function ControlTowerPage() {
                   {selectedUser.user_email && (
                     <p className="text-xs text-zinc-500">{selectedUser.user_email}</p>
                   )}
+                  {selectedUser.device_id && (
+                    <p className="text-xs text-zinc-500 truncate" title={selectedUser.device_id}>
+                      Device: {selectedUser.device_id}
+                    </p>
+                  )}
                   <p className="text-xs text-zinc-400">
                     Last ping: {timeAgo(selectedUser.recorded_at)}
                   </p>
@@ -618,6 +624,11 @@ export default function ControlTowerPage() {
                             <span>{Math.round(userLoc.speed * 2.237)} mph</span>
                           )}
                         </div>
+                        {userLoc.device_id && (
+                          <p className="mt-0.5 text-[10px] text-zinc-400 truncate pl-4" title={userLoc.device_id}>
+                            {userLoc.device_id}
+                          </p>
+                        )}
                       </button>
                     ))}
                   </div>

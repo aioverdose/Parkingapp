@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { createBrowserClient } from "@/lib/supabaseClient";
+import { getDeviceId } from "@/lib/device";
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -78,7 +79,14 @@ export function usePresencePing(enabled: boolean = true, intervalMs: number = 10
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ latitude: lat, longitude: lng, heading, speed, accuracy }),
+          body: JSON.stringify({
+            latitude: lat,
+            longitude: lng,
+            heading,
+            speed,
+            accuracy,
+            device_id: getDeviceId(),
+          }),
         });
 
         checkGeofencesRef.current(token, lat, lng);

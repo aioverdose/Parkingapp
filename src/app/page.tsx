@@ -20,6 +20,12 @@ export default function Home() {
 
           <div className="hidden sm:flex items-center gap-6">
             <a
+              href="/marketing"
+              className="text-sm font-medium text-zinc-500 hover:text-blue-600 transition-colors"
+            >
+              The Parking Problem
+            </a>
+            <a
               href="/support"
               className="text-sm font-medium text-zinc-500 hover:text-blue-600 transition-colors"
             >

@@ -79,6 +79,14 @@ self.addEventListener("push", (event) => {
     options.actions = [
       { action: "view", title: "View Match" },
     ];
+  } else if (data.type === "driver_approaching" || data.type === "driver_arriving") {
+    options.actions = [
+      { action: "view", title: "Watch Driver" },
+    ];
+  } else if (data.type === "spot_ready") {
+    options.actions = [
+      { action: "view", title: "Park Now" },
+    ];
   }
 
   event.waitUntil(self.registration.showNotification(title, options));

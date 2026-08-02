@@ -126,6 +126,7 @@ export interface Database {
           schedule_days: number[] | null;
           match_credits: number;
           notification_prefs: { [key: string]: boolean };
+          device_id: string | null;
         };
         Insert: {
           id?: string;
@@ -147,6 +148,7 @@ export interface Database {
           schedule_days?: number[] | null;
           match_credits?: number;
           notification_prefs?: { [key: string]: boolean };
+          device_id?: string | null;
         };
         Update: {
           id?: string;
@@ -168,6 +170,7 @@ export interface Database {
           schedule_days?: number[] | null;
           match_credits?: number;
           notification_prefs?: { [key: string]: boolean };
+          device_id?: string | null;
         };
         Relationships: [];
       };

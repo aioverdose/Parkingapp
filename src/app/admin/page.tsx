@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import {
   Megaphone, Users, MapPin, TrendingUp, MousePointerClick, Eye, Percent,
-  Bell, BarChart3, Target, Send, Activity, Search, Clock,
+  Bell, BarChart3, Target, Send, Activity, Search, Clock, Share2, ArrowUpRight,
 } from "lucide-react";
 
 interface AdMetrics {
@@ -177,6 +177,28 @@ export default function AdminDashboard() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+
+      <a
+        href="/marketing"
+        className="group block mb-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-lg shadow-blue-600/20"
+      >
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+              <Share2 size={24} />
+            </div>
+            <div>
+              <p className="font-black text-lg">Marketing Pages</p>
+              <p className="text-sm text-blue-100">
+                The parking problem in Belmont Shore, our solution, and how it works — live at /marketing
+              </p>
+            </div>
+          </div>
+          <span className="flex items-center gap-1 text-sm font-semibold bg-white/15 rounded-full px-4 py-2 group-hover:bg-white/25 transition">
+            View marketing <ArrowUpRight size={16} />
+          </span>
+        </div>
+      </a>
 
       {/* Main Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
