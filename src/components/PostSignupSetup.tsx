@@ -186,7 +186,7 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
                 <Phone size={32} className="text-blue-600" />
               </div>
               <h2 className="text-xl font-bold">Verify Your Phone</h2>
-              <p className="text-sm text-zinc-500">Required to post parking spots and receive match notifications.</p>
+              <p className="text-sm text-zinc-500">Required to share parking spots and receive match notifications.</p>
             </div>
 
             {phoneVerified ? (

@@ -305,7 +305,6 @@ export default function SettingsPage() {
             {[
               { key: "match", label: "Match requests & updates" },
               { key: "claim", label: "Spot claimed notifications" },
-              { key: "tip", label: "Tip received" },
               { key: "agent", label: "AI alerts (congestion, predictions)" },
               { key: "waitlist", label: "Waitlist spot available" },
               { key: "promotional", label: "Promotional & feature updates" },

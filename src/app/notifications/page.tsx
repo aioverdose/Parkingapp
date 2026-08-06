@@ -94,8 +94,6 @@ export default function NotificationsPage() {
                     ? "bg-green-100 dark:bg-green-900/30 text-green-600"
                     : n.type === "chat"
                     ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600"
-                    : n.type === "tip"
-                    ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600"
                     : "bg-blue-100 dark:bg-blue-900/30 text-blue-600"
                 }`}>
                   <Bell size={20} />

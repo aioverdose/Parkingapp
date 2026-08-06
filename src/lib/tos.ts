@@ -1,12 +1,12 @@
-export const TOS_VERSION = "1.1";
+export const TOS_VERSION = "1.2";
 
-export const TOS_CONTENT = `TERMS OF SERVICE — SPOTMATCH (v1.1)
+export const TOS_CONTENT = `TERMS OF SERVICE — SPOTMATCH (v1.2)
 
 1. Acceptance
 By accessing or using ParkingMeeters, you agree to these Terms. If you do not agree, do not use the app.
 
 2. No Street Parking Violations
-You must not use this app to violate any local laws, ordinances, or parking regulations. This app is for community coordination only and does not authorize illegal parking, spot occupation, or waiting on sidewalks. Public street parking spaces cannot be bought, sold, or reserved. Violation may result in immediate account termination.
+You must not use this app to violate any local laws, ordinances, or parking regulations. This app is for community coordination only and does not authorize illegal parking, spot occupation, or waiting on sidewalks. Public street parking spaces cannot be bought, sold, rented, or reserved. ParkingMeeters does not buy, sell, rent, lease, or own any parking spot. If a fee is charged, it is solely for access to ParkingMeeters' arrival/departure detection and matching technology — never for any parking spot, space, right, or reservation. Violation may result in immediate account termination.
 
 3. No Handoff Payments or Tips
 You may not offer, request, or accept money, tips, gifts, or compensation for parking spot handoffs. All handoffs are voluntary and non-commercial. Violation may result in immediate account termination.

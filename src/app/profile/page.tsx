@@ -620,7 +620,7 @@ export default function ProfilePage() {
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl text-center">
                 <MapPin size={20} className="mx-auto text-blue-600 mb-1" />
                 <p className="text-2xl font-bold">{stats.spots_posted}</p>
-                <p className="text-[10px] text-zinc-500">Posted</p>
+                <p className="text-[10px] text-zinc-500">Shared</p>
               </div>
               <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl text-center">
                 <CheckCircle2 size={20} className="mx-auto text-green-600 mb-1" />
@@ -724,7 +724,7 @@ export default function ProfilePage() {
               <Settings size={22} />
               <span className="text-[11px] font-bold">Settings</span>
             </a>
-            {userData?.role === "admin" && (
+            {(userData?.role === "admin" || userData?.role === "moderator") && (
               <a
                 href="/admin"
                 className="flex flex-col items-center gap-1.5 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition"
@@ -768,7 +768,7 @@ export default function ProfilePage() {
 
           {schedules.length === 0 && !showScheduleForm && (
             <p className="text-xs text-zinc-500 mb-3">
-              No recurring schedules yet. Add one to auto-list your spot at the same time every day.
+              No recurring schedules yet. Add one to auto-share your departure at the same time every day.
             </p>
           )}
 

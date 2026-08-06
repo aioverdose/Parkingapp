@@ -12,7 +12,7 @@ const STEPS: { icon: any; id?: string; title: string; desc: string }[] = [
   {
     icon: Clock,
     title: "Set Your Schedule",
-    desc: "Choose your departure time (when you're leaving) and return time (when you'll be back). Your spot is listed during that window.",
+    desc: "Choose your departure time (when you're leaving) and return time (when you'll be back). Your departure is shared with the matching system during that window.",
   },
   {
     icon: Car,
@@ -38,7 +38,7 @@ const STEPS: { icon: any; id?: string; title: string; desc: string }[] = [
   {
     icon: Bell,
     title: "Get Reminders",
-    desc: "You'll receive a notification when it's time to depart. The spot is then released to the matched driver.",
+    desc: "You'll receive a notification when it's time to depart. The arrival signal is then passed to the matched driver.",
   },
 ];
 

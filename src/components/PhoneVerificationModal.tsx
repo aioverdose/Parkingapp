@@ -137,12 +137,12 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
               <Check size={32} />
             </div>
             <p className="text-lg font-bold text-emerald-600">Phone Verified!</p>
-            <p className="text-sm text-zinc-500 mt-1">You can now post spots</p>
+            <p className="text-sm text-zinc-500 mt-1">You can now share spots</p>
           </div>
         ) : step === "phone" ? (
           <div className="space-y-4">
             <p className="text-sm text-zinc-500">
-              Enter your phone number to verify your identity. Required before posting spots.
+              Enter your phone number to verify your identity. Required before sharing spots.
             </p>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-medium">+1</span>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Loader2, Send, Users } from "lucide-react";
 
 const NOTIFICATION_TYPES = [
-  "broadcast", "match", "claim", "tip", "agent", "waitlist", "promotional", "system",
+  "broadcast", "match", "claim", "agent", "waitlist", "promotional", "system",
 ];
 
 export default function BroadcastPage() {

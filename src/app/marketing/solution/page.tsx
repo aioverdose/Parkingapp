@@ -13,12 +13,12 @@ const FEATURES = [
   {
     icon: CalendarClock,
     title: "Departure & return matching",
-    body: "Set when you'll leave and when you'll be back. The moment you depart, your spot becomes available to a matched driver for exactly that window.",
+    body: "Set when you'll leave and when you'll be back. The moment you depart, our detection sends a live departure signal to a matched driver for exactly that window.",
   },
   {
     icon: RefreshCcw,
-    title: "The spot keeps working",
-    body: "One spot, multiple drivers per day. Commuter out in the morning, lunchtime visitor in the afternoon, evening guest at night — the space never idles.",
+    title: "The signal keeps working",
+    body: "Every departure is a live signal. Commuter out in the morning, lunchtime visitor in the afternoon, evening guest at night — the technology keeps the space in motion.",
   },
   {
     icon: MapPin,
@@ -37,8 +37,8 @@ const FEATURES = [
   },
   {
     icon: Users,
-    title: "A market, not a monopoly",
-    body: "Members help each other. Every departure you publish makes the neighborhood better for the next driver — and earns you reliable parking in return.",
+    title: "A shared network, not a marketplace",
+    body: "Members help each other. Every departure signal you share makes the neighborhood better for the next driver — and gets you more reliable parking in return.",
   },
 ];
 

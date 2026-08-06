@@ -10,8 +10,8 @@ const FAQS = [
     a: "ParkingMeeters is a matching service that connects drivers with compatible parking spots. Set your location, schedule, and vehicle type, and we'll match you with the perfect spot.",
   },
   {
-    q: "How do I list my parking spot?",
-    a: "Tap the map to select your spot location, then set your departure time and return time. The system will match you with drivers looking for a spot during those hours.",
+    q: "How do I share my parking spot?",
+    a: "Tap the map to mark where you're parked, then set your departure time and return time. When you leave, the app notifies drivers whose search matches that window.",
   },
   {
     q: "How does the matching work?",
@@ -23,7 +23,7 @@ const FAQS = [
   },
   {
     q: "How do departure and return times work?",
-    a: "Set when you'll depart and when you'll return. The system shows your spot as available during that window. Matches are based on overlapping availability.",
+    a: "Set when you'll depart and when you'll return. The system uses that window to match arriving drivers. Matches are based on overlapping departure and return windows.",
   },
   {
     q: "Can I cancel a match?",

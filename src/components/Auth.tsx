@@ -203,7 +203,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
           </div>
           <h2 className="text-2xl font-bold">Verify Your Phone</h2>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Required before posting spots
+            Required before sharing spots
           </p>
         </div>
 
@@ -213,7 +213,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
               <Check size={32} />
             </div>
             <p className="text-lg font-bold text-emerald-600">Phone Verified!</p>
-            <p className="text-sm text-zinc-500 mt-1">You can now post spots</p>
+            <p className="text-sm text-zinc-500 mt-1">You can now share spots</p>
           </div>
         ) : verifyStep === "phone" ? (
           <div className="space-y-4">

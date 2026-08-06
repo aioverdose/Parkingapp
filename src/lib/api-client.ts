@@ -33,13 +33,6 @@ export function claimSpot(spotId: string) {
   return apiFetch<{ success: boolean }>(`/api/spots/${spotId}/claim`, { method: "POST" });
 }
 
-export function sendTip(spotId: string, amount: number) {
-  return apiFetch<{ success: boolean; amount: number }>(`/api/spots/${spotId}/tip`, {
-    method: "POST",
-    body: JSON.stringify({ amount }),
-  });
-}
-
 export function createSpot(data: {
   latitude: number;
   longitude: number;

@@ -57,7 +57,7 @@ export function RankingList({ entries }: RankingListProps) {
             </div>
             <div className="flex items-center gap-3 text-xs text-zinc-500 mt-0.5">
               {entry.neighborhood && <span>{entry.neighborhood}</span>}
-              <span>{entry.spots_posted} posted</span>
+              <span>{entry.spots_posted} alerts shared</span>
               <span>{entry.spots_claimed} claimed</span>
             </div>
           </div>

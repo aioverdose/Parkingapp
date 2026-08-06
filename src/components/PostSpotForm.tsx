@@ -211,7 +211,7 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
       onSuccess();
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to post spot.");
+      setError(err instanceof Error ? err.message : "Failed to share spot.");
     } finally {
       setIsSubmitting(false);
     }
@@ -272,7 +272,7 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
         <div className="space-y-2">
           <h2 className="text-xl font-bold">Location Access Required</h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-            To list your parking spot, we need to know where it is.
+            To share your parking spot, we need to know where it is.
           </p>
         </div>
 
@@ -305,7 +305,7 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-xl font-bold">List Your Parking Spot</h2>
+          <h2 className="text-xl font-bold">Share Your Parking Spot</h2>
           <p className="text-xs text-blue-600 font-bold flex items-center gap-1">
             <MapPin size={12} /> {address || "Detecting address..."}
           </p>
@@ -318,7 +318,7 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
         <p className="text-zinc-600 dark:text-zinc-400 text-sm">
           {relayMode === "imminent"
             ? "Set when you'll depart and return. The system will match you with compatible drivers."
-            : "Commit your departure in advance. The system will match you with drivers who need your spot at that time."}
+            : "Commit your departure in advance. The system will match you with drivers arriving at that time."}
         </p>
 
         <div className="flex gap-2">

@@ -13,14 +13,14 @@ const STEPS = [
   {
     step: "01",
     icon: Car,
-    title: "Claim your spot",
-    body: "Tap the map, drop a pin, and tell us your departure time and return time. Your spot is now part of the neighborhood market.",
+    title: "Mark your spot",
+    body: "Tap the map, drop a pin where you're parked, and tell us when you'll leave and when you'll be back. Our arrival and departure detection takes it from there.",
   },
   {
     step: "02",
     icon: CalendarClock,
     title: "Publish your departure",
-    body: "When you leave, the app knows. Your spot quietly becomes available to compatible drivers for the exact window you'll be gone.",
+    body: "When you leave, the app knows. A live departure signal is sent to compatible drivers, matched to the exact window you'll be gone.",
   },
   {
     step: "03",

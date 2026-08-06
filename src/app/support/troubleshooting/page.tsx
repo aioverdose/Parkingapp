@@ -32,7 +32,7 @@ const ISSUES = [
   {
     icon: RefreshCw,
     title: "Match not showing up",
-    desc: "Matches are found automatically after you list your spot. The system runs every few minutes. If no match appears after 10 minutes, try removing and re-listing your spot with slightly adjusted times.",
+    desc: "Matches are found automatically after you share your spot. The system runs every few minutes. If no match appears after 10 minutes, try removing and re-sharing your spot with slightly adjusted times.",
   },
   {
     icon: Smartphone,

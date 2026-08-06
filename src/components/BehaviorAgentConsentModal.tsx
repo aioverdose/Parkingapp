@@ -107,7 +107,7 @@ export function BehaviorAgentConsentModal({
                 <li>Remembers where your car is parked</li>
                 <li>Warns you when you walk back (walking ETA)</li>
                 <li>Auto-confirms handoff steps with an undo option</li>
-                <li>Can auto-post your spot when you drive away (optional)</li>
+                <li>Can auto-share your departure when you drive away (optional)</li>
               </ul>
             </div>
           </div>
@@ -153,7 +153,7 @@ export function BehaviorAgentConsentModal({
             </div>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Auto-post when you leave</p>
+                <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Auto-share when you leave</p>
                 <p className="text-xs text-zinc-500">Post a departure alert automatically when the agent detects you driving away.</p>
               </div>
               <Toggle checked={prefs.autoPost} onChange={onSetAutoPost} />

@@ -89,11 +89,13 @@ export function TOSModal({ onAccept, open, onClose, mode }: TOSModalProps) {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
                 <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
-                  This is a FREE service
+                  No money for spots
                 </p>
                 <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-1">
-                  No payment, no tips, no selling of parking spots. All handoffs
-                  are voluntary and non-commercial.
+                  ParkingMeeters never buys, sells, rents, or leases street parking
+                  spots, and neither may members. Handoffs are voluntary and free.
+                  Any fee you pay is for access to our arrival/departure detection
+                  and matching technology — never for a spot.
                 </p>
               </div>
 
@@ -102,9 +104,10 @@ export function TOSModal({ onAccept, open, onClose, mode }: TOSModalProps) {
                   Selling public parking spaces is ILLEGAL
                 </p>
                 <p className="text-xs text-red-600 dark:text-red-500 mt-1">
-                  Under California law, it is illegal to sell or charge for
-                  public on-street parking spaces. Violators may face fines and
-                  towing.
+                  Under California law, it is illegal to sell, rent, or charge for
+                  public on-street parking spaces. We only sell access to our
+                  matching technology — never a spot, and never a reservation.
+                  Violators may face fines and towing.
                 </p>
               </div>
 
@@ -131,7 +134,7 @@ export function TOSModal({ onAccept, open, onClose, mode }: TOSModalProps) {
                 </p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                   We collect your approximate location to connect you with nearby
-                  posters and seekers. We do not sell your data. Location is
+                  drivers leaving and drivers arriving. We do not sell your data. Location is
                   shared at block-level only during active sessions.
                 </p>
               </div>
@@ -145,8 +148,8 @@ export function TOSModal({ onAccept, open, onClose, mode }: TOSModalProps) {
                   className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                  I agree to the Terms of Service and understand that selling
-                  parking spots is illegal
+                  I agree to the Terms of Service and understand that buying,
+                  selling, or renting parking spots is illegal
                 </span>
               </label>
               <div className="flex gap-2">

@@ -29,7 +29,7 @@ const GUIDELINES = [
 const REPORT_REASONS = [
   "Inappropriate behavior or language",
   "Suspicious or fraudulent activity",
-  "False spot listing",
+  "False or inaccurate departure alert",
   "No-show after confirmed match",
   "Harassment or threats",
   "Vehicle type mismatch",

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, CheckCircle2, DollarSign, X, Clock, Car, MessageSquare, AlertTriangle, UserCircle, Star, CalendarClock } from "lucide-react";
+import { MapPin, Navigation, CheckCircle2, X, Clock, Car, MessageSquare, AlertTriangle, UserCircle, Star, CalendarClock } from "lucide-react";
 import { useLeavingTimer } from "@/hooks/useLeavingTimer";
 import { useExpirationTimer } from "@/hooks/useExpirationTimer";
-import { claimSpot, sendTip } from "@/lib/api-client";
+import { claimSpot } from "@/lib/api-client";
 import { createEphemeralChat } from "@/actions/social";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { AdBanner } from "./AdBanner";
@@ -28,8 +28,6 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
   const { formatted, isExpired } = useLeavingTimer(spot.departure_time);
   const expTimer = useExpirationTimer(spot.expires_at ?? spot.departure_time);
   const [isClaiming, setIsClaiming] = useState(false);
-  const [isTipping, setIsTipping] = useState(false);
-  const [tipAmount, setTipAmount] = useState<number | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -99,22 +97,6 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
       alert("Failed to claim spot. Please try again.");
     } finally {
       setIsClaiming(false);
-    }
-  };
-
-  const handleSendTip = async () => {
-    if (!tipAmount) return;
-    try {
-      const { error } = await sendTip(spot.id, tipAmount);
-      if (error) {
-        alert(error);
-        return;
-      }
-      setIsTipping(false);
-      setTipAmount(null);
-      alert(`Sent $${tipAmount} tip!`);
-    } catch (err) {
-      console.error("Error sending tip:", err);
     }
   };
 
@@ -276,35 +258,6 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
               <AlertTriangle className="mr-1 h-4 w-4" />
               Report
             </Button>
-          )}
-        </div>
-
-        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
-          {!isTipping ? (
-            <Button variant="outline" onClick={() => setIsTipping(true)} className="w-full h-12 text-zinc-600">
-              <DollarSign className="mr-2 h-4 w-4" />
-              Send a Thank You Tip
-            </Button>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm font-bold text-center">Select Tip Amount</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 5].map((amount) => (
-                  <Button
-                    key={amount}
-                    variant={tipAmount === amount ? "default" : "outline"}
-                    onClick={() => setTipAmount(amount)}
-                    className="h-10"
-                  >
-                    ${amount}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsTipping(false)} className="flex-1">Cancel</Button>
-                <Button onClick={handleSendTip} disabled={!tipAmount} className="flex-2 bg-blue-600">Send</Button>
-              </div>
-            </div>
           )}
         </div>
 

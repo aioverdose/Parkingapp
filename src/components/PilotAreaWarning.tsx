@@ -20,7 +20,7 @@ export function PilotAreaWarning({ open, areaName, onRequestAccess }: PilotAreaW
         <h2 className="text-lg font-bold mb-2">Outside Pilot Area</h2>
         <p className="text-sm text-zinc-500 mb-4">
           This app is currently in beta for <span className="font-bold text-zinc-700 dark:text-zinc-300">{areaName}</span> only.
-          You are outside the allowed area and cannot post or search for spots yet.
+          You are outside the allowed area and cannot share or search for spots yet.
         </p>
         <div className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 mb-4">
           <p className="text-xs text-zinc-500 mb-1">Allowed Area:</p>

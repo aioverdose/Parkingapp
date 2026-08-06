@@ -675,7 +675,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
 
     setPostingLeave(false);
     if (data.spot) {
-      setSaveSuccess("Spot posted! Opening in 1 minute.");
+      setSaveSuccess("Alert posted! Opening in 1 minute.");
       setTimeout(() => setSaveSuccess(null), 4000);
 
       fetch(`/api/car-locations/${cl.id}`, {
@@ -1229,13 +1229,14 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
         />
       )}
 
-      {/* Auto-posted spot notice */}
+      {/* Auto-published departure notice */}
       {autoPosted && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
           <Handshake size={16} />
-          Spot auto-posted for your departure
+          Departure alert auto-published
         </div>
       )}
+
 
       {/* Smart Spot Agent consent */}
       <BehaviorAgentConsentModal

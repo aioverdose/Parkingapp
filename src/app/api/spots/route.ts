@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     if (activeSpotCount && activeSpotCount >= 3) {
       return NextResponse.json(
-        { error: "You can have at most 3 active spot listings at a time." },
+        { error: "You can have at most 3 active spot alerts at a time." },
         { status: 429 },
       );
     }

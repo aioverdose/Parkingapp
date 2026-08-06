@@ -73,8 +73,8 @@ export default function ProblemPage() {
         <div>
           <h2 className="text-2xl font-black">Sound familiar? You&apos;re not imagining it.</h2>
           <p className="text-blue-100 mt-2 max-w-xl">
-            Every city block is a miniature supply-and-demand market with no market
-            maker. We&apos;re building the market maker.
+            Every city block has cars leaving and drivers circling for an open
+            space — with nothing connecting the two. We built the connector.
           </p>
         </div>
         <Link

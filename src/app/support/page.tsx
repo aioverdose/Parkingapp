@@ -8,7 +8,7 @@ const CATEGORIES = [
   {
     icon: BookOpen,
     title: "Getting Started",
-    desc: "Learn how to use ParkingMeeters — list your spot, find a match, and more.",
+    desc: "Learn how to use ParkingMeeters — share your spot, find a match, and more.",
     href: "/support/getting-started",
   },
   {
@@ -51,8 +51,8 @@ const CATEGORIES = [
 
 const QUICK_TOPICS = [
   {
-    q: "How do I list my parking spot?",
-    a: "Tap the map to select your spot location, then set your departure and return times. The system will match you with drivers looking for a spot during those hours.",
+    q: "How do I share my parking spot?",
+    a: "Tap the map to mark where you're parked, then set your departure and return times. The system will match you with drivers arriving during those hours.",
   },
   {
     q: "How does the matching work?",
