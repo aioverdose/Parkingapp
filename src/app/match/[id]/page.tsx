@@ -8,6 +8,9 @@ import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useTurnByTurn } from "@/hooks/useTurnByTurn";
 import { useLiveTracking } from "@/hooks/useLiveTracking";
 import { useLocationSharing } from "@/hooks/useLocationSharing";
+import { useBehaviorAgentPrefs } from "@/hooks/useBehaviorAgentPrefs";
+import { useHandoffAutomation } from "@/hooks/useHandoffAutomation";
+import type { HandoffAutomationAction } from "@/hooks/useHandoffAutomation";
 import Map, { Marker, Source, Layer } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { INITIAL_VIEW_STATE, MAP_STYLE_URL } from "@/lib/map";
@@ -15,7 +18,7 @@ import { BlockUserModal } from "@/components/BlockUserModal";
 import {
   Loader2, CheckCircle2, XCircle, Navigation, MapPin, Clock,
   Mic, MicOff, Volume2, VolumeX, Car, ArrowRight, Locate, Ban,
-  Radio, Send, ShieldAlert, Eye,
+  Radio, Send, ShieldAlert, Eye, Undo2, Timer, Sparkles,
 } from "lucide-react";
 
 interface MatchData {
@@ -46,6 +49,24 @@ function formatDuration(seconds: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${h}h ${m}m`;
+}
+
+function formatGoTime(seconds: number): string {
+  if (seconds <= 0) return "now";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function fitView(points: { lat: number; lng: number }[]): { latitude: number; longitude: number; zoom: number } {
@@ -102,7 +123,7 @@ export default function MatchNotificationPage() {
   });
 
   // Live GPS handoff: see the partner's car approaching (owner) / share own car (seeker)
-  const { partnerLocation, partnerSharing } = useLiveTracking(
+  const { partnerLocation, partnerSharing, partnerStatus, partnerDepartEtaSeconds } = useLiveTracking(
     isConfirmed ? (match?.id ?? null) : null,
     userId,
     match?.spot.latitude,
@@ -314,6 +335,63 @@ export default function MatchNotificationPage() {
 
   const { listening, supported: voiceSupported, startListening, stopListening } = useVoiceInput(handleVoiceResult);
 
+  // Behavior agent automation: auto-confirm arrived/departed with an undo window
+  const prefs = useBehaviorAgentPrefs();
+
+  const handleAutomationApplied = useCallback((action: HandoffAutomationAction) => {
+    if (action === "arrived" && !isOwner) {
+      setResult("arrived");
+      nav.stop();
+      void refreshMatch();
+      if (ttsEnabled) {
+        speak("Parking confirmed. Thank you for using ParkingMeeters!", { rate: 0.95 });
+      }
+    } else if (action === "departed" && isOwner) {
+      setDeparted(true);
+      setResult("departed");
+      void refreshMatch();
+      if (ttsEnabled) {
+        speak("You've pulled out. The arriving driver can now park.", { rate: 0.95 });
+      }
+    }
+  }, [isOwner, nav, refreshMatch, ttsEnabled]);
+
+  const spotCoords = useMemo(
+    () => (match ? { latitude: match.spot.latitude, longitude: match.spot.longitude } : null),
+    [match],
+  );
+
+  const automation = useHandoffAutomation({
+    matchId: isConfirmed && !result ? (match?.id ?? null) : null,
+    role: isConfirmed && !result ? (isOwner ? "owner" : "seeker") : null,
+    spot: spotCoords,
+    enabled: isConfirmed && !result,
+    autoConfirm: prefs.prefs.enabled && prefs.prefs.autoConfirm,
+    motionEnabled: prefs.prefs.enabled && prefs.motionPermission !== "denied",
+    ownerDeparted: isOwner ? false : departed || partnerStatus === "departed",
+    onApplied: handleAutomationApplied,
+  });
+
+  const [undoRemaining, setUndoRemaining] = useState<number | null>(null);
+  useEffect(() => {
+    const deadline = automation.undoDeadline;
+    if (!automation.pendingAction || deadline == null) {
+      queueMicrotask(() => setUndoRemaining(null));
+      return;
+    }
+    const tick = () => {
+      const rem = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      setUndoRemaining(rem);
+      if (rem <= 0) clearInterval(iv);
+    };
+    const iv = setInterval(tick, 250);
+    const initial = setTimeout(tick, 0);
+    return () => {
+      clearInterval(iv);
+      clearTimeout(initial);
+    };
+  }, [automation.pendingAction, automation.undoDeadline]);
+
   // Route line for the mini-map (arriving driver)
   const routeGeoJson = useMemo(() => {
     if (!nav.route?.geometry?.coordinates) return null;
@@ -355,6 +433,56 @@ export default function MatchNotificationPage() {
   }, [isOwner, ownerView, nav.currentPosition, match]);
 
   const driverNear = partnerLocation?.distance_meters != null && partnerLocation.distance_meters < 150;
+
+  // Arrival-departure alignment (owner side): live countdown until the driver
+  // arrives AND the owner is ready, so the owner pulls out the moment the
+  // driver reaches the spot. "GO NOW" when the driver would otherwise wait.
+  const [ownerAtCar, setOwnerAtCar] = useState(false);
+  const myDepartEtaSeconds = useMemo(() => {
+    if (!isOwner) return null;
+    if (ownerAtCar) return 30;
+    if (!match || !userPosition) return 60;
+    const dist = haversine(userPosition.lat, userPosition.lng, match.spot.latitude, match.spot.longitude);
+    if (dist <= 30) return 30;
+    return Math.min(Math.round(dist / 1.4) + 30, 900);
+  }, [isOwner, match, userPosition, ownerAtCar]);
+
+  const goInSeconds = useMemo(() => {
+    if (!isOwner || myDepartEtaSeconds == null) return null;
+    if (partnerLocation?.eta_seconds == null) return null;
+    return partnerLocation.eta_seconds - myDepartEtaSeconds;
+  }, [isOwner, partnerLocation, myDepartEtaSeconds]);
+
+  // Live tick so the GO countdown counts down between realtime updates.
+  // All ref reads/setState happen inside the interval callback (async), so the
+  // countdown never touches refs or impure calls during render.
+  const goInRef = useRef<number | null>(null);
+  useEffect(() => {
+    goInRef.current = goInSeconds;
+  }, [goInSeconds]);
+  const [goLive, setGoLive] = useState<number | null>(null);
+  const goCountdownRef = useRef<number | null>(null);
+  const goTargetRef = useRef<number | null>(null);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const target = goInRef.current;
+      if (target == null) {
+        if (goCountdownRef.current !== null) {
+          goCountdownRef.current = null;
+          setGoLive(null);
+        }
+        return;
+      }
+      if (goTargetRef.current !== target) {
+        goTargetRef.current = target;
+        goCountdownRef.current = target;
+      } else {
+        goCountdownRef.current = Math.max(0, (goCountdownRef.current ?? target) - 1);
+      }
+      setGoLive(goCountdownRef.current);
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
 
   if (loading) {
     return (
@@ -434,6 +562,29 @@ export default function MatchNotificationPage() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Behavior agent auto-confirm (undo) banner */}
+        {automation.pendingAction && (
+          <div className="mb-4 p-4 rounded-2xl bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 flex items-center gap-3">
+            <Sparkles size={24} className="text-violet-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-violet-700 dark:text-violet-200 text-sm">
+                Agent detected {automation.pendingAction === "arrived" ? "you parked" : "you pulled out"}
+              </p>
+              <p className="text-xs text-violet-600 dark:text-violet-300 flex items-center gap-1 mt-0.5">
+                <Timer size={12} />
+                Auto-confirming in {undoRemaining ?? 0}s — wrong?
+              </p>
+            </div>
+            <button
+              onClick={automation.cancelPending}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 transition"
+            >
+              <Undo2 size={14} />
+              Undo
+            </button>
           </div>
         )}
 
@@ -542,6 +693,49 @@ export default function MatchNotificationPage() {
                 <p className="text-xs font-bold text-blue-700">
                   {driverArrived ? "Driver arrived — you can leave now" : "Driver is pulling in — get ready to leave"}
                 </p>
+              </div>
+            )}
+
+            {!departed && goLive != null && myDepartEtaSeconds != null && (
+              <div className={`p-3 rounded-xl border text-center mb-3 ${
+                goLive <= 0
+                  ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                  : "bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800"
+              }`}>
+                <p className="text-[10px] uppercase tracking-wide font-bold text-zinc-500">Departure alignment</p>
+                <p className={`text-2xl font-extrabold ${goLive <= 0 ? "text-green-600" : "text-violet-700 dark:text-violet-300"}`}>
+                  {goLive <= 0 ? "GO NOW" : `Pull out in ${formatGoTime(goLive)}`}
+                </p>
+                <p className="text-[10px] text-zinc-500 mt-1">
+                  {goLive <= 0
+                    ? "Driver is arriving — pull out now so they can park."
+                    : `Driver arrives in ${formatDuration(partnerLocation?.eta_seconds ?? 0)}; you need about ${formatDuration(myDepartEtaSeconds)} to pull out.`}
+                </p>
+              </div>
+            )}
+
+            {!departed && (
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setOwnerAtCar(true)}
+                  className={`flex-1 h-9 rounded-xl text-[11px] font-bold transition border ${
+                    ownerAtCar
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300"
+                  }`}
+                >
+                  {"I'm at the car"}
+                </button>
+                <button
+                  onClick={() => setOwnerAtCar(false)}
+                  className={`flex-1 h-9 rounded-xl text-[11px] font-bold transition border ${
+                    !ownerAtCar
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300"
+                  }`}
+                >
+                  {"I'm walking back"}
+                </button>
               </div>
             )}
 
@@ -781,12 +975,13 @@ export default function MatchNotificationPage() {
           </div>
         )}
 
-        {/* Arrival proximity (arriving driver) */}
-        {!isOwner && nav.status === "arrived" && result !== "arrived" && (
+        {/* Arrival proximity (arriving driver) — only ask to confirm once the
+            spot is actually free, so the driver never "parks" over the owner. */}
+        {!isOwner && nav.status === "arrived" && result !== "arrived" && (departed || partnerStatus === "departed") && (
           <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl text-center">
             <CheckCircle2 size={28} className="mx-auto text-green-600 mb-2" />
             <p className="font-bold text-green-700">You have arrived!</p>
-            <p className="text-xs text-green-600 mt-1">Please confirm you have parked.</p>
+            <p className="text-xs text-green-600 mt-1">The owner has pulled out. Please confirm you have parked.</p>
             <button
               onClick={handleArrived}
               className="mt-3 w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition"
@@ -796,8 +991,22 @@ export default function MatchNotificationPage() {
           </div>
         )}
 
+        {/* Hold banner: the driver beat the owner to the spot — wait, the spot
+            opens the moment the owner leaves (no circling the block). */}
+        {!isOwner && isConfirmed && result !== "arrived" && nav.status === "arrived" && departed === false && partnerStatus !== "departed" && (
+          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl text-center">
+            <Timer size={28} className="mx-auto text-amber-600 mb-2" />
+            <p className="font-bold text-amber-700">{"You're at the spot — the owner is pulling out now"}</p>
+            <p className="text-xs text-amber-600 mt-1">
+              {partnerDepartEtaSeconds != null && partnerDepartEtaSeconds > 60
+                ? `The owner needs about ${Math.round(partnerDepartEtaSeconds / 60)} min to reach their car and leave.`
+                : "The owner is about to leave. Wait right here and pull in the moment they go."}
+            </p>
+          </div>
+        )}
+
         {/* Spot is ready banner (arriving driver) */}
-        {!isOwner && isConfirmed && departed && (
+        {!isOwner && isConfirmed && (departed || partnerStatus === "departed") && (
           <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-center">
             <CheckCircle2 size={28} className="mx-auto text-emerald-600 mb-2" />
             <p className="font-bold text-emerald-700">The spot is open!</p>

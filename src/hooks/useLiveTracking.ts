@@ -23,6 +23,10 @@ export interface UseLiveTrackingResult {
   isTracking: boolean;
   /** Any error encountered */
   error: string | null;
+  /** The partner's live session status (en_route / arrived / departed / ...) */
+  partnerStatus: string | null;
+  /** The owner's time-to-car-and-pull-out (only visible to the seeker) */
+  partnerDepartEtaSeconds: number | null;
 }
 
 /**
@@ -53,6 +57,8 @@ export function useLiveTracking(
   const [partnerSharing, setPartnerSharing] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [partnerStatus, setPartnerStatus] = useState<string | null>(null);
+  const [partnerDepartEtaSeconds, setPartnerDepartEtaSeconds] = useState<number | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Calculate distance between two points
@@ -101,6 +107,8 @@ export function useLiveTracking(
       setPartnerLocation(null);
       setPartnerSharing(false);
       setIsTracking(false);
+      setPartnerStatus(null);
+      setPartnerDepartEtaSeconds(null);
       return;
     }
 
@@ -172,12 +180,21 @@ export function useLiveTracking(
             location_shared: boolean;
             location_stopped_at: string | null;
             user_id: string;
+            role: string | null;
+            status: string | null;
+            owner_depart_eta_seconds: number | null;
           };
           // If the partner stopped sharing, clear their location
           if (!session.location_shared || session.location_stopped_at) {
             if (session.user_id !== myUserId) {
               setPartnerLocation(null);
               setPartnerSharing(false);
+            }
+          }
+          if (session.user_id !== myUserId) {
+            if (session.status != null) setPartnerStatus(session.status);
+            if (session.role === "owner") {
+              setPartnerDepartEtaSeconds(session.owner_depart_eta_seconds ?? null);
             }
           }
         },
@@ -194,5 +211,5 @@ export function useLiveTracking(
     };
   }, [matchId, myUserId, supabase, processLocationUpdate]);
 
-  return { partnerLocation, partnerSharing, isTracking, error };
+  return { partnerLocation, partnerSharing, isTracking, error, partnerStatus, partnerDepartEtaSeconds };
 }

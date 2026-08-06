@@ -61,6 +61,37 @@ export class SimulatedDevice {
     return "driving";
   }
 
+  /**
+   * Synthesizes sensor features (GPS + motion) from the simulated device's
+   * position so it can be fed straight into a BehaviorAgent for testing the
+   * parking/handoff detection pipeline.
+   */
+  getSensorFeatures() {
+    const now = Date.now();
+    const speedMs = this.position.speed * 0.44704;
+    let vibrationEnergy = 0.4;
+    let stepCadence = 0;
+    if (speedMs >= 0.5 && speedMs <= 3) {
+      vibrationEnergy = 1.6;
+      stepCadence = 1.7;
+    } else if (speedMs > 3) {
+      vibrationEnergy = 8;
+      stepCadence = 0.1;
+    }
+    return {
+      timestamp: now,
+      gps: {
+        lat: this.position.lat,
+        lng: this.position.lng,
+        speedMs,
+        heading: this.position.heading,
+        accuracy: this.position.accuracy,
+        timestamp: now,
+      },
+      motion: { timestamp: now, vibrationEnergy, stepCadence, hasMotion: true },
+    };
+  }
+
   setPosition(lat: number, lng: number, speed?: number, heading?: number, accuracy?: number): void {
     this.position = {
       lat,

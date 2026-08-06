@@ -49,6 +49,10 @@ const LOCATION_PERMISSION_KEY = "spotmatch_location_granted";
 import { useCarLocation } from "@/hooks/useCarLocation";
 import { CarLocationMarker } from "./CarLocationMarker";
 import { CarLocationPanel } from "./CarLocationPanel";
+import { useBehaviorAgentPrefs } from "@/hooks/useBehaviorAgentPrefs";
+import { BehaviorAgentConsentModal } from "./BehaviorAgentConsentModal";
+import { postAutoSpot } from "@/lib/behavior/actions";
+import type { BehaviorAgentEvent } from "@/lib/behavior/types";
 
 type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 type SweepingData = {
@@ -158,7 +162,46 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     activeTrackingMatch?.spotLng,
   );
 
-  const carLocationState = useCarLocation(user?.id ?? null, !!user);
+  // Behavior agent (Smart Spot Agent) preferences + first-run consent
+  const agentPrefs = useBehaviorAgentPrefs();
+  const [agentConsentOpen, setAgentConsentOpen] = useState(false);
+  const [autoPosted, setAutoPosted] = useState(false);
+  const autoPostedRef = useRef(false);
+  const agentConsentSeenKey = "spotmatch_agent_consent_seen";
+
+  useEffect(() => {
+    if (agentPrefs.loaded && agentPrefs.motionSupported && typeof window !== "undefined") {
+      if (window.localStorage.getItem(agentConsentSeenKey) !== "1") {
+        queueMicrotask(() => setAgentConsentOpen(true));
+      }
+    }
+  }, [agentPrefs.loaded, agentPrefs.motionSupported]);
+
+  const handleAgentConsentClose = useCallback(() => {
+    setAgentConsentOpen(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(agentConsentSeenKey, "1");
+    }
+  }, []);
+
+  const handleCarMoved = useCallback(
+    async (event: BehaviorAgentEvent) => {
+      if (!agentPrefs.prefs.enabled || !agentPrefs.prefs.autoPost) return;
+      if (event.lat == null || event.lng == null) return;
+      if (autoPostedRef.current) return;
+      autoPostedRef.current = true;
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) return;
+      const ok = await postAutoSpot({ latitude: event.lat, longitude: event.lng, token, leadMinutes: 5 });
+      if (ok) setAutoPosted(true);
+    },
+    [agentPrefs.prefs.enabled, agentPrefs.prefs.autoPost, supabase],
+  );
+
+  const carLocationState = useCarLocation(user?.id ?? null, !!user, {
+    motionEnabled: agentPrefs.prefs.enabled && agentPrefs.motionPermission !== "denied",
+    onCarMoved: handleCarMoved,
+  });
 
   const handleTrackOpen = useCallback((matchId: string, _spotId: string, partnerName: string, spotAddress: string, spotLat: number, spotLng: number) => {
     setShowMatches(false);
@@ -1185,6 +1228,29 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
           }}
         />
       )}
+
+      {/* Auto-posted spot notice */}
+      {autoPosted && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+          <Handshake size={16} />
+          Spot auto-posted for your departure
+        </div>
+      )}
+
+      {/* Smart Spot Agent consent */}
+      <BehaviorAgentConsentModal
+        open={agentConsentOpen}
+        onClose={handleAgentConsentClose}
+        prefs={agentPrefs.prefs}
+        motionPermission={agentPrefs.motionPermission}
+        motionSupported={agentPrefs.motionSupported}
+        onEnableMotion={async () => {
+          await agentPrefs.askForMotionPermission();
+        }}
+        onSetAutoPost={agentPrefs.setAutoPost}
+        onSetAutoConfirm={agentPrefs.setAutoConfirm}
+        onSetEnabled={agentPrefs.setEnabled}
+      />
     </div>
     </>
   );

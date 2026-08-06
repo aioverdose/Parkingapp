@@ -17,6 +17,7 @@ import {
   ArrowLeft, MapPin, Clock, Star, TrendingUp, CheckCircle2,
   BookOpen, Settings, GraduationCap, Loader2, Trash2, Award,
   User as UserIcon, AlertCircle, Plus, LogOut, Shield, Handshake,
+  Smartphone,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -708,6 +709,13 @@ export default function ProfilePage() {
             >
               <span className="text-2xl">🎮</span>
               <span className="text-[11px] font-bold">SpotQuest</span>
+            </a>
+            <a
+              href="/test/behavior"
+              className="flex flex-col items-center gap-1.5 p-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 text-violet-600 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition"
+            >
+              <Smartphone size={22} />
+              <span className="text-[11px] font-bold">Device Test</span>
             </a>
             <a
               href="/settings"

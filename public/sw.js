@@ -79,9 +79,13 @@ self.addEventListener("push", (event) => {
     options.actions = [
       { action: "view", title: "View Match" },
     ];
-  } else if (data.type === "driver_approaching" || data.type === "driver_arriving") {
+  } else if (data.type === "driver_approaching" || data.type === "driver_arriving" || data.type === "align_get_ready" || data.type === "align_go") {
     options.actions = [
       { action: "view", title: "Watch Driver" },
+    ];
+  } else if (data.type === "hold_back") {
+    options.actions = [
+      { action: "view", title: "View Match" },
     ];
   } else if (data.type === "spot_ready") {
     options.actions = [

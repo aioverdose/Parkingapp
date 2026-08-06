@@ -10,11 +10,14 @@ import { LONG_BEACH_CENTER } from "@/lib/testing/constants";
 import type { VenvAgentState, VenvTimelineEvent, VenvEnvironmentConfig } from "@/lib/virtual-environment/types";
 import { AGENT_COLORS } from "@/lib/virtual-environment/types";
 import { MAP_STYLE_URL } from "@/lib/map";
+import { BehaviorAgent } from "@/lib/behavior/agent";
+import { DEFAULT_BEHAVIOR_AGENT_CONFIG } from "@/lib/behavior/types";
+import type { BehaviorAgentConfig, BehaviorAgentEvent, BehaviorAgentState } from "@/lib/behavior/types";
 import {
   Play, Square, RotateCcw, Plus, Trash2, Download,
   Car, Footprints, Navigation, MapPin, Radio, Clock,
   Gauge, Smartphone, ChevronDown, ChevronUp, AlertTriangle,
-  Target, Route,
+  Target, Route, Sparkles,
 } from "lucide-react";
 
 export function VirtualEnvironmentSandbox() {
@@ -55,6 +58,54 @@ export function VirtualEnvironmentSandbox() {
 
   const env = envRef.current;
   const selectedAgent = useMemo(() => agents.find((a) => a.id === selectedAgentId) ?? null, [agents, selectedAgentId]);
+
+  // Live behavior-agent readout fed from the simulated agent's motion/GPS
+  const SIM_AGENT_CONFIG: BehaviorAgentConfig = {
+    ...DEFAULT_BEHAVIOR_AGENT_CONFIG,
+    parkingWindowMs: 3000,
+    parkingMinSamples: 3,
+    walkingConfirmMs: 1500,
+    vehicleMovedWindowMs: 1500,
+  };
+  const behaviorAgentRef = useRef<BehaviorAgent | null>(null);
+  const lastIngestRef = useRef(0);
+  const [behaviorState, setBehaviorState] = useState<BehaviorAgentState>("unknown");
+  const [behaviorEvent, setBehaviorEvent] = useState<BehaviorAgentEvent | null>(null);
+
+  useEffect(() => {
+    behaviorAgentRef.current = new BehaviorAgent(SIM_AGENT_CONFIG, (e) => setBehaviorEvent(e));
+    lastIngestRef.current = 0;
+    setBehaviorState("unknown");
+    setBehaviorEvent(null);
+    return () => {
+      behaviorAgentRef.current = null;
+    };
+  }, [selectedAgentId]);
+
+  useEffect(() => {
+    const agent = selectedAgent;
+    if (!agent || !behaviorAgentRef.current) return;
+    const now = Date.now();
+    if (now - lastIngestRef.current < 100) return;
+    lastIngestRef.current = now;
+    const speedMs = agent.speed * 0.44704;
+    let vibrationEnergy = 0.4;
+    let stepCadence = 0;
+    if (speedMs >= 0.5 && speedMs <= 3) {
+      vibrationEnergy = 1.6;
+      stepCadence = 1.7;
+    } else if (speedMs > 3) {
+      vibrationEnergy = 8;
+      stepCadence = 0.1;
+    }
+    const features = {
+      timestamp: now,
+      gps: { lat: agent.lat, lng: agent.lng, speedMs, heading: agent.heading, accuracy: agent.accuracy, timestamp: now },
+      motion: { timestamp: now, vibrationEnergy, stepCadence, hasMotion: true },
+    };
+    behaviorAgentRef.current.ingest(features);
+    setBehaviorState(behaviorAgentRef.current.getState());
+  }, [selectedAgent]);
 
   const refresh = useCallback(() => {
     setAgents(env.getAgents());
@@ -468,6 +519,32 @@ export function VirtualEnvironmentSandbox() {
                   <span className="text-zinc-500">Status</span>
                   <p className="text-zinc-300 capitalize">{selectedAgent.status}</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Behavior agent readout */}
+          {selectedAgent && (
+            <div className="border-b border-zinc-800 p-3 bg-zinc-800/30">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase mb-2 flex items-center gap-1.5">
+                <Sparkles size={12} className="text-violet-400" /> Behavior Agent
+              </p>
+              <div className="flex items-center justify-between text-[10px] mb-2">
+                <span className="text-zinc-500">FSM State</span>
+                <span className={`font-mono font-medium ${behaviorState === "parked" || behaviorState === "near_car" ? "text-emerald-400" : behaviorState === "vehicle_moved" ? "text-blue-400" : "text-zinc-300"}`}>
+                  {behaviorState}
+                </span>
+              </div>
+              <div className="bg-zinc-800 rounded p-2 text-[10px]">
+                <span className="text-zinc-500">Last event</span>
+                {behaviorEvent ? (
+                  <div className="mt-1">
+                    <p className="text-violet-400 font-medium font-mono">{behaviorEvent.type}</p>
+                    <p className="text-zinc-600 mt-0.5">confidence {(behaviorEvent.confidence * 100).toFixed(0)}%</p>
+                  </div>
+                ) : (
+                  <p className="text-zinc-600 mt-1">—</p>
+                )}
               </div>
             </div>
           )}
