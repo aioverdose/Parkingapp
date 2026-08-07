@@ -1,16 +1,18 @@
-# Parking Meeters (SpotMatch) — Technical Paper
+# SpotMatch — Technical Paper
 
 A deep-dive on the architecture, behavior, and capabilities of a real-time, peer-to-peer parking spot handoff platform.
 
 **Author:** Engineering team
-**Version:** 2.1 — corresponds to the `main` branch as of August 2026
-**Audience:** Technical reviewers, AI analysis (e.g., Grok), investors, legal counsel, engineers onboarding to the codebase
+**Version:** 2.2 — B2B pilot-hardening update, August 2026
+**Audience:** Technical reviewers, AI analysis (e.g., Grok), pilot operators, legal counsel, and engineers onboarding to the codebase
+
+> **Current analysis companion:** `GROK-ANALYSIS-PAPER.md` is the focused review document for the hardened B2B pilot model. This paper retains the broader platform architecture and historical implementation detail.
 
 ---
 
 ## 1. Executive Summary
 
-Parking Meeters (repository name: SpotMatch / parkingapp) is a **mobile-first Progressive Web App** that connects drivers about to leave a parking spot with drivers who need one, in real time. Instead of letting parking remain a zero-sum scramble, the app turns spot departures into a cooperative, trust-scored network.
+SpotMatch (repository name: `parkingapp`) is a **mobile-first Progressive Web App and B2B operational coordination tool** that connects an imminent parking departure with one eligible member of a private or shared business network. It is designed for restaurants, bars, and operators in dense commercial areas such as Belmont Shore and 2nd Street.
 
 The system is built on:
 
@@ -20,13 +22,17 @@ The system is built on:
 - **Stripe** for pay-per-match credit purchases, **Twilio** for SMS/OTP verification, **Web Push (VAPID)** for notifications
 - A **configurable LLM layer** (local Ollama or OpenAI-compatible endpoints) powering a family of AI agents
 
-The product deliberately positions itself as an **"imminent departure alert" system**, not a reservation marketplace: spots are never sold or rented. Since 2.1 the primary revenue model is **B2B subscriptions**: businesses (restaurants, bars, parking operators) subscribe to coordinate parking for their team and neighborhood network, optionally white-labeled under the business's own branding. Consumer-facing monetization remains as secondary, optional flows — voluntary tips, geofenced local advertising, and pay-per-handoff match credits.
+The product deliberately positions itself as an **imminent departure coordination system**, not a reservation marketplace: spots are never sold, rented, or reserved. The primary model is **B2B subscriptions**: businesses coordinate parking for their team and neighborhood network, optionally using tenant branding. Consumer marketplace, credit, and gamification paths are not the primary pilot experience.
 
 Version 2.1 reflects the B2B / white-label expansion on top of the 2.0 engineering changes:
 
 1. **Exclusive single-driver matching** replaced broadcast matching. A posted spot is now offered to exactly one best-compatible seeker at a time (90-second window), is invisible to everyone else, and only falls back to a public map alert after a configurable number of declined/expired offers. This eliminates claim races and leaky inventories. **Network (B2B) spots never receive the public fallback** — coordination stays inside the business network, so exhausted network spots simply stop matching instead of appearing on the public map.
 2. **Production hardening across five axes** — distributed rate limiting (Postgres-backed, shared across serverless instances), structured logging + error tracking, Stripe webhook idempotency and atomic credit grant, configurable LLM providers with strong fallbacks, and tightened geo/telemetry input validation with documented ephemeral-data retention.
 3. **Business networks and white-labeling** — a SQL-level tenant model (`businesses`, `networks`, `network_businesses`, `business_members`), exclusive matching scoped per network, business-owned spots, an admin dashboard per business, and per-subscriber branding (name, logo, accent colors). See §2.5 and §2.6.
+
+4. **Pilot expiry and retention hardening** — migrations `00042` through `00047` add a database uniqueness guard for one live offer per spot, idempotent reassignment transitions, stale spot closure, member-removal audit records, seat/status guardrails, network visibility enforcement, precise-location cleanup, and optional Supabase `pg_cron` scheduling for data retention. Offer expiry and reassignment remain in the protected `/api/cron/expire-offers` API job because candidate selection and notification delivery are application responsibilities.
+
+The current repository verification is `npm test` with 67 passing tests, `npx tsc --noEmit`, and a successful production build. Live Supabase verification is still required for migrations, RLS policies, triggers, concurrent PostgreSQL writes, and scheduler execution.
 
 ---
 
