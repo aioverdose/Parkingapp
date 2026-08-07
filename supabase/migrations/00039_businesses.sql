@@ -56,12 +56,13 @@ COMMENT ON FUNCTION public.current_user_business_role(p_business_id UUID) IS 'Re
 
 CREATE OR REPLACE FUNCTION public.user_is_network_member(p_network_id UUID)
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT EXISTS (
+BEGIN
+  RETURN EXISTS (
     SELECT 1
     FROM public.business_members bm
     JOIN public.network_businesses nb ON nb.business_id = bm.business_id
@@ -69,6 +70,7 @@ AS $$
       AND bm.user_id = auth.uid()
       AND bm.status = 'active'
   );
+END;
 $$;
 
 COMMENT ON FUNCTION public.user_is_network_member(p_network_id UUID) IS 'True when the current user is an active member of any business participating in the given network';
