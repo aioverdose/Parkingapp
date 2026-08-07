@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
+import { getBusinessMembership } from "@/lib/api/business-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { logger } from "@/lib/logger";
 import { isValidCoords } from "@/lib/geo-validation";
@@ -74,23 +75,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for active spots already posted by user
-    const supabaseRank = createAdminClient();
-    const { count: activeSpotCount } = await supabaseRank
-      .from("parking_spots")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .gt("expires_at", new Date().toISOString());
+    // Check for active spots already posted by user. Business-coordinated posts
+    // (B2B) are not subject to the consumer 3-alert cap.
+    let businessId: string | null = null;
+    let networkId: string | null = null;
+    const body = await request.json();
 
-    if (activeSpotCount && activeSpotCount >= 3) {
-      return NextResponse.json(
-        { error: "You can have at most 3 active spot alerts at a time." },
-        { status: 429 },
-      );
+    if (body.business_id) {
+      const membership = await getBusinessMembership(user.id, body.business_id);
+      if (!membership) {
+        return NextResponse.json({ error: "You are not a member of that business" }, { status: 403 });
+      }
+      businessId = body.business_id;
+      networkId = membership.network_id;
     }
 
-    const body = await request.json();
+    if (!businessId) {
+      const supabaseRank = createAdminClient();
+      const { count: activeSpotCount } = await supabaseRank
+        .from("parking_spots")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .gt("expires_at", new Date().toISOString());
+
+      if (activeSpotCount && activeSpotCount >= 3) {
+        return NextResponse.json(
+          { error: "You can have at most 3 active spot alerts at a time." },
+          { status: 429 },
+        );
+      }
+    }
+
     const { latitude, longitude, address, departure_time, return_time, tip_message, vehicle_type, relay_mode, max_exclusive_attempts } = body;
 
     if (!isValidCoords(latitude, longitude)) {
@@ -146,6 +162,8 @@ export async function POST(request: NextRequest) {
         max_exclusive_attempts: Number.isFinite(max_exclusive_attempts)
           ? Math.min(Math.max(Math.round(max_exclusive_attempts), 1), 10)
           : 5,
+        business_id: businessId,
+        network_id: networkId,
       })
       .select()
       .single();
