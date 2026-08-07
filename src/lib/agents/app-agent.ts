@@ -113,7 +113,9 @@ How matching works (exclusive single-driver model):
   window (~90 seconds, configurable via MATCH_OFFER_WINDOW_MS).
 - If the seeker declines or the offer times out, the spot is offered to the next-best seeker.
 - After a configurable number of exclusive attempts (default 5, per-spot max_exclusive_attempts),
-  the spot falls back to a public claimable alert on the map.
+  a consumer spot falls back to a public claimable alert on the map. Network spots NEVER fall
+  back to the public map: once their attempts are exhausted, matching simply stops and the spot
+  stays private to the network.
 - On no-show, the spot is released and re-offered to the next-best seeker; the no-show seeker
   is penalized in future matching.
 

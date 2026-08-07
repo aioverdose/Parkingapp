@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
-import { getBusinessMembership } from "@/lib/api/business-helpers";
+import { getBusinessMembership, getUserNetworkIds } from "@/lib/api/business-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { logger } from "@/lib/logger";
 import { isValidCoords } from "@/lib/geo-validation";
@@ -30,10 +30,21 @@ export async function GET(request: NextRequest) {
         .gt("expires_at", now)
         .gt("departure_time", now);
 
+      // Network (B2B) spots are a private coordination surface: they never
+      // appear in the open consumer feed. A member only sees them through
+      // their own network scope (handled via the browser client + RLS), so
+      // the public feed always excludes spots they are not a member of.
       if (user) {
         query = query.or(`visibility.eq.public,and(visibility.eq.exclusive,user_id.eq.${user.id})`);
+
+        const ownedNetworks = await getUserNetworkIds(user.id);
+        if (ownedNetworks.length > 0) {
+          query = query.or(`network_id.is.null,network_id.in.(${ownedNetworks.join(",")})`);
+        } else {
+          query = query.is("network_id", null);
+        }
       } else {
-        query = query.eq("visibility", "public");
+        query = query.eq("visibility", "public").is("network_id", null);
       }
     } else {
       query = query.eq("status", status);

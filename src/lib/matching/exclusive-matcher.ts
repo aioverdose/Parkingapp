@@ -399,9 +399,22 @@ export async function attemptNextOffer(
 
   const nextBest = await findBestSeeker(exclusiveSpot, excludeIds);
 
-  // No candidates left, or exclusive attempts exhausted -> public fallback so
-  // the spot doesn't sit hidden and wasted.
+  // No candidates left, or exclusive attempts exhausted.
   if (!nextBest || exclusiveSpot.exclusive_attempts >= exclusiveSpot.max_exclusive_attempts) {
+    // Network (B2B) spots never spill onto the public map: coordination stays
+    // inside the business network. Once attempts are exhausted the spot simply
+    // stays exclusive and matching stops — there is no public fallback.
+    if (exclusiveSpot.network_id) {
+      await supabase.from("notifications").insert({
+        user_id: spot.user_id,
+        title: "No one available in your network",
+        message: "No more compatible drivers in your network right now. This spot is no longer being offered.",
+        type: "match",
+      });
+
+      return { reassigned: false, fallback: false };
+    }
+
     await supabase
       .from("parking_spots")
       .update({ visibility: "public" })

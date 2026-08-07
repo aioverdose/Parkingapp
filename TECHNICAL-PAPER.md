@@ -24,7 +24,7 @@ The product deliberately positions itself as an **"imminent departure alert" sys
 
 Version 2.1 reflects the B2B / white-label expansion on top of the 2.0 engineering changes:
 
-1. **Exclusive single-driver matching** replaced broadcast matching. A posted spot is now offered to exactly one best-compatible seeker at a time (90-second window), is invisible to everyone else, and only falls back to a public map alert after a configurable number of declined/expired offers. This eliminates claim races and leaky inventories.
+1. **Exclusive single-driver matching** replaced broadcast matching. A posted spot is now offered to exactly one best-compatible seeker at a time (90-second window), is invisible to everyone else, and only falls back to a public map alert after a configurable number of declined/expired offers. This eliminates claim races and leaky inventories. **Network (B2B) spots never receive the public fallback** — coordination stays inside the business network, so exhausted network spots simply stop matching instead of appearing on the public map.
 2. **Production hardening across five axes** — distributed rate limiting (Postgres-backed, shared across serverless instances), structured logging + error tracking, Stripe webhook idempotency and atomic credit grant, configurable LLM providers with strong fallbacks, and tightened geo/telemetry input validation with documented ephemeral-data retention.
 3. **Business networks and white-labeling** — a SQL-level tenant model (`businesses`, `networks`, `network_businesses`, `business_members`), exclusive matching scoped per network, business-owned spots, an admin dashboard per business, and per-subscriber branding (name, logo, accent colors). See §2.5 and §2.6.
 
@@ -252,7 +252,7 @@ The matching engine (`src/lib/matching/exclusive-matcher.ts`) is the heart of ve
 - **`expireStaleOffers` / `sweepExclusiveSpots`** — TTL enforcement + public fallback after attempts run out.
 - **`incrementReliabilityCounter`** — records declines/no-shows.
 
-**Privacy property:** because spots default to `visibility='exclusive'`, the map feed (`GET /api/spots`), the realtime channel, and every other consumer only see exclusive spots owned by the viewer. An exclusive spot is effectively invisible until it falls back to public. RLS enforces this at the database level, so no client path can leak an in-flight offer.
+**Privacy property:** because spots default to `visibility='exclusive'`, the map feed (`GET /api/spots`), the realtime channel, and every other consumer only see exclusive spots owned by the viewer. An exclusive spot is effectively invisible until it falls back to public (consumer spots only). Network-stamped spots are additionally excluded from the open feed unless the viewer is a network member, and they never fall back to public. RLS enforces this at the database level, so no client path can leak an in-flight offer.
 
 Anti-abuse properties: distributed rate limiting, atomic claims, per-user active-spot caps, phone verification, block-list exclusion, and geodata validation.
 

@@ -5,6 +5,7 @@ import {
   haversineDistance,
   isScheduleCompatible,
   findBestSeeker,
+  attemptNextOffer,
   type ExclusiveSpot,
 } from "../matching/exclusive-matcher";
 import { createAdminClient } from "@/lib/supabaseAdmin";
@@ -222,5 +223,83 @@ describe("findBestSeeker network scoping", () => {
     const best = await findBestSeeker(spot);
 
     expect(best).toBeNull();
+  });
+});
+
+describe("attemptNextOffer public fallback", () => {
+  function makeSpotClient(spot: ExclusiveSpot, tables: Record<string, unknown[]>) {
+    const publicFallbackCalls: Array<Record<string, unknown>> = [];
+    const client = {
+      from(table: string) {
+        const chain: Record<string, unknown> = {
+          select: () => chain,
+          eq: () => chain,
+          gt: () => chain,
+          in: () => chain,
+          insert: () => chain,
+          single: () => chain,
+          maybeSingle: () => chain,
+          update: (values: Record<string, unknown>) => {
+            if (table === "parking_spots" && values.visibility === "public") {
+              publicFallbackCalls.push(values);
+            }
+            return chain;
+          },
+          then: (resolve: (v: { data: unknown; error: null }) => void) => {
+            if (table === "parking_spots") resolve({ data: spot, error: null });
+            else resolve({ data: tables[table] ?? [], error: null });
+          },
+        };
+        return chain;
+      },
+    };
+    return { client, publicFallbackCalls };
+  }
+
+  it("never falls back to the public map for network spots", async () => {
+    const spot = makeSpot({
+      business_id: "biz-1",
+      network_id: "net-1",
+      exclusive_attempts: 5,
+      max_exclusive_attempts: 5,
+    });
+
+    const { client, publicFallbackCalls } = makeSpotClient(spot, {
+      spot_matches: [],
+      network_businesses: [],
+      notifications: [],
+    });
+
+    vi.mocked(createAdminClient).mockReturnValue(client as never);
+
+    const result = await attemptNextOffer("spot-1");
+
+    expect(result).toEqual({ reassigned: false, fallback: false });
+    expect(publicFallbackCalls).toHaveLength(0);
+  });
+
+  it("still falls back to the public map for consumer spots", async () => {
+    const spot = makeSpot({
+      business_id: null,
+      network_id: null,
+      exclusive_attempts: 5,
+      max_exclusive_attempts: 5,
+    });
+
+    const { client, publicFallbackCalls } = makeSpotClient(spot, {
+      spot_matches: [],
+      spot_requests: [],
+      user_ranking: [],
+      users: [],
+      user_blocks: [],
+      notifications: [],
+    });
+
+    vi.mocked(createAdminClient).mockReturnValue(client as never);
+
+    const result = await attemptNextOffer("spot-1");
+
+    expect(result).toEqual({ reassigned: false, fallback: true });
+    expect(publicFallbackCalls).toHaveLength(1);
   });
 });

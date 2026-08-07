@@ -67,3 +67,22 @@ export async function getBusinessMembership(
     network_id: ((membership as { businesses?: { primary_network_id?: string | null } | null }).businesses?.primary_network_id ?? null),
   };
 }
+
+export async function getUserNetworkIds(userId: string): Promise<string[]> {
+  const supabase = createAdminClient();
+
+  const { data: memberships } = await supabase
+    .from("business_members")
+    .select("businesses(primary_network_id, network_businesses(network_id))")
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  const ids = new Set<string>();
+  for (const m of memberships ?? []) {
+    const biz = (m as { businesses?: { primary_network_id?: string | null; network_businesses?: Array<{ network_id: string }> | null } | null }).businesses;
+    if (!biz) continue;
+    if (biz.primary_network_id) ids.add(biz.primary_network_id);
+    for (const nb of biz.network_businesses ?? []) ids.add(nb.network_id);
+  }
+  return [...ids];
+}
