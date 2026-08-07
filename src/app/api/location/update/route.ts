@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { haversineDistance } from "@/lib/haversine";
 import { logger } from "@/lib/logger";
+import { isValidCoords, isValidSpeed, isValidAccuracy, isValidHeading } from "@/lib/geo-validation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +22,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { latitude, longitude, heading, speed, accuracy, match_id } = body;
 
-    if (typeof latitude !== "number" || typeof longitude !== "number") {
-      return NextResponse.json({ error: "latitude and longitude are required" }, { status: 400 });
+    if (
+      !isValidCoords(latitude, longitude) ||
+      !isValidSpeed(speed) ||
+      !isValidAccuracy(accuracy) ||
+      !isValidHeading(heading)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid coordinates or telemetry values" },
+        { status: 400 },
+      );
     }
 
     const supabase = createAdminClient();

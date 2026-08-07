@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { isValidCoords } from "@/lib/geo-validation";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -36,8 +37,8 @@ export async function POST(req: NextRequest) {
 
     const { latitude, longitude, label, days_of_week, departure_time, return_time, vehicle_type, saved_spot_id } = await req.json();
 
-    if (typeof latitude !== "number" || typeof longitude !== "number" || !departure_time || !return_time) {
-      return NextResponse.json({ error: "Latitude, longitude, departure_time, and return_time are required" }, { status: 400 });
+    if (!isValidCoords(latitude, longitude) || !departure_time || !return_time) {
+      return NextResponse.json({ error: "Valid latitude, longitude, departure_time, and return_time are required" }, { status: 400 });
     }
 
     const { data, error } = await supabase.from("recurring_schedules").insert({

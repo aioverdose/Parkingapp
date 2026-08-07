@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { reverseGeocode } from "@/lib/geocode";
+import { isValidCoords } from "@/lib/geo-validation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,8 +14,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { latitude, longitude, accuracy, label } = body;
 
-    if (typeof latitude !== "number" || typeof longitude !== "number") {
-      return NextResponse.json({ error: "latitude and longitude are required" }, { status: 400 });
+    if (!isValidCoords(latitude, longitude)) {
+      return NextResponse.json({ error: "latitude and longitude are required and must be valid coordinates" }, { status: 400 });
     }
 
     const address = await reverseGeocode(latitude, longitude);

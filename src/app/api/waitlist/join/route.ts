@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { isValidCoords } from "@/lib/geo-validation";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,8 +13,8 @@ export async function POST(req: NextRequest) {
 
     const { latitude, longitude, radius_meters, vehicle_type } = await req.json();
 
-    if (typeof latitude !== "number" || typeof longitude !== "number") {
-      return NextResponse.json({ error: "Latitude and longitude are required" }, { status: 400 });
+    if (!isValidCoords(latitude, longitude)) {
+      return NextResponse.json({ error: "Latitude and longitude are required and must be valid coordinates" }, { status: 400 });
     }
 
     const { data, error } = await supabase.from("spot_waitlist").insert({

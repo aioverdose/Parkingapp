@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
+import { isValidCoords, isValidSpeed, isValidAccuracy, isValidHeading } from "@/lib/geo-validation";
 
 /**
  * POST /api/user/location
@@ -25,9 +26,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { latitude, longitude, heading, speed, accuracy, device_id } = body;
 
-    if (typeof latitude !== "number" || typeof longitude !== "number") {
+    if (
+      !isValidCoords(latitude, longitude) ||
+      !isValidSpeed(speed) ||
+      !isValidAccuracy(accuracy) ||
+      !isValidHeading(heading)
+    ) {
       return NextResponse.json(
-        { error: "latitude and longitude are required" },
+        { error: "Invalid coordinates or telemetry values" },
         { status: 400 },
       );
     }

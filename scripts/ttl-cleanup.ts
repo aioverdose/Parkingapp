@@ -46,6 +46,27 @@ async function runCleanup() {
     console.log("  Streaks maintained");
   }
 
+  const { error: driverLocationError } = await supabase.rpc("cleanup_old_driver_locations");
+  if (driverLocationError) {
+    console.error("cleanup_old_driver_locations failed:", driverLocationError.message);
+  } else {
+    console.log("  Old driver locations cleaned");
+  }
+
+  const { error: rateLimitError } = await supabase.rpc("cleanup_expired_rate_limits");
+  if (rateLimitError) {
+    console.error("cleanup_expired_rate_limits failed:", rateLimitError.message);
+  } else {
+    console.log("  Expired rate limit windows cleaned");
+  }
+
+  const { error: appLogError } = await supabase.rpc("cleanup_expired_app_logs");
+  if (appLogError) {
+    console.error("cleanup_expired_app_logs failed:", appLogError.message);
+  } else {
+    console.log("  Expired app logs cleaned");
+  }
+
   const now = new Date().toISOString();
   const { data: expiredSpots, error: spotFetchError } = await supabase
     .from("parking_spots")

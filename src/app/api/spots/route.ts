@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { logger } from "@/lib/logger";
+import { isValidCoords } from "@/lib/geo-validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -92,8 +93,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { latitude, longitude, address, departure_time, return_time, tip_message, vehicle_type, relay_mode, max_exclusive_attempts } = body;
 
-    if (typeof latitude !== "number" || typeof longitude !== "number") {
-      return NextResponse.json({ error: "latitude and longitude are required" }, { status: 400 });
+    if (!isValidCoords(latitude, longitude)) {
+      return NextResponse.json({ error: "latitude and longitude are required and must be valid coordinates" }, { status: 400 });
     }
     if (!departure_time || typeof departure_time !== "string") {
       return NextResponse.json({ error: "departure_time is required" }, { status: 400 });
