@@ -1569,6 +1569,44 @@ export interface Database {
         Args: { p_network_id: string };
         Returns: boolean;
       };
+      create_business: {
+        Args: {
+          p_name: string;
+          p_slug: string;
+          p_description?: string | null;
+          p_address?: string | null;
+          p_phone?: string | null;
+          p_operating_lat?: number | null;
+          p_operating_lng?: number | null;
+          p_operating_radius_meters?: number | null;
+        };
+        Returns: unknown;
+      };
+      join_business: {
+        Args: { p_business_id: string };
+        Returns: unknown;
+      };
+      add_business_member: {
+        Args: { p_business_id: string; p_user_id: string; p_role?: string };
+        Returns: unknown;
+      };
+      update_business_member: {
+        Args: {
+          p_business_id: string;
+          p_user_id: string;
+          p_role?: string | null;
+          p_status?: string | null;
+        };
+        Returns: unknown;
+      };
+      remove_business_member: {
+        Args: { p_business_id: string; p_user_id: string };
+        Returns: unknown;
+      };
+      leave_business: {
+        Args: { p_business_id: string };
+        Returns: unknown;
+      };
       phone_otps: {
         Row: {
           id: string;
