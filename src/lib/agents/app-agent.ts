@@ -3,6 +3,8 @@ import { chatCompletion, activeProviderName, type LlmMessage } from "@/lib/llm";
 
 export interface AppSnapshot {
   users: number;
+  businesses: number;
+  networks: number;
   activeSpots: number;
   activeMatches: number;
   ads: number;
@@ -31,9 +33,11 @@ export async function getAppSnapshot(): Promise<AppSnapshot> {
     }
   };
 
-  const [users, activeSpots, activeMatches, ads, activeChats, congestionToday, alertsToday, predictionsToday, invitesToday] =
+  const [users, businesses, networks, activeSpots, activeMatches, ads, activeChats, congestionToday, alertsToday, predictionsToday, invitesToday] =
     await Promise.all([
       safe(supabase.from("users").select("*", { count: "exact", head: true })),
+      safe(supabase.from("businesses").select("*", { count: "exact", head: true })),
+      safe(supabase.from("networks").select("*", { count: "exact", head: true })),
       safe(supabase.from("parking_spots").select("*", { count: "exact", head: true }).eq("status", "active")),
       safe(supabase.from("spot_matches").select("*", { count: "exact", head: true }).eq("status", "active")),
       safe(supabase.from("ads").select("*", { count: "exact", head: true }).eq("active", true)),
@@ -66,6 +70,8 @@ export async function getAppSnapshot(): Promise<AppSnapshot> {
 
   return {
     users,
+    businesses,
+    networks,
     activeSpots,
     activeMatches,
     ads,
@@ -85,10 +91,19 @@ function buildSystemPrompt(snapshot: AppSnapshot): string {
       ? snapshot.topNeighborhoods.map((h) => `${h.name} (${h.count})`).join(", ")
       : "n/a";
 
-  return `You are the App Agent for Parking Meeters, a peer-to-peer parking spot sharing app.
-You help the admin understand and run the app. You have live access to the app's key metrics.
+  return `You are the App Agent for SpotMatch, B2B / white-label parking coordination software.
+SpotMatch is sold as a subscription to businesses (restaurants, bars, operators) that want to
+coordinate parking for their team and neighborhood network. It is NOT a consumer marketplace that
+sells, rents, or reserves parking spots — it coordinates who is aware of a spot, one driver at a time.
+You help the admin understand and run the platform. You have live access to key metrics.
 Answer questions concisely and helpfully. If asked for numbers, use the snapshot provided. If you
-don't know something, say so and suggest where to look in the admin dashboard.
+don't know something, say so and suggest where to look in the admin or business dashboard.
+
+How networks work:
+- A business creates a network (private, just that business) or joins a shared neighborhood group.
+- Active members (admin / staff / member) coordinate over spots in that network.
+- Matching only ever offers a spot to ONE best-compatible driver at a time, and only within the
+  spot's network. No one else is made aware of it.
 
 How matching works (exclusive single-driver model):
 - When someone posts a parking spot, it is NOT shown on the public map as a claimable marker.
@@ -104,6 +119,8 @@ How matching works (exclusive single-driver model):
 
 Current app snapshot (as of ${snapshot.fetchedAt}):
 - Total users: ${snapshot.users}
+- Subscribing businesses: ${snapshot.businesses}
+- Networks: ${snapshot.networks}
 - Active parking spots: ${snapshot.activeSpots}
 - Active matches: ${snapshot.activeMatches}
 - Active ad campaigns: ${snapshot.ads}
@@ -181,5 +198,5 @@ function templateReply(prompt: string, snapshot: AppSnapshot): string {
     return `There are ${snapshot.ads} active ad campaigns. Full performance (impressions, clicks, CTR) is on the main dashboard and Ad Campaigns page.`;
   }
 
-  return `I'm monitoring the app live. Right now: ${snapshot.users} users, ${snapshot.activeSpots} active spots, ${snapshot.activeMatches} active matches, and ${snapshot.ads} ads running. Ask me about users, spots, matches, ads, congestion, predictions, or invites and I'll pull the numbers.`;
+  return `I'm monitoring the platform live. Right now: ${snapshot.users} users across ${snapshot.businesses} subscribing businesses and ${snapshot.networks} networks, ${snapshot.activeSpots} active spots, ${snapshot.activeMatches} active matches, and ${snapshot.ads} ads running. Ask me about users, businesses, spots, matches, ads, congestion, predictions, or invites and I'll pull the numbers.`;
 }
