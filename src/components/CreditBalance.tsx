@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Coins, Loader2, ExternalLink } from "lucide-react";
+import { Coins, Loader2, Building2 } from "lucide-react";
 
 interface Props {
   credits: number;
@@ -64,12 +64,18 @@ export function CreditBalance({ credits, onCreditsUpdated, compact }: Props) {
         <div>
           <p className="text-sm font-bold">Credits Remaining</p>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Each confirmed match uses 1 credit. First 5 are free.
+            Optional bonus credits. SpotMatch is subscription-powered for businesses — credits are just an extra.
           </p>
         </div>
       </div>
 
       <div className="flex gap-2">
+        <a
+          href="/business"
+          className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition flex items-center justify-center gap-2"
+        >
+          <Building2 size={16} /> Business Plans
+        </a>
         <button
           onClick={() => handlePurchase(1)}
           disabled={purchasing}
@@ -77,14 +83,6 @@ export function CreditBalance({ credits, onCreditsUpdated, compact }: Props) {
         >
           {purchasing ? <Loader2 size={16} className="animate-spin" /> : <Coins size={16} />}
           {purchasing ? "Redirecting..." : "Buy 1 Credit — $5.99"}
-        </button>
-        <button
-          onClick={() => handlePurchase(5)}
-          disabled={purchasing}
-          className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-bold transition flex items-center justify-center gap-2"
-        >
-          {purchasing ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} />}
-          {purchasing ? "Redirecting..." : "Buy 5 — $29.95"}
         </button>
       </div>
 
