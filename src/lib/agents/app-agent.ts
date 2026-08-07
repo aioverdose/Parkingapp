@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabaseAdmin";
-import { ollamaChatMessages, type OllamaMessage } from "@/lib/ollama";
+import { chatCompletion, activeProviderName, type LlmMessage } from "@/lib/llm";
 
 export interface AppSnapshot {
   users: number;
@@ -115,10 +115,10 @@ Current app snapshot (as of ${snapshot.fetchedAt}):
 - Top neighborhoods today: ${hoods}`;
 }
 
-export async function appAgentReply(messages: OllamaMessage[]): Promise<{
+export async function appAgentReply(messages: LlmMessage[]): Promise<{
   reply: string;
   snapshot: AppSnapshot;
-  engine: "ollama" | "template";
+  engine: "ollama" | "openai" | "template";
 }> {
   const snapshot = await getAppSnapshot();
 
@@ -136,13 +136,15 @@ export async function appAgentReply(messages: OllamaMessage[]): Promise<{
     };
   }
 
-  const reply = await ollamaChatMessages([
+  const reply = await chatCompletion([
     { role: "system", content: buildSystemPrompt(snapshot) },
     ...safeMessages,
   ]);
 
+  const provider = activeProviderName();
+
   if (reply && reply.trim().length > 0) {
-    return { reply: reply.trim(), snapshot, engine: "ollama" };
+    return { reply: reply.trim(), snapshot, engine: provider === "none" ? "template" : provider };
   }
 
   return {
