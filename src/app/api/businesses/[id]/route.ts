@@ -29,6 +29,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const membership = await getBusinessMembership(user.id, id);
+    if (!membership) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const supabase = createAdminClient();
     const { business, error } = await loadBusiness(supabase, id);
 
@@ -38,8 +43,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!business) {
       return NextResponse.json({ error: "Business not found" }, { status: 404 });
     }
-
-    const membership = await getBusinessMembership(user.id, id);
 
     return NextResponse.json({ business, membership });
   } catch (err) {

@@ -30,7 +30,8 @@ export async function getMyBusinesses(userId: string): Promise<BusinessMembershi
   const { data: memberships } = await supabase
     .from("business_members")
     .select("business_id, role, status, businesses(*)")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("status", "active");
 
   if (!memberships) return [];
 
