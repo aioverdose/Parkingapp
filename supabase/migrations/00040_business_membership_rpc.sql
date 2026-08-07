@@ -57,7 +57,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.create_business(...) IS 'Self-serve business signup: creates the business, a private network, and makes the caller an admin';
+COMMENT ON FUNCTION public.create_business(TEXT, TEXT, TEXT, TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, INTEGER) IS 'Self-serve business signup: creates the business, a private network, and makes the caller an admin';
 
 -- ---------------------------------------------------------------------------
 -- 2. join_business: self-join as a member
