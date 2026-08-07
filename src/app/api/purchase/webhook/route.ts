@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { logger } from "@/lib/logger";
+import { parsePurchaseMetadata } from "@/lib/purchase";
+
+interface CheckoutSessionShape {
+  id?: string;
+  livemode?: boolean;
+  payment_intent?: string | null;
+  metadata?: Record<string, string> | null;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,46 +32,96 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object;
-      const userId = session.metadata?.userId;
-      const quantity = parseInt(session.metadata?.quantity || "1", 10);
-
-      if (!userId) {
-        return NextResponse.json({ error: "Missing userId in session metadata" }, { status: 400 });
-      }
-
-      const supabase = createAdminClient();
-
-      // Update purchase record
-      await supabase
-        .from("credit_purchases")
-        .update({
-          status: "completed",
-          stripe_payment_intent_id: session.payment_intent as string,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("stripe_session_id", session.id);
-
-      // Credit the user's match_credits
-      const { data: user } = await supabase
-        .from("users")
-        .select("match_credits")
-        .eq("id", userId)
-        .single();
-
-      const currentCredits = user?.match_credits ?? 0;
-      await supabase
-        .from("users")
-        .update({ match_credits: currentCredits + quantity })
-        .eq("id", userId);
+    if (event.type !== "checkout.session.completed") {
+      return NextResponse.json({ received: true });
     }
 
-    return NextResponse.json({ received: true });
+    const session = event.data.object as unknown as CheckoutSessionShape;
+
+    // Reject events from the wrong environment (test vs live) so a leaked
+    // test-mode secret can never grant production credits.
+    const expectedLiveMode = process.env.NODE_ENV === "production";
+    if (session.livemode !== expectedLiveMode) {
+      logger.warn("stripe webhook: livemode mismatch rejected", {
+        route: "/api/purchase/webhook",
+        event_id: event.id,
+        livemode: session.livemode,
+      });
+      return NextResponse.json({ error: "Livemode mismatch" }, { status: 400 });
+    }
+
+    const parsed = parsePurchaseMetadata(session.metadata);
+    if (!parsed) {
+      logger.error("stripe webhook: invalid session metadata", {
+        route: "/api/purchase/webhook",
+        event_id: event.id,
+        session_id: session.id,
+        metadata: session.metadata,
+      });
+      return NextResponse.json({ error: "Invalid session metadata" }, { status: 400 });
+    }
+    const { userId, quantity } = parsed;
+
+    const supabase = createAdminClient();
+
+    // Replay guard: if this exact event was already fully processed, skip.
+    const { data: existingEvent } = await supabase
+      .from("webhook_events")
+      .select("event_id")
+      .eq("event_id", event.id)
+      .maybeSingle();
+
+    if (existingEvent) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
+    // Atomic, idempotent credit grant: only completes a 'pending' purchase and
+    // returns 0 if this session was already completed.
+    const { data: granted, error: grantError } = await supabase.rpc("complete_credit_purchase", {
+      p_user_id: userId,
+      p_quantity: quantity,
+      p_session_id: session.id,
+      p_payment_intent: session.payment_intent ?? null,
+    });
+
+    if (grantError) {
+      logger.error("stripe webhook: credit grant failed", {
+        route: "/api/purchase/webhook",
+        event_id: event.id,
+        session_id: session.id,
+        userId,
+        quantity,
+        error: grantError.message,
+      });
+      return NextResponse.json({ error: "Failed to grant credits" }, { status: 500 });
+    }
+
+    // Record the event only AFTER a successful grant, so a failure below lets
+    // Stripe retry and still grants exactly once (the RPC is idempotent).
+    try {
+      await supabase.from("webhook_events").insert({
+        event_id: event.id,
+        event_type: event.type,
+      });
+    } catch {
+      // Best-effort; the idempotent grant RPC already prevents double credits.
+    }
+
+    logger.info("stripe webhook: credits granted", {
+      route: "/api/purchase/webhook",
+      event_id: event.id,
+      session_id: session.id,
+      userId,
+      quantity: granted ?? 0,
+    });
+
+    return NextResponse.json({ received: true, credits_granted: granted ?? 0 });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Internal server error" },
-      { status: 500 },
-    );
+    logger.error("stripe webhook: failed", {
+      route: "/api/purchase/webhook",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
