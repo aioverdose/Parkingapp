@@ -201,6 +201,8 @@ export interface Database {
           visibility: "exclusive" | "public";
           exclusive_attempts: number;
           max_exclusive_attempts: number;
+          business_id: string | null;
+          network_id: string | null;
         };
         Insert: {
           id?: string;
@@ -222,6 +224,8 @@ export interface Database {
           visibility?: "exclusive" | "public";
           exclusive_attempts?: number;
           max_exclusive_attempts?: number;
+          business_id?: string | null;
+          network_id?: string | null;
         };
         Update: {
           id?: string;
@@ -243,6 +247,8 @@ export interface Database {
           visibility?: "exclusive" | "public";
           exclusive_attempts?: number;
           max_exclusive_attempts?: number;
+          business_id?: string | null;
+          network_id?: string | null;
         };
         Relationships: [];
       };
@@ -257,6 +263,8 @@ export interface Database {
           updated_at: string;
           offer_sent_at: string | null;
           offer_expires_at: string | null;
+          business_id: string | null;
+          network_id: string | null;
         };
         Insert: {
           id?: string;
@@ -268,6 +276,8 @@ export interface Database {
           updated_at?: string;
           offer_sent_at?: string | null;
           offer_expires_at?: string | null;
+          business_id?: string | null;
+          network_id?: string | null;
         };
         Update: {
           id?: string;
@@ -1375,6 +1385,138 @@ export interface Database {
         };
         Relationships: [];
       };
+      networks: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          network_type: "private" | "shared";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          network_type?: "private" | "shared";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          description?: string | null;
+          network_type?: "private" | "shared";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      businesses: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          plan: "trial" | "standard" | "pro" | "enterprise";
+          status: "active" | "trialing" | "suspended" | "canceled";
+          seats_limit: number;
+          address: string | null;
+          phone: string | null;
+          operating_lat: number | null;
+          operating_lng: number | null;
+          operating_radius_meters: number | null;
+          timezone: string;
+          primary_network_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          plan?: "trial" | "standard" | "pro" | "enterprise";
+          status?: "active" | "trialing" | "suspended" | "canceled";
+          seats_limit?: number;
+          address?: string | null;
+          phone?: string | null;
+          operating_lat?: number | null;
+          operating_lng?: number | null;
+          operating_radius_meters?: number | null;
+          timezone?: string;
+          primary_network_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          description?: string | null;
+          plan?: "trial" | "standard" | "pro" | "enterprise";
+          status?: "active" | "trialing" | "suspended" | "canceled";
+          seats_limit?: number;
+          address?: string | null;
+          phone?: string | null;
+          operating_lat?: number | null;
+          operating_lng?: number | null;
+          operating_radius_meters?: number | null;
+          timezone?: string;
+          primary_network_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      network_businesses: {
+        Row: {
+          id: string;
+          network_id: string;
+          business_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          network_id: string;
+          business_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          network_id?: string;
+          business_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      business_members: {
+        Row: {
+          id: string;
+          business_id: string;
+          user_id: string;
+          role: "admin" | "staff" | "member";
+          status: "active" | "invited" | "disabled";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          user_id: string;
+          role?: "admin" | "staff" | "member";
+          status?: "active" | "invited" | "disabled";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_id?: string;
+          user_id?: string;
+          role?: "admin" | "staff" | "member";
+          status?: "active" | "invited" | "disabled";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_: string]: {
@@ -1413,6 +1555,18 @@ export interface Database {
       };
       is_user_blocked: {
         Args: { check_user_id: string; by_user_id: string };
+        Returns: boolean;
+      };
+      is_platform_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      current_user_business_role: {
+        Args: { p_business_id: string };
+        Returns: string | null;
+      };
+      user_is_network_member: {
+        Args: { p_network_id: string };
         Returns: boolean;
       };
       phone_otps: {
