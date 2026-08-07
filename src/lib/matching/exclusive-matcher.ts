@@ -347,7 +347,7 @@ export async function reassignOffer(
   spotId: string,
   currentOfferId: string,
   reason: "declined" | "expired",
-): Promise<{ reassigned: boolean; fallback: boolean }> {
+): Promise<{ reassigned: boolean; fallback: boolean; closed: boolean }> {
   const supabase = createAdminClient();
 
   const nextStatus = reason === "declined" ? "offer_declined" : "offer_expired";
@@ -358,6 +358,7 @@ export async function reassignOffer(
     .eq("id", currentOfferId)
     .single();
 
+  let closed = false;
   if (match && match.status === "offered") {
     const { data: closedMatch } = await supabase
       .from("spot_matches")
@@ -368,12 +369,13 @@ export async function reassignOffer(
       .maybeSingle();
 
     // Only the worker that won the conditional transition owns the side effect.
+    closed = !!closedMatch;
     if (closedMatch && reason === "declined") {
       await incrementReliabilityCounter(match.seeker_id, "decline_count");
     }
   }
 
-  return attemptNextOffer(spotId);
+  return { ...(await attemptNextOffer(spotId)), closed };
 }
 
 /**
@@ -509,7 +511,7 @@ export async function expireStaleOffers(): Promise<{ expired: number; reassigned
 
   for (const offer of (stale ?? []) as Array<{ id: string; spot_id: string }>) {
     const result = await reassignOffer(offer.spot_id, offer.id, "expired");
-    expired++;
+    if (result.closed) expired++;
     if (result.reassigned) reassigned++;
     if (result.fallback) fallback++;
   }

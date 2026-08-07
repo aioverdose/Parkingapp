@@ -25,6 +25,22 @@ BEGIN
     AND offer_expires_at < now();
   GET DIAGNOSTICS expired_offers = ROW_COUNT;
 
+  UPDATE public.parking_spots
+  SET status = 'taken'
+  WHERE status = 'active'
+    AND EXISTS (
+      SELECT 1
+      FROM public.spot_matches sm
+      WHERE sm.spot_id = parking_spots.id
+        AND sm.status = 'completed'
+    );
+
+  UPDATE public.parking_spots
+  SET status = 'expired'
+  WHERE status = 'active'
+    AND expires_at IS NOT NULL
+    AND expires_at < now();
+
   DELETE FROM public.driver_locations
   WHERE recorded_at < now() - p_location_retention
      OR match_id IN (

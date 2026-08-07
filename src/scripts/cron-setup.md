@@ -1,5 +1,18 @@
 # Cron Job Setup for SpotMatch AI Agents
 
+## Pilot offer expiry and retention
+
+The protected endpoint below must be called every minute by an external HTTP scheduler (for example cron-job.org or Vercel Cron where available):
+
+- URL: `https://your-domain.example/api/cron/expire-offers`
+- Method: `POST`
+- Headers: `Authorization: Bearer <CRON_SECRET>` and `x-cron-secret: <CRON_SECRET>`
+- Schedule: Every minute
+
+It expires offers, reassigns the next eligible network member, never uses public fallback for B2B spots, and invokes the retention RPC. Supabase `pg_cron` separately schedules `cleanup_pilot_data()` every five minutes when the extension is available; that SQL job cleans stale spots, completed handoffs, precise locations, and ephemeral chats.
+
+Apply migrations `00042` through `00047` before enabling pilot traffic. Keep `CRON_SECRET` server-side and do not use the Supabase service-role key as the scheduler secret.
+
 Since Vercel's free plan doesn't include cron jobs, use **cron-job.org** (free) to hit these endpoints:
 
 ## 1. Congestion Alert Agent (every 5 minutes)

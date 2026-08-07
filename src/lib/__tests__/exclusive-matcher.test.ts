@@ -7,6 +7,7 @@ import {
   findBestSeeker,
   createExclusiveOffer,
   attemptNextOffer,
+  expireStaleOffers,
   type ExclusiveSpot,
 } from "../matching/exclusive-matcher";
 import { createAdminClient } from "@/lib/supabaseAdmin";
@@ -292,6 +293,83 @@ describe("createExclusiveOffer concurrency", () => {
 
     expect(results.filter(Boolean)).toHaveLength(1);
     expect(liveOffers).toHaveLength(1);
+  });
+});
+
+describe("expireStaleOffers", () => {
+  it("expires an offer once and is idempotent on a second run", async () => {
+    const match = {
+      id: "offer-expired",
+      spot_id: "spot-1",
+      spot_owner_id: "owner-1",
+      seeker_id: "seeker-1",
+      status: "offered",
+      offer_expires_at: new Date(Date.now() - 1_000).toISOString(),
+    };
+    const spot = makeSpot({ business_id: null, network_id: null });
+    let closeCount = 0;
+
+    const client = {
+      from(table: string) {
+        let filters: Record<string, unknown> = {};
+        let updateValues: Record<string, unknown> | null = null;
+        const chain: Record<string, unknown> = {
+          select: () => chain,
+          eq: (field: string, value: unknown) => {
+            filters[field] = value;
+            return chain;
+          },
+          lt: (field: string, value: unknown) => {
+            filters[field] = value;
+            return chain;
+          },
+          gt: (field: string, value: unknown) => {
+            filters[field] = value;
+            return chain;
+          },
+          in: () => chain,
+          update: (values: Record<string, unknown>) => {
+            updateValues = values;
+            return chain;
+          },
+          insert: () => chain,
+          maybeSingle: async () => {
+            if (table === "spot_matches" && updateValues) {
+              if (match.status !== "offered") return { data: null, error: null };
+              match.status = String(updateValues.status);
+              closeCount++;
+              return { data: { id: match.id }, error: null };
+            }
+            return { data: null, error: null };
+          },
+          single: async () => {
+            if (table === "spot_matches") return { data: match, error: null };
+            if (table === "parking_spots") return { data: spot, error: null };
+            return { data: null, error: null };
+          },
+          then: (resolve: (value: { data: unknown; error: null }) => void) => {
+            if (table === "spot_matches" && !updateValues) {
+              resolve({ data: match.status === "offered" ? [match] : [], error: null });
+            } else if (table === "spot_requests") {
+              resolve({ data: [], error: null });
+            } else {
+              resolve({ data: [], error: null });
+            }
+          },
+        };
+        return chain;
+      },
+    };
+
+    vi.mocked(createAdminClient).mockReturnValue(client as never);
+
+    const first = await expireStaleOffers();
+    const second = await expireStaleOffers();
+
+    expect(first.expired).toBe(1);
+    expect(second.expired).toBe(0);
+    expect(closeCount).toBe(1);
+    expect(match.status).toBe("offer_expired");
   });
 });
 
