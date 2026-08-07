@@ -6,6 +6,7 @@ import { isValidCoords } from "@/lib/geo-validation";
 import { logger } from "@/lib/logger";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 async function loadBusiness(supabase: ReturnType<typeof createAdminClient>, id: string) {
   const { data, error } = await supabase
@@ -88,6 +89,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (body.description !== undefined) updates.description = body.description ?? null;
     if (body.address !== undefined) updates.address = body.address ?? null;
     if (body.phone !== undefined) updates.phone = body.phone ?? null;
+
+    if (body.logo_url !== undefined) {
+      if (typeof body.logo_url !== "string") {
+        return NextResponse.json({ error: "logo_url must be a string" }, { status: 400 });
+      }
+      updates.logo_url = body.logo_url || null;
+    }
+    if (body.app_name !== undefined) {
+      if (typeof body.app_name !== "string" || body.app_name.trim().length === 0) {
+        return NextResponse.json({ error: "app_name must be a non-empty string" }, { status: 400 });
+      }
+      updates.app_name = body.app_name.trim();
+    }
+    for (const field of ["primary_color", "accent_color"] as const) {
+      if (body[field] !== undefined) {
+        if (typeof body[field] !== "string" || !HEX_COLOR_RE.test(body[field])) {
+          return NextResponse.json({ error: `${field} must be a hex color like #3b82f6` }, { status: 400 });
+        }
+        updates[field] = body[field];
+      }
+    }
 
     const hasOperatingArea = body.operating_lat !== undefined || body.operating_lng !== undefined || body.operating_radius_meters !== undefined;
     if (hasOperatingArea) {

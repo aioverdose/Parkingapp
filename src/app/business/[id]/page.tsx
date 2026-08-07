@@ -16,6 +16,10 @@ interface DashboardData {
     status: string;
     operating_lat: number | null;
     operating_lng: number | null;
+    logo_url: string | null;
+    primary_color: string | null;
+    accent_color: string | null;
+    app_name: string | null;
   };
   role: string;
   network_id: string | null;
@@ -51,6 +55,10 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
   const [postError, setPostError] = useState<string | null>(null);
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
 
+  const [branding, setBranding] = useState({ app_name: "", primary_color: "", accent_color: "", logo_url: "" });
+  const [savingBranding, setSavingBranding] = useState(false);
+  const [brandingMsg, setBrandingMsg] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     const supabase = createBrowserClient();
     setLoading(true);
@@ -71,6 +79,12 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
       }
       const json = await res.json();
       setData(json);
+      setBranding({
+        app_name: json.business?.app_name ?? "",
+        primary_color: json.business?.primary_color ?? "",
+        accent_color: json.business?.accent_color ?? "",
+        logo_url: json.business?.logo_url ?? "",
+      });
       if (json.business?.operating_lat != null) {
         setSpotForm((f) => ({
           ...f,
@@ -130,6 +144,44 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
       setPostError(err?.message || "Failed to post spot");
     } finally {
       setPosting(false);
+    }
+  };
+
+  const saveBranding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingBranding(true);
+    setBrandingMsg(null);
+    try {
+      const supabase = createBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setBrandingMsg("Not authenticated");
+        return;
+      }
+      const res = await fetch(`/api/businesses/${id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          app_name: branding.app_name || null,
+          primary_color: branding.primary_color || null,
+          accent_color: branding.accent_color || null,
+          logo_url: branding.logo_url || null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setBrandingMsg(body.error || `Server error ${res.status}`);
+        return;
+      }
+      setBrandingMsg("Branding saved.");
+      await load();
+    } catch (err: any) {
+      setBrandingMsg(err?.message || "Failed to save branding");
+    } finally {
+      setSavingBranding(false);
     }
   };
 
@@ -260,6 +312,57 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
           </div>
         ))}
       </div>
+
+      {data.role === "admin" && (
+        <form onSubmit={saveBranding} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-8 space-y-4">
+          <h2 className="font-bold">White-label Branding</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-zinc-500 block mb-1">App name</label>
+              <input
+                value={branding.app_name}
+                onChange={(e) => setBranding({ ...branding, app_name: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
+                placeholder="Shown to your network instead of SpotMatch"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-500 block mb-1">Logo URL</label>
+              <input
+                value={branding.logo_url}
+                onChange={(e) => setBranding({ ...branding, logo_url: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-500 block mb-1">Primary color (hex)</label>
+              <input
+                value={branding.primary_color}
+                onChange={(e) => setBranding({ ...branding, primary_color: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
+                placeholder="#3b82f6"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-500 block mb-1">Accent color (hex)</label>
+              <input
+                value={branding.accent_color}
+                onChange={(e) => setBranding({ ...branding, accent_color: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
+                placeholder="#10b981"
+              />
+            </div>
+          </div>
+          {brandingMsg && <p className="text-sm text-zinc-500">{brandingMsg}</p>}
+          <button
+            disabled={savingBranding}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 disabled:opacity-50"
+          >
+            {savingBranding && <Loader2 size={16} className="animate-spin" />} Save Branding
+          </button>
+        </form>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">

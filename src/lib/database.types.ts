@@ -1428,6 +1428,10 @@ export interface Database {
           operating_radius_meters: number | null;
           timezone: string;
           primary_network_id: string | null;
+          logo_url: string | null;
+          primary_color: string | null;
+          accent_color: string | null;
+          app_name: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1446,6 +1450,10 @@ export interface Database {
           operating_radius_meters?: number | null;
           timezone?: string;
           primary_network_id?: string | null;
+          logo_url?: string | null;
+          primary_color?: string | null;
+          accent_color?: string | null;
+          app_name?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1464,6 +1472,10 @@ export interface Database {
           operating_radius_meters?: number | null;
           timezone?: string;
           primary_network_id?: string | null;
+          logo_url?: string | null;
+          primary_color?: string | null;
+          accent_color?: string | null;
+          app_name?: string | null;
           created_at?: string;
           updated_at?: string;
         };
