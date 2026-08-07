@@ -18,11 +18,15 @@ function isAgentRoute(pathname: string): boolean {
   return AGENT_ROUTES.some((route) => pathname.startsWith(route));
 }
 
+function isProtectedAgentRoute(pathname: string): boolean {
+  return isAgentRoute(pathname) && !pathname.startsWith("/api/agents/chat");
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/")) {
-    if (isAgentRoute(pathname)) {
+    if (isProtectedAgentRoute(pathname)) {
       const secret = request.headers.get("x-agent-secret");
       if (secret !== process.env.AGENT_SECRET_KEY) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
