@@ -6,15 +6,7 @@ export interface OllamaMessage {
   content: string;
 }
 
-export async function ollamaChat(
-  systemPrompt: string,
-  userPrompt: string,
-): Promise<string> {
-  const messages: OllamaMessage[] = [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ];
-
+export async function ollamaChatMessages(messages: OllamaMessage[]): Promise<string> {
   try {
     const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: "POST",
@@ -36,6 +28,16 @@ export async function ollamaChat(
   } catch {
     return "";
   }
+}
+
+export async function ollamaChat(
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
+  return ollamaChatMessages([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ]);
 }
 
 export function isOllamaAvailable(): boolean {
