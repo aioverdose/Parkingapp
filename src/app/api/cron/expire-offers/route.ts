@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { expireStaleOffers, sweepExclusiveSpots } from "@/lib/matching/exclusive-matcher";
+import { createAdminClient } from "@/lib/supabaseAdmin";
 import { logger } from "@/lib/logger";
 
 // Guarded by x-cron-secret. The proxy also requires a Bearer header on /api/*,
@@ -16,6 +17,11 @@ export async function POST(request: NextRequest) {
     }
 
     const [expired, swept] = await Promise.all([expireStaleOffers(), sweepExclusiveSpots()]);
+    const { data: retention, error: retentionError } = await createAdminClient().rpc("cleanup_pilot_retention", {});
+
+    if (retentionError) {
+      throw new Error(`Retention cleanup failed: ${retentionError.message}`);
+    }
 
     logger.info("cron: offer sweep complete", {
       route: "/api/cron/expire-offers",
@@ -25,6 +31,7 @@ export async function POST(request: NextRequest) {
       swept_spots: swept.swept,
       swept_offered: swept.offered,
       swept_fallback: swept.fallback,
+      retention,
     });
 
     return NextResponse.json({
@@ -35,6 +42,7 @@ export async function POST(request: NextRequest) {
       swept_spots: swept.swept,
       swept_offered: swept.offered,
       swept_fallback: swept.fallback,
+      retention,
     });
   } catch (err) {
     logger.error("cron: offer sweep failed", {
