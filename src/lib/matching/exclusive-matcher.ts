@@ -346,12 +346,16 @@ export async function reassignOffer(
     .single();
 
   if (match && match.status === "offered") {
-    await supabase
+    const { data: closedMatch } = await supabase
       .from("spot_matches")
       .update({ status: nextStatus })
-      .eq("id", currentOfferId);
+      .eq("id", currentOfferId)
+      .eq("status", "offered")
+      .select("id")
+      .maybeSingle();
 
-    if (reason === "declined") {
+    // Only the worker that won the conditional transition owns the side effect.
+    if (closedMatch && reason === "declined") {
       await incrementReliabilityCounter(match.seeker_id, "decline_count");
     }
   }

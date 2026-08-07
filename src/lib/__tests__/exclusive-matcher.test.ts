@@ -5,6 +5,7 @@ import {
   haversineDistance,
   isScheduleCompatible,
   findBestSeeker,
+  createExclusiveOffer,
   attemptNextOffer,
   type ExclusiveSpot,
 } from "../matching/exclusive-matcher";
@@ -12,6 +13,10 @@ import { createAdminClient } from "@/lib/supabaseAdmin";
 
 vi.mock("@/lib/supabaseAdmin", () => ({
   createAdminClient: vi.fn(),
+}));
+
+vi.mock("@/lib/push", () => ({
+  sendPushToUser: vi.fn().mockResolvedValue(undefined),
 }));
 
 const DEFAULT_OFFER_WINDOW_MS = 90_000;
@@ -223,6 +228,67 @@ describe("findBestSeeker network scoping", () => {
     const best = await findBestSeeker(spot);
 
     expect(best).toBeNull();
+  });
+});
+
+describe("createExclusiveOffer concurrency", () => {
+  it("accepts only one live offer when workers race", async () => {
+    const liveOffers: Array<Record<string, unknown>> = [];
+    let insertedOffers = 0;
+
+    function client() {
+      return {
+        from(table: string) {
+          let operation: "read" | "insert" | "update" = "read";
+          let values: Record<string, unknown> = {};
+          const chain: Record<string, unknown> = {
+            select: () => chain,
+            eq: () => chain,
+            in: () => chain,
+            maybeSingle: async () => ({
+              data: table === "spot_matches" && operation === "read" ? liveOffers[0] ?? null : null,
+              error: null,
+            }),
+            insert: (insertValues: Record<string, unknown>) => {
+              operation = "insert";
+              values = insertValues;
+              return chain;
+            },
+            update: (updateValues: Record<string, unknown>) => {
+              operation = "update";
+              values = updateValues;
+              return chain;
+            },
+            single: async () => {
+              if (table === "spot_matches" && operation === "insert") {
+                if (liveOffers.length > 0) {
+                  return { data: null, error: { code: "23505", message: "unique live offer" } };
+                }
+                const offer = { id: `offer-${++insertedOffers}`, ...values };
+                liveOffers.push(offer);
+                return { data: { id: offer.id }, error: null };
+              }
+              return { data: null, error: null };
+            },
+            then: (resolve: (value: { data: unknown; error: null }) => void) => {
+              resolve({ data: table === "users" ? { name: "Owner" } : [], error: null });
+            },
+          };
+          return chain;
+        },
+      };
+    }
+
+    vi.mocked(createAdminClient).mockImplementation(() => client() as never);
+
+    const spot = makeSpot({ business_id: "business-a", network_id: "network-a" });
+    const results = await Promise.all([
+      createExclusiveOffer(spot, "seeker-1"),
+      createExclusiveOffer(spot, "seeker-2"),
+    ]);
+
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(liveOffers).toHaveLength(1);
   });
 });
 
