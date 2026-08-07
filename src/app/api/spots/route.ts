@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,6 +45,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ spots: data ?? [] });
   } catch (err) {
+    logger.error("spots: list failed", {
+      route: "/api/spots",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 }
@@ -165,6 +171,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ spot: data }, { status: 201 });
   } catch (err) {
+    logger.error("spots: create failed", {
+      route: "/api/spots",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 }

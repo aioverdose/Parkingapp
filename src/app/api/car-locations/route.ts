@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +26,12 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ carLocation: data ?? null });
-  } catch {
+  } catch (err) {
+    logger.error("car-locations: get failed", {
+      route: "/api/car-locations",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -100,7 +106,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ carLocation: data }, { status: 201 });
-  } catch {
+  } catch (err) {
+    logger.error("car-locations: save failed", {
+      route: "/api/car-locations",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

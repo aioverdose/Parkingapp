@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { expireStaleOffers, sweepExclusiveSpots } from "@/lib/matching/exclusive-matcher";
+import { logger } from "@/lib/logger";
 
 // Guarded by x-cron-secret. The proxy also requires a Bearer header on /api/*,
 // so cron callers must send both:
@@ -16,6 +17,16 @@ export async function POST(request: NextRequest) {
 
     const [expired, swept] = await Promise.all([expireStaleOffers(), sweepExclusiveSpots()]);
 
+    logger.info("cron: offer sweep complete", {
+      route: "/api/cron/expire-offers",
+      expired_offers: expired.expired,
+      reassigned: expired.reassigned,
+      stale_fallback: expired.fallback,
+      swept_spots: swept.swept,
+      swept_offered: swept.offered,
+      swept_fallback: swept.fallback,
+    });
+
     return NextResponse.json({
       ok: true,
       expired_offers: expired.expired,
@@ -26,6 +37,11 @@ export async function POST(request: NextRequest) {
       swept_fallback: swept.fallback,
     });
   } catch (err) {
+    logger.error("cron: offer sweep failed", {
+      route: "/api/cron/expire-offers",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 },

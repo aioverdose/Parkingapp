@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { sendPushToUser } from "@/lib/push";
 import { attemptNextOffer, incrementReliabilityCounter } from "@/lib/matching/exclusive-matcher";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: NextRequest,
@@ -188,6 +189,13 @@ export async function POST(
 
       // Track seeker reliability so they rank lower in future exclusive offers
       await incrementReliabilityCounter(match.seeker_id, "no_show_count");
+      logger.warn("match: no-show recorded", {
+        route: "/api/matches/[id]/status",
+        userId: user.id,
+        match_id: id,
+        spot_id: match.spot_id,
+        reported_by: role,
+      });
 
       if (isOwner) {
         await supabase
@@ -228,6 +236,11 @@ export async function POST(
 
     return NextResponse.json({ success: true, status });
   } catch (err) {
+    logger.error("match: status update failed", {
+      route: "/api/matches/[id]/status",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 },

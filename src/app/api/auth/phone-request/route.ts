@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabaseAdmin";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { requestOtp, isPhoneVerificationEnabled } from "@/lib/otp";
 import { isTwilioConfigured } from "@/lib/twilio";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,13 +60,21 @@ export async function POST(request: NextRequest) {
     }
 
     // No SMS provider configured — dev mode
-    console.warn("Phone OTP unavailable (no SMS provider configured)");
+    logger.warn("phone OTP unavailable (no SMS provider configured)", {
+      route: "/api/auth/phone-request",
+      userId: user.id,
+    });
     return NextResponse.json({
       success: true,
       method: "simulated",
       warning: "SMS not configured. Any 6-digit code will work in dev mode.",
     });
   } catch (err) {
+    logger.error("phone OTP request failed", {
+      route: "/api/auth/phone-request",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 },

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabaseAdmin";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { verifyOtp } from "@/lib/otp";
 import { isTwilioConfigured } from "@/lib/twilio";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,6 +79,11 @@ export async function POST(request: NextRequest) {
     if (err instanceof Error && err.message.includes("expired")) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
+    logger.error("phone OTP verification failed", {
+      route: "/api/auth/phone-verify",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 },

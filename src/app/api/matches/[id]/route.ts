@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { sendPushToUser } from "@/lib/push";
 import { reassignOffer } from "@/lib/matching/exclusive-matcher";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -86,6 +87,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // Seeker declines -> automatically reassign to the next-best seeker,
         // or fall back to a public claimable alert after attempts run out.
         const { reassigned, fallback } = await reassignOffer(match.spot_id, id, "declined");
+        logger.info("match: offer declined by seeker", {
+          route: "/api/matches/[id]",
+          userId: user.id,
+          match_id: id,
+          reassigned,
+          fallback,
+        });
         return NextResponse.json({
           success: true,
           status: "offer_declined",
@@ -116,6 +124,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           title: "Driver accepted your spot!",
           body: "Confirm the match to proceed.",
           match_id: id,
+        });
+
+        logger.info("match: exclusive offer accepted", {
+          route: "/api/matches/[id]",
+          userId: user.id,
+          match_id: id,
+          spot_id: match.spot_id,
         });
 
         return NextResponse.json({ success: true, status: "confirmed_by_seeker" });
@@ -246,6 +261,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json({ success: true, status: newStatus });
   } catch (err) {
+    logger.error("match: action failed", {
+      route: "/api/matches/[id]",
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500 }
