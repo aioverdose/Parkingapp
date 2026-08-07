@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { getBusinessMembership } from "@/lib/api/business-helpers";
+import { reassignOffer } from "@/lib/matching/exclusive-matcher";
 import { logger } from "@/lib/logger";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string; userId: string }> }) {
@@ -68,6 +69,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const supabase = createAdminClient();
+    const { data: activeOffers } = await supabase
+      .from("spot_matches")
+      .select("id, spot_id")
+      .eq("business_id", id)
+      .eq("seeker_id", userId)
+      .eq("status", "offered");
+
     const { error } = await supabase.rpc("remove_business_member", {
       p_business_id: id,
       p_user_id: userId,
@@ -75,6 +83,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Membership is revoked first. Reassignment then runs with the removed
+    // user excluded by active-membership filtering and is safe to repeat.
+    for (const offer of activeOffers ?? []) {
+      await reassignOffer(offer.spot_id, offer.id, "expired");
     }
 
     return NextResponse.json({ ok: true });
