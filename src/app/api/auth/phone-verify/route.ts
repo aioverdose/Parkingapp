@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
-    const rateCheck = checkRateLimit(`phone-verify:${ip}`, 10, 60_000);
+    const rateCheck = await checkRateLimit(`phone-verify:${ip}`, 10, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
     }

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
-    const rateCheck = checkRateLimit(`location:${user.id}`, 60, 60_000);
+    const rateCheck = await checkRateLimit(`location:${user.id}`, 60, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }

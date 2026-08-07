@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const rateCheck = checkRateLimit(`behavior-test-create:${user.id}`, 10, 60_000);
+    const rateCheck = await checkRateLimit(`behavior-test-create:${user.id}`, 10, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }

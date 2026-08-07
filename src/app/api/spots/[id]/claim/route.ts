@@ -14,7 +14,7 @@ export async function POST(
     }
 
     const ip = request.headers.get("x-forwarded-for") ?? "unknown";
-    const rateCheck = checkRateLimit(`claim-spot:${ip}`, 20, 60_000);
+    const rateCheck = await checkRateLimit(`claim-spot:${ip}`, 20, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },

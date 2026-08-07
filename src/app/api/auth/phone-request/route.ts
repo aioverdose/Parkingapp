@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
-    const rateCheck = checkRateLimit(`phone-request:${ip}`, 5, 60_000);
+    const rateCheck = await checkRateLimit(`phone-request:${ip}`, 5, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
     }

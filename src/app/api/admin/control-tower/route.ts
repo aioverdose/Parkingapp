@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const rateCheck = checkRateLimit(`control-tower:${user.id}`, 30, 60_000);
+    const rateCheck = await checkRateLimit(`control-tower:${user.id}`, 30, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }

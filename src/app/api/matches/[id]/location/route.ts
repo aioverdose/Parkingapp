@@ -76,7 +76,7 @@ export async function POST(
     }
 
     // Rate limit: max 1 location update per 10 seconds per user
-    const rateCheck = checkRateLimit(`location-update:${user.id}`, 6, 60_000);
+    const rateCheck = await checkRateLimit(`location-update:${user.id}`, 6, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: "Rate limited. Wait before sending another update." },

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = request.headers.get("x-forwarded-for") ?? "unknown";
-    const rateCheck = checkRateLimit(`create-spot:${ip}`, 10, 60_000);
+    const rateCheck = await checkRateLimit(`create-spot:${ip}`, 10, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: "Too many requests. Please wait before posting again." },

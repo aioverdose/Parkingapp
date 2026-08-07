@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const rateCheck = checkRateLimit(`ai-test:${user.id}`, 3, 60_000);
+    const rateCheck = await checkRateLimit(`ai-test:${user.id}`, 3, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Rate limited" }, { status: 429 });
     }
