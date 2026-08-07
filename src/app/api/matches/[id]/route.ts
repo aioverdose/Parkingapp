@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
+import { sendPushToUser } from "@/lib/push";
+import { reassignOffer } from "@/lib/matching/exclusive-matcher";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -69,6 +71,55 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const isSeeker = match.seeker_id === user.id;
     if (!isOwner && !isSeeker) {
       return NextResponse.json({ error: "Not authorized for this match" }, { status: 403 });
+    }
+
+    // Exclusive offer: only the offered seeker can accept or decline it.
+    if (match.status === "offered") {
+      if (isOwner) {
+        return NextResponse.json(
+          { error: "Waiting for the offered driver to respond" },
+          { status: 400 },
+        );
+      }
+
+      if (action === "reject") {
+        // Seeker declines -> automatically reassign to the next-best seeker,
+        // or fall back to a public claimable alert after attempts run out.
+        const { reassigned, fallback } = await reassignOffer(match.spot_id, id, "declined");
+        return NextResponse.json({
+          success: true,
+          status: "offer_declined",
+          reassigned,
+          fallback,
+        });
+      }
+
+      if (action === "confirm") {
+        const { error: updateError } = await supabase
+          .from("spot_matches")
+          .update({ status: "confirmed_by_seeker" })
+          .eq("id", id);
+
+        if (updateError) {
+          return NextResponse.json({ error: updateError.message }, { status: 500 });
+        }
+
+        await supabase.from("notifications").insert({
+          user_id: match.spot_owner_id,
+          title: "A driver accepted your exclusive offer!",
+          message: "Confirm the match to proceed with the handoff.",
+          type: "match",
+        });
+
+        sendPushToUser(match.spot_owner_id, {
+          type: "offer_accepted",
+          title: "Driver accepted your spot!",
+          body: "Confirm the match to proceed.",
+          match_id: id,
+        });
+
+        return NextResponse.json({ success: true, status: "confirmed_by_seeker" });
+      }
     }
 
     if (action === "reject") {

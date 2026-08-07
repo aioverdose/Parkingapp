@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, X, MessageCircle, MapPin, Car, User as UserIcon, Navigation } from "lucide-react";
+import { Loader2, Check, X, MessageCircle, MapPin, Car, User as UserIcon, Navigation, Zap } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabaseClient";
 
 interface Match {
@@ -10,9 +10,10 @@ interface Match {
   spot_id: string;
   spot_owner_id: string;
   seeker_id: string;
-  status: "pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired";
+  status: "pending" | "offered" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "offer_declined" | "offer_expired" | "expired";
   created_at: string;
   updated_at: string;
+  offer_expires_at: string | null;
   spot: {
     id: string;
     address: string;
@@ -111,7 +112,7 @@ export function MatchList({ onClose, onChatOpen, onTrackOpen }: MatchListProps) 
   }
 
   const pendingMatches = matches.filter(
-    (m) => m.status === "pending" || m.status === "confirmed_by_owner" || m.status === "confirmed_by_seeker"
+    (m) => m.status === "pending" || m.status === "offered" || m.status === "confirmed_by_owner" || m.status === "confirmed_by_seeker"
   );
   const confirmedMatches = matches.filter((m) => m.status === "confirmed");
 
@@ -173,6 +174,17 @@ export function MatchList({ onClose, onChatOpen, onTrackOpen }: MatchListProps) 
                     </div>
                   </div>
 
+                  {match.status === "offered" && (
+                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 text-xs font-bold">
+                      <Zap size={14} />
+                      Exclusive offer{!isOwner && match.offer_expires_at && (
+                        <span className="ml-auto">
+                          Expires in <OfferCountdown expiresAt={match.offer_expires_at} />
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                     <UserIcon size={14} />
                     <span>{otherUser?.name || "Driver"}</span>
@@ -228,6 +240,10 @@ export function MatchList({ onClose, onChatOpen, onTrackOpen }: MatchListProps) 
                         </Button>
                       )}
                     </div>
+                  ) : match.status === "offered" && isOwner ? (
+                    <p className="text-xs font-medium text-amber-600 dark:text-amber-400 px-1">
+                      Waiting for the offered driver to respond...
+                    </p>
                   ) : (
                     <div className="flex gap-2">
                       <Button
@@ -240,7 +256,9 @@ export function MatchList({ onClose, onChatOpen, onTrackOpen }: MatchListProps) 
                         ) : (
                           <Check size={16} />
                         )}
-                        {myConfirmed ? "Confirmed" : "Confirm"}
+                        {match.status === "offered" && !myConfirmed
+                          ? "Accept Offer"
+                          : myConfirmed ? "Confirmed" : "Confirm"}
                       </Button>
                       <Button
                         onClick={() => handleAction(match.id, "reject")}
@@ -334,4 +352,19 @@ export function MatchList({ onClose, onChatOpen, onTrackOpen }: MatchListProps) 
       </div>
     </div>
   );
+}
+
+function OfferCountdown({ expiresAt }: { expiresAt: string }) {
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000)),
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsLeft(Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  return <span className={secondsLeft <= 10 ? "text-red-500" : ""}>{secondsLeft}s</span>;
 }

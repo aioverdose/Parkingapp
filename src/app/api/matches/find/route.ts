@@ -1,38 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
-import { sendPushToUser } from "@/lib/push";
-
-const MATCH_RADIUS_METERS = 200;
-
-function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function schedulesOverlap(
-  spotDeparture: string,
-  spotReturn: string | null,
-  seekerDesiredFrom: string,
-  seekerDesiredTo: string
-): boolean {
-  const sd = new Date(spotDeparture).getTime();
-  const sr = spotReturn ? new Date(spotReturn).getTime() : sd + 2 * 60 * 60 * 1000;
-  const sf = new Date(seekerDesiredFrom).getTime();
-  const st = new Date(seekerDesiredTo).getTime();
-
-  // Spot is available from sd to sr. Seeker wants from sf to st.
-  // Overlap exists if seeker's window starts before spot's window ends
-  // AND seeker's window ends after spot's window starts
-  return sf < sr && st > sd;
-}
+import { findBestSeeker, createExclusiveOffer, expireStaleOffers, type ExclusiveSpot } from "@/lib/matching/exclusive-matcher";
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,7 +13,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Get the spot
+    // Opportunistically expire/reassign any stale offers before matching.
+    // A dedicated cron also runs this, but this keeps the system self-healing.
+    await expireStaleOffers();
+
     const { data: spot, error: spotError } = await supabase
       .from("parking_spots")
       .select("*")
@@ -60,124 +31,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Spot is not active" }, { status: 400 });
     }
 
-    // Find active spot requests in the area
-    const { data: requests } = await supabase
-      .from("spot_requests")
-      .select("*")
-      .eq("status", "active")
-      .gt("expires_at", new Date().toISOString());
+    const exclusiveSpot = spot as unknown as ExclusiveSpot;
 
-    if (!requests || requests.length === 0) {
-      return NextResponse.json({ matches: 0, reason: "No active seekers" });
+    // Exclusive matching: exactly one best-compatible seeker is offered the
+    // spot. Nobody else is made aware of it.
+    const best = await findBestSeeker(exclusiveSpot);
+
+    if (!best) {
+      return NextResponse.json({ matches: 0, reason: "No compatible seekers" });
     }
 
-    const matches: Array<{ request_id: string; seeker_id: string; distance: number }> = [];
+    const offer = await createExclusiveOffer(exclusiveSpot, best.user_id);
 
-    for (const req of requests) {
-      // Skip if same user
-      if (req.user_id === spot.user_id) continue;
-
-      // Check distance
-      const distance = haversineDistance(
-        spot.latitude, spot.longitude,
-        req.latitude, req.longitude
-      );
-      if (distance > MATCH_RADIUS_METERS) continue;
-
-      // Check vehicle type compatibility
-      if (spot.vehicle_type && req.vehicle_type && spot.vehicle_type !== req.vehicle_type) continue;
-
-      // Check schedule overlap
-      // For scheduled relays, use a wider window centered on departure_time
-      // For imminent alerts, use the current [created_at, now+2h] window
-      let seekerFrom: string;
-      let seekerTo: string;
-
-      if (spot.relay_mode === "scheduled") {
-        // Match seekers whose request is active during the spot's availability window
-        // Use [departure_time - 30min, return_time or departure + 2h] as the spot's useful window
-        const depTime = new Date(spot.departure_time).getTime();
-        const retTime = spot.return_time
-          ? new Date(spot.return_time).getTime()
-          : depTime + 2 * 60 * 60 * 1000;
-        // Seeker must be looking for parking that overlaps with [depTime - 30min, retTime]
-        seekerFrom = new Date(req.created_at).toISOString();
-        seekerTo = new Date(retTime).toISOString();
-      } else {
-        seekerFrom = new Date(req.created_at).toISOString();
-        seekerTo = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-      }
-
-      if (!schedulesOverlap(spot.departure_time, spot.return_time, seekerFrom, seekerTo)) continue;
-
-      matches.push({
-        request_id: req.id,
-        seeker_id: req.user_id,
-        distance: Math.round(distance),
-      });
-    }
-
-    // Create match records
-    let matchesCreated = 0;
-    for (const match of matches) {
-      // Check if match already exists
-      const { data: existing } = await supabase
-        .from("spot_matches")
-        .select("id")
-        .eq("spot_id", spot_id)
-        .eq("seeker_id", match.seeker_id)
-        .neq("status", "rejected")
-        .maybeSingle();
-
-      if (existing) continue;
-
-      // Check blocks
-      const { data: blocked } = await supabase.rpc("is_user_blocked", { check_user_id: match.seeker_id, by_user_id: spot.user_id });
-      const { data: blocked2 } = await supabase.rpc("is_user_blocked", { check_user_id: spot.user_id, by_user_id: match.seeker_id });
-      if (blocked || blocked2) continue;
-
-      const { data: inserted, error: insertError } = await supabase
-        .from("spot_matches")
-        .insert({
-          spot_id,
-          spot_owner_id: spot.user_id,
-          seeker_id: match.seeker_id,
-          status: "pending",
-        })
-        .select("id")
-        .single();
-
-      if (!insertError && inserted) {
-        matchesCreated++;
-
-        // Send Web Push notification to the seeker
-        const { data: ownerUser } = await supabase
-          .from("users")
-          .select("name")
-          .eq("id", spot.user_id)
-          .single();
-
-        sendPushToUser(match.seeker_id, {
-          type: "match_found",
-          title: "Parking Match Found!",
-          body: `${ownerUser?.name || "Someone"} is leaving a spot${spot.address ? ` on ${spot.address}` : ""}. Accept to navigate!`,
-          match_id: inserted.id,
-          spot_lat: spot.latitude,
-          spot_lon: spot.longitude,
-          spot_street: spot.address,
-          departing_user_name: ownerUser?.name || "Someone",
-        });
-      }
+    if (!offer) {
+      return NextResponse.json({ matches: 0, reason: "Spot already has an active offer" });
     }
 
     return NextResponse.json({
-      matches: matchesCreated,
-      total_candidates: matches.length,
+      matches: 1,
+      total_candidates: 1,
+      match_id: offer.offerId,
+      seeker_id: best.user_id,
+      distance: best.distance,
     });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

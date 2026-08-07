@@ -127,6 +127,8 @@ export interface Database {
           match_credits: number;
           notification_prefs: { [key: string]: boolean };
           device_id: string | null;
+          decline_count: number;
+          no_show_count: number;
         };
         Insert: {
           id?: string;
@@ -149,6 +151,8 @@ export interface Database {
           match_credits?: number;
           notification_prefs?: { [key: string]: boolean };
           device_id?: string | null;
+          decline_count?: number;
+          no_show_count?: number;
         };
         Update: {
           id?: string;
@@ -171,6 +175,8 @@ export interface Database {
           match_credits?: number;
           notification_prefs?: { [key: string]: boolean };
           device_id?: string | null;
+          decline_count?: number;
+          no_show_count?: number;
         };
         Relationships: [];
       };
@@ -192,6 +198,9 @@ export interface Database {
           expires_at: string | null;
           flag_count: number | null;
           relay_mode: "imminent" | "scheduled";
+          visibility: "exclusive" | "public";
+          exclusive_attempts: number;
+          max_exclusive_attempts: number;
         };
         Insert: {
           id?: string;
@@ -210,6 +219,9 @@ export interface Database {
           expires_at?: string | null;
           flag_count?: number | null;
           relay_mode?: "imminent" | "scheduled";
+          visibility?: "exclusive" | "public";
+          exclusive_attempts?: number;
+          max_exclusive_attempts?: number;
         };
         Update: {
           id?: string;
@@ -228,6 +240,9 @@ export interface Database {
           expires_at?: string | null;
           flag_count?: number | null;
           relay_mode?: "imminent" | "scheduled";
+          visibility?: "exclusive" | "public";
+          exclusive_attempts?: number;
+          max_exclusive_attempts?: number;
         };
         Relationships: [];
       };
@@ -237,27 +252,33 @@ export interface Database {
           spot_id: string;
           spot_owner_id: string;
           seeker_id: string;
-          status: "pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired";
+          status: "pending" | "offered" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "offer_declined" | "offer_expired" | "expired";
           created_at: string;
           updated_at: string;
+          offer_sent_at: string | null;
+          offer_expires_at: string | null;
         };
         Insert: {
           id?: string;
           spot_id: string;
           spot_owner_id: string;
           seeker_id: string;
-          status?: "pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired";
+          status?: "pending" | "offered" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "offer_declined" | "offer_expired" | "expired";
           created_at?: string;
           updated_at?: string;
+          offer_sent_at?: string | null;
+          offer_expires_at?: string | null;
         };
         Update: {
           id?: string;
           spot_id?: string;
           spot_owner_id?: string;
           seeker_id?: string;
-          status?: "pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired";
+          status?: "pending" | "offered" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "offer_declined" | "offer_expired" | "expired";
           created_at?: string;
           updated_at?: string;
+          offer_sent_at?: string | null;
+          offer_expires_at?: string | null;
         };
         Relationships: [];
       };

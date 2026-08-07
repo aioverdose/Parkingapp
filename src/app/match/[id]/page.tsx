@@ -109,7 +109,7 @@ export default function MatchNotificationPage() {
   const sharingStartedRef = useRef(false);
 
   const isOwner = userId != null && match?.spot_owner_id === userId;
-  const isActive = match?.status === "pending" || match?.status === "confirmed_by_owner" || match?.status === "confirmed_by_seeker";
+  const isActive = match?.status === "pending" || match?.status === "offered" || match?.status === "confirmed_by_owner" || match?.status === "confirmed_by_seeker";
   const isConfirmed = match?.status === "confirmed";
   const isCompleted = match?.status === "completed";
 
@@ -185,7 +185,7 @@ export default function MatchNotificationPage() {
   // TTS announcement on load
   useEffect(() => {
     if (!match || !ttsEnabled || hasSpokenRef.current) return;
-    if (match.status !== "pending" && match.status !== "confirmed_by_owner" && match.status !== "confirmed_by_seeker") return;
+    if (match.status !== "pending" && match.status !== "offered" && match.status !== "confirmed_by_owner" && match.status !== "confirmed_by_seeker") return;
 
     hasSpokenRef.current = true;
     const street = match.spot.address || "nearby location";
@@ -891,6 +891,11 @@ export default function MatchNotificationPage() {
         )}
 
         {/* Action buttons */}
+        {match?.status === "offered" && isOwner && (
+          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm font-medium text-amber-700 dark:text-amber-300">
+            This spot is being offered exclusively to a nearby driver. Once they accept, you can confirm the handoff.
+          </div>
+        )}
         {!result && (isActive || isConfirmed) && (
           <div className="space-y-3">
             {/* Voice input */}
@@ -909,7 +914,7 @@ export default function MatchNotificationPage() {
             )}
 
             {/* Accept / Confirm */}
-            {isActive && (
+            {isActive && !(match?.status === "offered" && isOwner) && (
               <button
                 onClick={handleAccept}
                 disabled={acting || (!isOwner && !userPosition)}
@@ -945,7 +950,7 @@ export default function MatchNotificationPage() {
             )}
 
             {/* Decline */}
-            {isActive && (
+            {isActive && !(match?.status === "offered" && isOwner) && (
               <button
                 onClick={handleDecline}
                 disabled={acting}

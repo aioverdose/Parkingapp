@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { sendPushToUser } from "@/lib/push";
+import { attemptNextOffer, incrementReliabilityCounter } from "@/lib/matching/exclusive-matcher";
 
 export async function POST(
   request: NextRequest,
@@ -185,11 +186,17 @@ export async function POST(
         .update({ status: "expired" })
         .eq("id", id);
 
+      // Track seeker reliability so they rank lower in future exclusive offers
+      await incrementReliabilityCounter(match.seeker_id, "no_show_count");
+
       if (isOwner) {
         await supabase
           .from("parking_spots")
           .update({ status: "active", claimed_by: null })
           .eq("id", match.spot_id);
+
+        // Continue exclusive matching for the spot, excluding the no-show seeker
+        await attemptNextOffer(match.spot_id, [match.seeker_id]);
       }
     }
 

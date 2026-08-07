@@ -14,6 +14,13 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
 
+    const statusFilter =
+      status === "all"
+        ? ["pending", "offered", "confirmed_by_owner", "confirmed_by_seeker", "confirmed"]
+        : status === "pending"
+          ? ["pending", "offered"]
+          : [status];
+
     const { data: matches, error } = await supabase
       .from("spot_matches")
       .select(`
@@ -23,7 +30,7 @@ export async function GET(request: NextRequest) {
         seeker:seeker_id(id, name, vehicle_type)
       `)
       .or(`spot_owner_id.eq.${user.id},seeker_id.eq.${user.id}`)
-      .in("status", (status === "all" ? ["pending", "confirmed_by_owner", "confirmed_by_seeker", "confirmed"] : [status]) as ("pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired")[])
+      .in("status", statusFilter as ("pending" | "offered" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "offer_declined" | "offer_expired" | "expired")[])
       .order("created_at", { ascending: false });
 
     if (error) {

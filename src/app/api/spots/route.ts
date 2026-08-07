@@ -12,6 +12,10 @@ export async function GET(request: NextRequest) {
       : "active";
     const now = new Date().toISOString();
 
+    // Exclusive spots are only visible to their owner while matching is in
+    // progress. They appear publicly once they fall back to a public alert.
+    const user = await getAuthenticatedUser(request).catch(() => null);
+
     const supabase = createAdminClient();
     let query = supabase
       .from("parking_spots")
@@ -22,6 +26,12 @@ export async function GET(request: NextRequest) {
         .eq("status", "active")
         .gt("expires_at", now)
         .gt("departure_time", now);
+
+      if (user) {
+        query = query.or(`visibility.eq.public,and(visibility.eq.exclusive,user_id.eq.${user.id})`);
+      } else {
+        query = query.eq("visibility", "public");
+      }
     } else {
       query = query.eq("status", status);
     }
@@ -74,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { latitude, longitude, address, departure_time, return_time, tip_message, vehicle_type, relay_mode } = body;
+    const { latitude, longitude, address, departure_time, return_time, tip_message, vehicle_type, relay_mode, max_exclusive_attempts } = body;
 
     if (typeof latitude !== "number" || typeof longitude !== "number") {
       return NextResponse.json({ error: "latitude and longitude are required" }, { status: 400 });
@@ -122,6 +132,13 @@ export async function POST(request: NextRequest) {
         expires_at: expiresAt,
         flag_count: 0,
         relay_mode: mode,
+        // Exclusive matching is the default; exclusive_attempts start at 0 and
+        // the spot falls back to a public claimable alert after this many
+        // exclusive offers are declined/expired.
+        visibility: "exclusive",
+        max_exclusive_attempts: Number.isFinite(max_exclusive_attempts)
+          ? Math.min(Math.max(Math.round(max_exclusive_attempts), 1), 10)
+          : 5,
       })
       .select()
       .single();

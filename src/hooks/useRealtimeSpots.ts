@@ -12,6 +12,12 @@ function isCompatible(spot: Spot, userVehicleType: string | null): boolean {
   return spot.vehicle_type === userVehicleType;
 }
 
+function isVisibleToMe(spot: Spot, currentUserId: string | null): boolean {
+  // Exclusive spots are only visible to their owner while matching is active.
+  if (spot.visibility === "exclusive") return currentUserId === spot.user_id;
+  return true;
+}
+
 export function useRealtimeSpots(userVehicleType?: string | null) {
   const supabase = createBrowserClient();
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -20,11 +26,16 @@ export function useRealtimeSpots(userVehicleType?: string | null) {
 
   useEffect(() => {
     let active = true;
+    let currentUserId: string | null = null;
 
     if (!isSupabaseConfigured()) {
       setLoading(false);
       return;
     }
+
+    supabase.auth.getUser().then(({ data }) => {
+      currentUserId = data.user?.id ?? null;
+    });
 
     async function fetchSpots() {
       const now = new Date().toISOString();
@@ -43,7 +54,7 @@ export function useRealtimeSpots(userVehicleType?: string | null) {
       if (fetchError) {
         setError(fetchError.message);
       } else {
-        setSpots((data ?? []).filter((spot) => isCompatible(spot, userVehicleType ?? null)));
+        setSpots((data ?? []).filter((spot) => isVisibleToMe(spot, currentUserId) && isCompatible(spot, userVehicleType ?? null)));
       }
       setLoading(false);
     }
@@ -64,6 +75,7 @@ export function useRealtimeSpots(userVehicleType?: string | null) {
               if (newSpot.status !== "active") return current;
               if (newSpot.expires_at && newSpot.expires_at <= now) return current;
               if (newSpot.departure_time && newSpot.departure_time <= now) return current;
+              if (!isVisibleToMe(newSpot, currentUserId)) return current;
               if (!isCompatible(newSpot, userVehicleType ?? null)) {
                 return current;
               }
@@ -78,6 +90,10 @@ export function useRealtimeSpots(userVehicleType?: string | null) {
                 (updatedSpot.expires_at && updatedSpot.expires_at <= now) ||
                 (updatedSpot.departure_time && updatedSpot.departure_time <= now)
               ) {
+                return current.filter((s) => s.id !== updatedSpot.id);
+              }
+
+              if (!isVisibleToMe(updatedSpot, currentUserId)) {
                 return current.filter((s) => s.id !== updatedSpot.id);
               }
 
