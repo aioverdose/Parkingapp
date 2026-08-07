@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabaseClient";
+import { createBrowserClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { Loader2, Mail, Lock } from "lucide-react";
 
 export default function LoginPage() {
@@ -20,18 +20,30 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (loginError) {
-      setError(loginError.message);
+    if (!isSupabaseConfigured()) {
+      setError("Login is temporarily unavailable. Supabase is not configured.");
       setLoading(false);
       return;
     }
 
-    router.push("/");
+    try {
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (loginError) {
+        setError(loginError.message);
+        setLoading(false);
+        return;
+      }
+
+      router.replace("/business");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to log in. Please try again.");
+      setLoading(false);
+    }
   }
 
   async function handleForgotPassword() {
@@ -39,18 +51,26 @@ export default function LoginPage() {
       setError("Enter your email address first.");
       return;
     }
-    setResetLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    });
-    if (error) {
-      setError(error.message);
-      setResetLoading(false);
+    if (!isSupabaseConfigured()) {
+      setError("Password reset is temporarily unavailable. Supabase is not configured.");
       return;
     }
-    setResetSent(true);
-    setResetLoading(false);
+    setResetLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      setResetSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to send the reset email.");
+    } finally {
+      setResetLoading(false);
+    }
   }
 
   return (
