@@ -250,6 +250,10 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
         </button>
       </div>
 
+      <p className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        Street rules, posted time limits, permits, and sweeping restrictions always apply. SpotMatch coordinates departures; it does not sell, rent, or reserve public parking.
+      </p>
+
       {postSuccess && (
         <div className="bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 rounded-xl p-4 text-sm mb-6">{postSuccess}</div>
       )}
