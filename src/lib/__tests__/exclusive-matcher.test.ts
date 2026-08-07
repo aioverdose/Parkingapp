@@ -1,11 +1,17 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi, beforeEach } from "vitest";
 import {
   getOfferWindowMs,
   getMatchRadiusMeters,
   haversineDistance,
   isScheduleCompatible,
+  findBestSeeker,
   type ExclusiveSpot,
 } from "../matching/exclusive-matcher";
+import { createAdminClient } from "@/lib/supabaseAdmin";
+
+vi.mock("@/lib/supabaseAdmin", () => ({
+  createAdminClient: vi.fn(),
+}));
 
 const DEFAULT_OFFER_WINDOW_MS = 90_000;
 const DEFAULT_RADIUS = 200;
@@ -24,6 +30,8 @@ function makeSpot(overrides: Partial<ExclusiveSpot> = {}): ExclusiveSpot {
     visibility: "exclusive",
     exclusive_attempts: 0,
     max_exclusive_attempts: 5,
+    business_id: null,
+    network_id: null,
     ...overrides,
   };
 }
@@ -114,5 +122,105 @@ describe("isScheduleCompatible", () => {
     });
     const req = makeRequest();
     expect(isScheduleCompatible(spot, req)).toBe(true);
+  });
+});
+
+type TablesData = Record<string, unknown[]>;
+
+function makeFakeClient(tables: TablesData) {
+  return {
+    from(table: string) {
+      const chain: Record<string, unknown> = {
+        select: () => chain,
+        eq: () => chain,
+        gt: () => chain,
+        lt: () => chain,
+        in: () => chain,
+        or: () => chain,
+        order: () => chain,
+        single: () => chain,
+        maybeSingle: () => chain,
+        insert: () => chain,
+        update: () => chain,
+        then: (resolve: (v: { data: unknown; error: null }) => void) => {
+          resolve({ data: tables[table] ?? [], error: null });
+        },
+      };
+      return chain;
+    },
+  };
+}
+
+function makeNearbyRequest(userId: string) {
+  return {
+    id: `req-${userId}`,
+    user_id: userId,
+    latitude: 33.7642,
+    longitude: -118.1682,
+    vehicle_type: "car",
+    created_at: new Date().toISOString(),
+  };
+}
+
+describe("findBestSeeker network scoping", () => {
+  it("only considers active members of the spot's network", async () => {
+    const spot = makeSpot({
+      business_id: "biz-1",
+      network_id: "net-1",
+    });
+
+    vi.mocked(createAdminClient).mockReturnValue(
+      makeFakeClient({
+        network_businesses: [{ business_id: "biz-1" }],
+        business_members: [{ user_id: "seeker-1" }, { user_id: "member-2" }],
+        spot_requests: [
+          makeNearbyRequest("seeker-1"),
+          makeNearbyRequest("outsider-9"),
+          makeNearbyRequest("owner-1"),
+        ],
+        user_ranking: [],
+        users: [],
+        user_blocks: [],
+      }) as never,
+    );
+
+    const best = await findBestSeeker(spot);
+
+    expect(best).not.toBeNull();
+    expect(best!.user_id).toBe("seeker-1");
+  });
+
+  it("returns null when the network has no participating businesses", async () => {
+    const spot = makeSpot({ network_id: "net-empty" });
+
+    vi.mocked(createAdminClient).mockReturnValue(
+      makeFakeClient({
+        network_businesses: [],
+        spot_requests: [makeNearbyRequest("seeker-1")],
+      }) as never,
+    );
+
+    const best = await findBestSeeker(spot);
+
+    expect(best).toBeNull();
+  });
+
+  it("returns null when no network member has an active request", async () => {
+    const spot = makeSpot({ network_id: "net-1" });
+
+    vi.mocked(createAdminClient).mockReturnValue(
+      makeFakeClient({
+        network_businesses: [{ business_id: "biz-1" }],
+        business_members: [{ user_id: "seeker-1" }],
+        spot_requests: [makeNearbyRequest("outsider-9")],
+        user_ranking: [],
+        users: [],
+        user_blocks: [],
+      }) as never,
+    );
+
+    const best = await findBestSeeker(spot);
+
+    expect(best).toBeNull();
   });
 });

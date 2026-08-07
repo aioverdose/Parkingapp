@@ -17,6 +17,8 @@ export interface ExclusiveSpot {
   visibility: "exclusive" | "public";
   exclusive_attempts: number;
   max_exclusive_attempts: number;
+  business_id: string | null;
+  network_id: string | null;
 }
 
 interface SeekCandidate {
@@ -106,6 +108,31 @@ export async function incrementReliabilityCounter(
 }
 
 /**
+ * Returns the active member ids of a network: users who are active members of
+ * any business participating in the network. Empty for private/unlinked
+ * networks with no participating businesses.
+ */
+async function getNetworkMemberIds(networkId: string): Promise<string[]> {
+  const supabase = createAdminClient();
+
+  const { data: links } = await supabase
+    .from("network_businesses")
+    .select("business_id")
+    .eq("network_id", networkId);
+
+  const businessIds = (links ?? []).map((l) => l.business_id);
+  if (businessIds.length === 0) return [];
+
+  const { data: members } = await supabase
+    .from("business_members")
+    .select("user_id")
+    .eq("status", "active")
+    .in("business_id", businessIds);
+
+  return [...new Set((members ?? []).map((m) => m.user_id))];
+}
+
+/**
  * Finds the single best-compatible seeker for a spot.
  * Considers distance, vehicle type, schedule overlap, block state, trust/ranking
  * and seeker reliability (declines / no-shows). Returns null when no compatible
@@ -118,20 +145,36 @@ export async function findBestSeeker(
   const supabase = createAdminClient();
   const radiusMeters = getMatchRadiusMeters();
 
-  const { data: requests } = await supabase
+  // B2B scoping: spots coordinated over a network may only be offered to that
+  // network's active members. No participating members -> no candidates.
+  let networkMemberIds: string[] | null = null;
+  if (spot.network_id) {
+    networkMemberIds = await getNetworkMemberIds(spot.network_id);
+    if (networkMemberIds.length === 0) return null;
+  }
+
+  let query = supabase
     .from("spot_requests")
     .select("id, user_id, latitude, longitude, vehicle_type, created_at")
     .eq("status", "active")
     .gt("expires_at", new Date().toISOString());
 
+  if (networkMemberIds) {
+    query = query.in("user_id", networkMemberIds);
+  }
+
+  const { data: requests } = await query;
+
   if (!requests || requests.length === 0) return null;
 
   const excluded = new Set(excludeSeekerIds);
+  const memberSet = networkMemberIds ? new Set(networkMemberIds) : null;
   const candidates: SeekCandidateScored[] = [];
 
   for (const req of requests as SeekCandidate[]) {
     if (req.user_id === spot.user_id) continue;
     if (excluded.has(req.user_id)) continue;
+    if (memberSet && !memberSet.has(req.user_id)) continue;
 
     const distance = haversineDistance(spot.latitude, spot.longitude, req.latitude, req.longitude);
     if (distance > radiusMeters) continue;
@@ -244,6 +287,8 @@ export async function createExclusiveOffer(
       status: "offered",
       offer_sent_at: now.toISOString(),
       offer_expires_at: offerExpiresAt,
+      business_id: spot.business_id ?? null,
+      network_id: spot.network_id ?? null,
     })
     .select("id")
     .single();
