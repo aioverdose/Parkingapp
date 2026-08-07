@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
+import { getBusinessOperationalState } from "@/lib/api/business-helpers";
 import { sendPushToUser } from "@/lib/push";
 import { reassignOffer } from "@/lib/matching/exclusive-matcher";
 import { logger } from "@/lib/logger";
@@ -65,6 +66,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (fetchError || !match) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
+    }
+
+    if (match.business_id) {
+      const business = await getBusinessOperationalState(match.business_id);
+      if (!business || !["active", "trialing"].includes(business.status)) {
+        return NextResponse.json({ error: "This business is not operational" }, { status: 409 });
+      }
     }
 
     // Check user is part of this match

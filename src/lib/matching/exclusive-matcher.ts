@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { getBusinessOperationalState } from "@/lib/api/business-helpers";
 import { sendPushToUser } from "@/lib/push";
 
 const DEFAULT_MATCH_RADIUS_METERS = 200;
@@ -144,6 +145,11 @@ export async function findBestSeeker(
 ): Promise<SeekCandidateScored | null> {
   const supabase = createAdminClient();
   const radiusMeters = getMatchRadiusMeters();
+
+  if (spot.business_id) {
+    const business = await getBusinessOperationalState(spot.business_id);
+    if (!business || !["active", "trialing"].includes(business.status)) return null;
+  }
 
   // B2B scoping: spots coordinated over a network may only be offered to that
   // network's active members. No participating members -> no candidates.

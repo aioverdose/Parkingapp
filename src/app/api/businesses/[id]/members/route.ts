@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
-import { getBusinessMembership } from "@/lib/api/business-helpers";
+import { getBusinessMembership, getBusinessOperationalState } from "@/lib/api/business-helpers";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -53,6 +53,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Only business admins can add members" }, { status: 403 });
     }
 
+    const business = await getBusinessOperationalState(id);
+    if (!business || !["active", "trialing"].includes(business.status)) {
+      return NextResponse.json({ error: "This business is not accepting members" }, { status: 409 });
+    }
+
     const body = await request.json();
     const { user_id, role } = body;
 
@@ -64,6 +69,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const supabase = createAdminClient();
+    const { count: activeMemberCount } = await supabase
+      .from("business_members")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", id)
+      .eq("status", "active");
+
+    if ((activeMemberCount ?? 0) >= business.seats_limit) {
+      return NextResponse.json({ error: "Business seat limit reached" }, { status: 409 });
+    }
+
     const { data, error } = await supabase.rpc("add_business_member", {
       p_business_id: id,
       p_user_id: user_id,

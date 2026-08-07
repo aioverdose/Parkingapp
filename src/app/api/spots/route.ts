@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
-import { getBusinessMembership, getUserNetworkIds } from "@/lib/api/business-helpers";
+import { getBusinessMembership, getBusinessOperationalState, getUserNetworkIds } from "@/lib/api/business-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { logger } from "@/lib/logger";
 import { isValidCoords } from "@/lib/geo-validation";
@@ -96,6 +96,10 @@ export async function POST(request: NextRequest) {
       const membership = await getBusinessMembership(user.id, body.business_id);
       if (!membership) {
         return NextResponse.json({ error: "You are not a member of that business" }, { status: 403 });
+      }
+      const business = await getBusinessOperationalState(body.business_id);
+      if (!business || !["active", "trialing"].includes(business.status)) {
+        return NextResponse.json({ error: "This business is not operational" }, { status: 409 });
       }
       businessId = body.business_id;
       networkId = membership.network_id;

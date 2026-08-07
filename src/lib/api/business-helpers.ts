@@ -24,6 +24,25 @@ export interface BusinessMembership {
   network_id: string | null;
 }
 
+export interface BusinessOperationalState {
+  status: "active" | "trialing" | "suspended" | "canceled";
+  plan: "trial" | "standard" | "pro" | "enterprise";
+  seats_limit: number;
+}
+
+export async function getBusinessOperationalState(
+  businessId: string,
+): Promise<BusinessOperationalState | null> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("businesses")
+    .select("status, plan, seats_limit")
+    .eq("id", businessId)
+    .maybeSingle();
+
+  return (data as BusinessOperationalState | null) ?? null;
+}
+
 export async function getMyBusinesses(userId: string): Promise<BusinessMembership[]> {
   const supabase = createAdminClient();
 

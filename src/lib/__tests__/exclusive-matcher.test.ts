@@ -145,7 +145,7 @@ function makeFakeClient(tables: TablesData) {
         or: () => chain,
         order: () => chain,
         single: () => chain,
-        maybeSingle: () => chain,
+        maybeSingle: async () => ({ data: tables[table]?.[0] ?? null, error: null }),
         insert: () => chain,
         update: () => chain,
         then: (resolve: (v: { data: unknown; error: null }) => void) => {
@@ -177,6 +177,7 @@ describe("findBestSeeker network scoping", () => {
 
     vi.mocked(createAdminClient).mockReturnValue(
       makeFakeClient({
+        businesses: [{ status: "trialing", plan: "trial", seats_limit: 25 }],
         network_businesses: [{ business_id: "biz-1" }],
         business_members: [{ user_id: "seeker-1" }, { user_id: "member-2" }],
         spot_requests: [
@@ -201,6 +202,7 @@ describe("findBestSeeker network scoping", () => {
 
     vi.mocked(createAdminClient).mockReturnValue(
       makeFakeClient({
+        businesses: [{ status: "trialing", plan: "trial", seats_limit: 25 }],
         network_businesses: [],
         spot_requests: [makeNearbyRequest("seeker-1")],
       }) as never,
@@ -216,6 +218,7 @@ describe("findBestSeeker network scoping", () => {
 
     vi.mocked(createAdminClient).mockReturnValue(
       makeFakeClient({
+        businesses: [{ status: "trialing", plan: "trial", seats_limit: 25 }],
         network_businesses: [{ business_id: "biz-1" }],
         business_members: [{ user_id: "seeker-1" }],
         spot_requests: [makeNearbyRequest("outsider-9")],

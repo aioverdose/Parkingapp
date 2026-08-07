@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
+import { getBusinessOperationalState } from "@/lib/api/business-helpers";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -10,6 +11,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const user = await getAuthenticatedUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const business = await getBusinessOperationalState(id);
+    if (!business || !["active", "trialing"].includes(business.status)) {
+      return NextResponse.json({ error: "This business is not accepting members" }, { status: 409 });
     }
 
     const supabase = createAdminClient();
