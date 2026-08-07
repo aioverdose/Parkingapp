@@ -16,7 +16,7 @@ vi.mock("@/lib/supabaseAdmin", () => ({
 }));
 
 vi.mock("@/lib/push", () => ({
-  sendPushToUser: vi.fn().mockResolvedValue(undefined),
+  sendPushToUser: vi.fn().mockResolvedValue({ sent: 1, pruned: 0, failed: 0 }),
 }));
 
 const DEFAULT_OFFER_WINDOW_MS = 90_000;

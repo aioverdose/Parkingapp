@@ -19,8 +19,8 @@ export interface PushPayload {
 export async function sendPushToUser(
   userId: string,
   payload: PushPayload,
-): Promise<{ sent: number; pruned: number }> {
-  if (!vapidPublicKey || !vapidPrivateKey) return { sent: 0, pruned: 0 };
+): Promise<{ sent: number; pruned: number; failed: number }> {
+  if (!vapidPublicKey || !vapidPrivateKey) return { sent: 0, pruned: 0, failed: 0 };
 
   const supabase = createAdminClient();
 
@@ -29,11 +29,12 @@ export async function sendPushToUser(
     .select("endpoint, p256dh, auth_key")
     .eq("user_id", userId);
 
-  if (!subscriptions || subscriptions.length === 0) return { sent: 0, pruned: 0 };
+  if (!subscriptions || subscriptions.length === 0) return { sent: 0, pruned: 0, failed: 0 };
 
   const payloadStr = JSON.stringify(payload);
   const staleEndpoints: string[] = [];
   let sent = 0;
+  let failed = 0;
 
   for (const sub of subscriptions) {
     try {
@@ -43,6 +44,7 @@ export async function sendPushToUser(
       );
       sent++;
     } catch (err: any) {
+      failed++;
       if (err?.statusCode === 410 || err?.statusCode === 404) {
         staleEndpoints.push(sub.endpoint);
       }
@@ -53,5 +55,5 @@ export async function sendPushToUser(
     await supabase.from("device_push_subscriptions").delete().in("endpoint", staleEndpoints);
   }
 
-  return { sent, pruned: staleEndpoints.length };
+  return { sent, pruned: staleEndpoints.length, failed };
 }

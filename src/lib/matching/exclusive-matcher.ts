@@ -315,7 +315,7 @@ export async function createExclusiveOffer(
 
   const windowSec = Math.round(getOfferWindowMs() / 1000);
 
-  await sendPushToUser(seekerId, {
+  const pushResult = await sendPushToUser(seekerId, {
     type: "exclusive_offer",
     title: "You've got an exclusive spot offer!",
     body: `${ownerUser?.name || "Someone"} is leaving a spot${spot.address ? ` on ${spot.address}` : ""}. You have ${windowSec}s to accept before it goes to someone else.`,
@@ -327,6 +327,13 @@ export async function createExclusiveOffer(
     departing_user_name: ownerUser?.name || "Someone",
     offer_expires_at: offerExpiresAt,
   });
+
+  // A user with no subscription can still act from the dashboard/in-app
+  // notification. If every registered device failed, do not strand the spot
+  // on an offer the intended driver could not receive.
+  if (pushResult.failed > 0 && pushResult.sent === 0) {
+    await reassignOffer(spot.id, inserted.id, "expired");
+  }
 
   return { offerId: inserted.id };
 }

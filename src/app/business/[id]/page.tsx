@@ -211,6 +211,22 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
   ];
 
   const formatDate = (iso: string) => new Date(iso).toLocaleString();
+  const formatMatchStatus = (match: any) => {
+    const status = match.active_sessions?.[0]?.status || match.status;
+    const labels: Record<string, string> = {
+      offered: "Offered",
+      confirmed_by_seeker: "Accepted",
+      confirmed_by_owner: "Awaiting owner",
+      confirmed: "Completed",
+      completed: "Completed",
+      no_show: "No-show",
+      offer_expired: "Expired",
+      offer_declined: "Declined",
+      rejected: "Rejected",
+      expired: "Expired",
+    };
+    return labels[status] || status;
+  };
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -402,7 +418,7 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
                 <div key={m.id} className="p-4">
                   <p className="text-sm font-medium">{m.parking_spots?.address || "Spot"}</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    {formatDate(m.created_at)} · {m.status}
+                     {formatDate(m.created_at)} · {formatMatchStatus(m)}
                   </p>
                 </div>
               ))}

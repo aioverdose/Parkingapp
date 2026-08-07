@@ -96,7 +96,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       safe(
         supabase
           .from("spot_matches")
-          .select("*, parking_spots(address, latitude, longitude)")
+         .select("*, parking_spots(address, latitude, longitude), active_sessions(status)")
           .eq("business_id", id)
           .order("created_at", { ascending: false })
           .limit(10),
