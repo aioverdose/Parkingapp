@@ -1,536 +1,476 @@
-# SpotMatch — Technical Paper
+# SpotMatch — Current Technical Paper
 
-A deep-dive on the architecture, behavior, and capabilities of a real-time, peer-to-peer parking spot handoff platform.
+## B2B parking coordination platform for controlled neighborhood pilots
 
-**Author:** Engineering team
-**Version:** 2.2 — B2B pilot-hardening update, August 2026
-**Audience:** Technical reviewers, AI analysis (e.g., Grok), pilot operators, legal counsel, and engineers onboarding to the codebase
-
-> **Current analysis companion:** `GROK-ANALYSIS-PAPER.md` is the focused review document for the hardened B2B pilot model. This paper retains the broader platform architecture and historical implementation detail.
-
----
-
-## 1. Executive Summary
-
-SpotMatch (repository name: `parkingapp`) is a **mobile-first Progressive Web App and B2B operational coordination tool** that connects an imminent parking departure with one eligible member of a private or shared business network. It is designed for restaurants, bars, and operators in dense commercial areas such as Belmont Shore and 2nd Street.
-
-The system is built on:
-
-- **Next.js 16** (React 19, App Router, TypeScript) served on **Vercel**
-- **Supabase** (PostgreSQL + Row Level Security + Realtime + Auth) as the state store and event bus
-- **MapLibre GL** (via `react-map-gl`) with **OpenFreeMap** tiles and **Nominatim** geocoding
-- **Stripe** for pay-per-match credit purchases, **Twilio** for SMS/OTP verification, **Web Push (VAPID)** for notifications
-- A **configurable LLM layer** (local Ollama or OpenAI-compatible endpoints) powering a family of AI agents
-
-The product deliberately positions itself as an **imminent departure coordination system**, not a reservation marketplace: spots are never sold, rented, or reserved. The primary model is **B2B subscriptions**: businesses coordinate parking for their team and neighborhood network, optionally using tenant branding. Consumer marketplace, credit, and gamification paths are not the primary pilot experience.
-
-Version 2.1 reflects the B2B / white-label expansion on top of the 2.0 engineering changes:
-
-1. **Exclusive single-driver matching** replaced broadcast matching. A posted spot is now offered to exactly one best-compatible seeker at a time (90-second window), is invisible to everyone else, and only falls back to a public map alert after a configurable number of declined/expired offers. This eliminates claim races and leaky inventories. **Network (B2B) spots never receive the public fallback** — coordination stays inside the business network, so exhausted network spots simply stop matching instead of appearing on the public map.
-2. **Production hardening across five axes** — distributed rate limiting (Postgres-backed, shared across serverless instances), structured logging + error tracking, Stripe webhook idempotency and atomic credit grant, configurable LLM providers with strong fallbacks, and tightened geo/telemetry input validation with documented ephemeral-data retention.
-3. **Business networks and white-labeling** — a SQL-level tenant model (`businesses`, `networks`, `network_businesses`, `business_members`), exclusive matching scoped per network, business-owned spots, an admin dashboard per business, and per-subscriber branding (name, logo, accent colors). See §2.5 and §2.6.
-
-4. **Pilot expiry and retention hardening** — migrations `00042` through `00047` add a database uniqueness guard for one live offer per spot, idempotent reassignment transitions, stale spot closure, member-removal audit records, seat/status guardrails, network visibility enforcement, precise-location cleanup, and optional Supabase `pg_cron` scheduling for data retention. Offer expiry and reassignment remain in the protected `/api/cron/expire-offers` API job because candidate selection and notification delivery are application responsibilities.
-
-The current repository verification is `npm test` with 67 passing tests, `npx tsc --noEmit`, and a successful production build. Live Supabase verification is still required for migrations, RLS policies, triggers, concurrent PostgreSQL writes, and scheduler execution.
+**Version:** 3.0
+**Date:** August 2026
+**Repository:** `parkingapp`
+**Production:** `https://parkingapp-pi.vercel.app`
 
 ---
 
-## 2. Product Concept and Regulatory Framing
+## Abstract
 
-### 2.1 The Problem
+SpotMatch is operational software for restaurants, bars, and local operators that want to improve customer arrivals in parking-constrained commercial areas. It coordinates an imminent departure with exactly one eligible member of a private or shared business network.
 
-In dense neighborhoods (the initial launch area is Belmont Shore, Long Beach, CA), parking supply is highly time-varying. A spot that opens at 8:15 AM is almost immediately re-taken, and drivers circling for a spot create congestion and emissions. The single largest source of supply information is the *departing driver*, whose timing is unpredictable to everyone else.
+SpotMatch is not a public parking marketplace. It does not sell, rent, reserve, or assign ownership of public parking spaces. It coordinates drivers who are already leaving and drivers who need to arrive. Posted street rules, permits, time limits, and street-sweeping restrictions continue to apply.
 
-### 2.2 The Solution
-
-Parking Meeters asks departing drivers to **announce their departure in advance** (5–15 minutes), so an arriving driver can time their approach. Value flows both ways:
-
-- **Owners** get gratitude, reputation, XP, and tips — and the knowledge that the spot they leave goes to a trusted neighbor rather than a random driver.
-- **Seekers** get a warm handoff: a guaranteed-warm spot, directions, live tracking, and a human owner at the other end.
-
-### 2.3 Legal Framing (California)
-
-The app operates under **California Vehicle Code § 22651.9** (street sweeping law): it explicitly informs users that street sweeping restrictions still apply and takes no liability for tickets.
-
-To stay outside the definition of a commercial parking marketplace (which would trigger different regulatory treatment — public-lot operator rules, valet rules, or street-vending considerations), the codebase enforces these distinctions:
-
-- The **Community Agreement** and all product copy prohibit selling or renting spots.
-- The $5.99 match credit is framed and implemented as a fee for the **matching/coordination service**, not for the spot.
-- Tips are capped at small amounts ($1/$2/$5) and framed as "thank-you" gestures, recorded in the `tips` table.
-- **No spot inventory, no reservations.** A spot is never committed to a future time slot; it is announced as an imminent departure and immediately handed off. The "exclusive offer" window (§6) is a coordination mechanism, not a reservation: it never holds a physical public street space.
-
-### 2.5 B2B / white-label model
-
-Since 2.1, the platform is sold **to businesses** as parking-coordination software, not to consumers as a marketplace:
-
-- A **business** (restaurant, bar, parking operator) subscribes on a plan (`trial` / `standard` / `pro` / `enterprise`) with a seat cap (`seats_limit`).
-- A **network** is the coordination scope: `private` (a single business and its team) or `shared` (a neighborhood group of businesses, e.g., the 2nd Street / Belmont Shore strip). A business links to a network via `network_businesses`.
-- **Members** join businesses (`business_members` with roles `admin` / `staff` / `member`) and, through them, participate in that network's exclusive matching.
-- **White-labeling:** a subscriber can brand its slice of the app (`app_name`, `logo_url`, `primary_color`, `accent_color`), which the business dashboard and future branded entry points render.
-- Spots and matches posted by a business are stamped `business_id` + `network_id`; exclusive offers are only ever made to active members of that network. Business-posted spots are exempt from the consumer 3-active-spot cap.
-
-### 2.6 Business-facing API and dashboard
-
-- REST surface under `/api/businesses*` (create/list, read/update, join, member management, dashboard stats), all behind the same Bearer auth enforced by `src/proxy.ts`.
-- Per-business dashboard at `/business/[id]`: active spots, members, match totals, recent spots/matches, a network-scoped "post a spot" form, and an admin-only branding panel.
-- Revenue focus is subscriptions; the consumer credit flow (`§10`) remains but is treated as optional.
-
-### 2.4 Legal / compliance considerations for scale
-
-| Area | Current posture |
-|------|----------------|
-| **Street parking / municipal rules** | Display street-sweeping schedules; user assumes liability for tickets (disclaimed in TOS + app copy) |
-| **Payments** | Stripe-hosted checkout — no card data in the app; transparent "service fee" framing; full refund path via Stripe dashboard |
-| **Privacy / location** | Location shared only during an active match; ephemeral chat auto-deletes; versioned TOS; data-retention policy documented in `docs/DATA_RETENTION.md` |
-| **Liability for handoffs** | Safety/Community Agreement allocates risk to users; education courses required before first use; no-tolerance rules for dangerous behavior (flag system, §8) |
-| **Advertising** | Geofenced local ads disclosed as ads; impression/click tracking; ad quality review before publication |
-| **Accessibility & minors** | 18+ requirement; phone-verified accounts; moderation tooling for flagged accounts |
+The application is built with Next.js 16, React 19, TypeScript, Supabase PostgreSQL/Auth/Realtime, Tailwind CSS, and Vercel. This paper describes the current B2B architecture, data model, matching protocol, security boundaries, retention jobs, business dashboard, device testing workflow, deployment requirements, and remaining pilot risks.
 
 ---
 
-## 3. Technology Stack
+## 1. Product Model
 
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Framework | Next.js 16.2.9 (App Router), React 19.2.4 | Turbopack dev; route handlers + middleware (`src/proxy.ts`) |
-| Language | TypeScript 5 | strict; `@/` path alias to `src/` |
-| Styling | Tailwind CSS 3.4, lucide-react icons | zinc/blue design system, mobile-first |
-| Database | Supabase (PostgreSQL) | 41 SQL migrations, RLS, tables/views/RPCs |
-| Realtime | Supabase Realtime (Postgres changes channels) | spots, chat, tracking, control tower |
-| Auth | Supabase Auth (email/password, magic link) + Twilio OTP | no social login |
-| Maps | MapLibre GL 5.x via react-map-gl 8.x | OpenFreeMap tile style (configurable), Nominatim reverse-geocode |
-| Routing | OSRM (public instance) with haversine fallback | ETA + turn-by-turn navigation |
-| Payments | Stripe Checkout + webhooks | idempotent credit grants (see §10) |
-| Push | Web Push API (VAPID keys) | PWA push notifications |
-| AI | Configurable: OpenAI-compatible (`gpt-4o-mini` default) **or** local Ollama (`llama3` default) | ordered fallback chain; every agent degrades to a deterministic template |
-| Rate limiting | **Distributed** Postgres-backed (`rate_limits` + RPC) | shared across all Vercel instances; in-memory fallback only in tests/dev |
-| Logging | Structured JSON logger → `app_logs` table | 30-day retention; error tracking |
-| Testing | Vitest 4 (unit) + in-app manual/integration harness | 57 automated tests across 10 suites; extensive simulation tooling |
-| Deployment | Vercel (GitHub integration) | `.env.local` / `.env.production` Vercel-managed env |
+### 1.1 Business problem
+
+In dense areas such as Belmont Shore and 2nd Street, customers can circle for 10–15 minutes, arrive late, or leave before entering a business. Parking can also produce negative reviews and force staff and regulars to compete for the same spaces.
+
+SpotMatch gives a business a lightweight coordination layer without requiring a valet. A member signals that they are leaving. The service selects one nearby eligible participant and gives that person a short-lived offer.
+
+### 1.2 Product boundaries
+
+SpotMatch is:
+
+- a private/shared network coordination service;
+- an imminent departure notification system;
+- business-scoped operational software;
+- a dashboard for members, spots, matches, and basic activity; and
+- optionally branded business software.
+
+SpotMatch is not:
+
+- a reservation system;
+- a public claim marketplace for B2B spots;
+- a valet service;
+- a guarantee of a public street space;
+- a mechanism for selling or renting parking; or
+- a replacement for municipal parking enforcement.
+
+### 1.3 Pilot success criteria
+
+The first 30-day pilots should measure:
+
+- successful handoff rate;
+- median offer response time;
+- decline, expiry, cancellation, and no-show rates;
+- repeat participation by members;
+- parking-related customer complaints; and
+- staff time spent coordinating arrivals.
+
+Metrics should be aggregated at business or network level. Raw movement history should not become a long-term product asset.
 
 ---
 
-## 4. System Architecture
+## 2. System Architecture
 
-```
-┌───────────────────────────────────────────────────────────────┐
-│                     Clients (mobile-first PWA)                │
-│   Map SPA │ Post/Claim flows │ Chat │ Tracking │ SpotQuest    │
-└──────────────────────────┬────────────────────────────────────┘
-                           │ HTTPS
-┌──────────────────────────▼────────────────────────────────────┐
-│                    Next.js 16 App (Vercel)                    │
-│  ┌──────────────────────────────┐   ┌──────────────────────┐  │
-│  │  Page components (React)     │   │  Route handlers       │  │
-│  │  Hooks (realtime, timers)    │   │  (~69 API routes)     │  │
-│  └──────────────────────────────┘   │  Server Actions       │  │
-│       proxy.ts middleware (authz)   │  Admin service client │  │
-│  ┌──────────────────────────────┐   └──────────────────────┘  │
-│  │  Agents (LLM + behavior)     │                              │
-│  │  Matching engine (exclusive) │                              │
-│  └──────────────────────────────┘                              │
-└──────────────────────────┬────────────────────────────────────┘
-                           │
-            ┌──────────────┼──────────────┐
-   ┌────────▼────────┐  ┌──▼───────────┐  ┌▼─────────────────┐
-   │   Supabase      │  │   Stripe     │  │  External         │
-   │  • PostgreSQL   │  │  Checkout    │  │  • Twilio (SMS)  │
-   │  • Realtime     │  │  Webhooks    │  │  • MapLibre tiles│
-   │  • Auth (anon)  │  │  (signature) │  │  • Nominatim     │
-   │  • RLS policies │  └──────────────┘  │  • OSRM          │
-   │  • pg_cron/TTL  │                    │  • LLM (Ollama/  │
-   └────────────────┘                    │    OpenAI)       │
-                                          │  • Web Push/VAPID│
-                                          └──────────────────┘
+```text
+Business admin / staff / member / device tester
+                         |
+                         | HTTPS + Supabase session
+                         v
+                  Next.js 16 application
+       public homepage | business UI | admin UI | APIs
+                         |
+              route authorization + validation
+                         |
+                         v
+                  Supabase PostgreSQL
+ business | network | members | spots | matches
+ sessions | locations | audit | notifications
+                         |
+          +--------------+----------------+
+          |                               |
+    Supabase Realtime                Scheduled jobs
+          |                 protected API + optional pg_cron
+          v                               v
+     live UI updates             expiry, cleanup, retention
 ```
 
-### 4.1 Data-access model
+### 2.1 Technology stack
 
-Three distinct client surfaces exist for the database:
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16.2.9 App Router |
+| UI runtime | React 19.2.4, TypeScript 5 |
+| Styling | Tailwind CSS 3.4, Geist, Lucide |
+| Database | Supabase PostgreSQL |
+| Authentication | Supabase Auth, email/password and recovery flow |
+| Authorization | Route checks, role checks, RLS, database triggers |
+| Realtime | Supabase Realtime |
+| Notifications | Web Push with VAPID, in-app notifications |
+| Deployment | Vercel |
+| Tests | Vitest |
 
-1. **Browser client** (`src/lib/supabaseClient.ts`) — anon key, used for authenticated reads/writes that RLS governs (profiles, game state, chat, own records). This is the *only* path where Row Level Security is the enforcement point.
-2. **API route handler** (`src/lib/supabaseAdmin.ts`) — service-role key, used for operations requiring server-side validation: matching, claim races, credits, rate limiting, admin/moderation, webhooks. RLS is bypassed here; the middleware + handler-level role checks are the enforcement point.
-3. **Realtime subscriptions** — long-lived WebSocket channels on specific tables/filters for live map, chat, tracking, and the control tower.
+### 2.2 Data-access boundaries
 
-### 4.2 Middleware (`src/proxy.ts`)
+The application has browser and server database paths. The browser uses the Supabase anon key and is constrained by RLS. Server routes use a service-role client for operations such as matching, dashboards, cleanup, and administrative actions.
 
-A Next.js middleware intercepts `/api/*` and enforces:
+Because the service-role client bypasses RLS, every server route must explicitly validate:
 
-- **Agent routes** (`/api/agents/*`, except the admin chat route) require an `x-agent-secret` header equal to `AGENT_SECRET_KEY` (used by cron/scheduled agent invocation).
-- All other non-public, non-`/api/admin` routes require a `Bearer` access token (structural check; handlers re-verify).
-- Security headers are stamped on every API response (`nosniff`, frame-deny, XSS-protection, referrer policy, `Cache-Control: no-store`).
+1. authenticated identity;
+2. business membership;
+3. role where required;
+4. business/network relationship; and
+5. payload and state-transition validity.
+
+The service-role key must never be exposed to client code or scheduler requests.
 
 ---
 
-## 5. Core Domain and User Flows
+## 3. B2B Tenant Model
 
-### 5.1 Identity and Gating Chain
+### 3.1 Entities
 
-Authentication is email/password or magic link. Before *every* privileged action the app evaluates a gating chain:
+```text
+businesses
+  subscriber account, status, plan, seat limit, operating area
 
-1. Authenticated (Supabase session)
-2. Phone verified (Twilio OTP; required to post)
-3. Inside an active pilot area (geofence via `pilot_areas` bounding boxes)
-4. Account in good standing (`flags < 5`, average rating ≥ 3.0)
-5. Accepted current TOS + Safety/Community Agreement (versioned)
-6. Completed at least the required educational courses
+networks
+  private or shared coordination scope
 
-### 5.2 Posting a Spot (`/api/spots`)
+network_businesses
+  business participation in a shared or private network
 
-- **Location acquisition** — Browser Geolocation `watchPosition` (high accuracy, ≤50 m tolerance, 10 s cap) → reverse geocoded via Nominatim.
-- **Relay modes** (`relay_mode`):
-  - `imminent` — leaving now; enters the exclusive matching queue immediately.
-  - `scheduled` — pre-committed future departure for forward planning.
-- **Details** — departure time, return time, vehicle-type filter, optional tip message.
-- **Server validation** — valid coordinate ranges (new `geo-validation` lib), future times enforced, max 3 active spots per user, rate limit 10 posts/60 s per IP, pilot-area gating, phone verification, standing checks.
-- **Fire-and-forget side effects** — the exclusive match-finder runs, SpotQuest XP awarded, and the demand-match agent notifies nearby seekers.
+business_members
+  user membership, role, and status
 
-### 5.3 The Exclusive Offer Flow
+parking_spots
+  imminent departure with business/network attribution
 
-Version 2.0 replaces broadcast claimable markers with a sequenced, invisible matching flow:
+spot_matches
+  offer and handoff lifecycle with business/network attribution
 
-```
-owner posts spot (visibility=exclusive)
-        │
-        ▼
-matching engine picks THE best seeker            (findBestSeeker)
-        │  distance · vehicle type · schedule overlap
-        │  trust/tier · reliability · block exclusion
-        ▼
-exclusive offer (spot_matches.status='offered')  (createExclusiveOffer)
-  90s acceptance window · push + in-app notification
-   only the offered seeker is aware of the spot
-        │
-   ┌────┴────────────┐
-   ▼ accept          ▼ decline / expire (90s)
-offered → confirmed_by_seeker
-        │            attemptNextOffer → next-best seeker
-        ▼            after max_exclusive_attempts (default 5)
-  ...two-phase confirmations...
-        ▼            → visibility='public' fallback alert
+business_member_audit
+  removal actor, target, business, action, and timestamp
 ```
 
-Key mechanics:
+### 3.2 Roles and statuses
 
-- **One offer at a time.** The engine never reveals the spot to more than one seeker, eliminating claim races entirely. `createExclusiveOffer` refuses to run if the spot already has an active `offered` match.
-- **Scoring** (`findBestSeeker`): `trust*10` + ranking-tier bonus (bronze 0, silver 2, gold 4, community partner 6) + `successful_handoffs*0.5` − flag/reliability penalties − distance/1000; blocks are excluded in both directions; vehicle type and schedule-overlap checks are hard filters.
-- **Reassignment.** A decline triggers `reassignOffer` (next-best seeker); a no-show releases the spot and runs `attemptNextOffer` excluding the no-showing seeker.
-- **Public fallback.** After `max_exclusive_attempts` (1–10, per-spot configurable, default 5) the spot becomes a public claimable alert on the map.
-- **Reliability tracking.** Declines and no-shows increment `users.decline_count` / `no_show_count`, lowering future offer priority.
-- **Self-healing.** A cron endpoint (`/api/cron/expire-offers`, every minute) plus opportunistic sweeps on each match-find expire stale offers and sweep exclusive spots whose attempts are exhausted.
+Business roles are:
 
-### 5.4 Claiming a Public Spot
+- `admin`: manages members, business settings, and branding;
+- `staff`: participates operationally; and
+- `member`: participates without administrative access.
 
-- **Atomicity** — Claim is a single conditional `UPDATE parking_spots SET status='taken' WHERE id=$1 AND status='active'`; a `409` surfaces the race when two drivers claim simultaneously.
-- **Post-claim side effects** — owner notified, claimer XP/badges/quests awarded, rating prompt queued, contribution stats trigger fires, chat auto-created.
+Only active memberships qualify for network matching. Business operation is allowed for `trialing` and `active` statuses. Suspended and canceled businesses cannot accept new members or perform new B2B operational actions.
 
-### 5.5 The Handoff Lifecycle (`spot_matches`, `active_sessions`, `driver_locations`)
+Plans currently include `trial`, `standard`, `pro`, and `enterprise`. Billing can remain manual during pilots, but status and seat limits are enforced in the application and database.
 
-A formal handoff progresses through a lifecycle that the control tower and mobile clients both render:
+### 3.3 Shared networks
 
+A shared network lets multiple businesses coordinate within a defined neighborhood group. Shared access does not grant access to every business dashboard, roster, or branding record. A user qualifies for a shared network only through an active membership in a business linked to that network.
+
+---
+
+## 4. Exclusive Matching Protocol
+
+### 4.1 Invariant
+
+For one active spot, at most one live offer or confirmed handoff may exist.
+
+Migration `00042_exclusive_offer_guard.sql` adds a PostgreSQL partial unique index across live match statuses:
+
+```sql
+CREATE UNIQUE INDEX spot_matches_one_live_per_spot
+ON public.spot_matches (spot_id)
+WHERE status IN (
+  'pending', 'offered', 'confirmed_by_owner',
+  'confirmed_by_seeker', 'confirmed'
+);
 ```
-offered → confirmed_by_seeker → confirmed_by_owner → confirmed
-       → en_route → arrived → departed → completed
-       → (offer_declined | offer_expired | rejected | expired | no_show)
+
+The application performs an early active-match query, but PostgreSQL is the final concurrency authority. If two workers race, only one insert can succeed.
+
+### 4.2 Lifecycle
+
+```text
+departure posted
+      |
+      v
+active network members filtered
+      |
+      v
+one exclusive offer created
+      |
+ +----+------------------+
+ |                       |
+ v                       v
+accepted              declined/expired
+ |                       |
+ v                       v
+handoff flow        next eligible member
+                           |
+                           v
+                    retry within policy
 ```
 
-- **Two-phase confirmation** — both parties must confirm.
-- **Credit deduction** — on final confirmation each party spends 1 match credit (`deduct_match_credit` RPC).
-- **Live tracking** — both parties' GPS streams into `driver_locations`; `active_sessions` tracks ETA, grace period, arrival/departure timestamps; grace-period logic handles no-shows.
-- **ETA** — computed from OSRM route time with rush-hour (+30%) / off-peak (−10%) multipliers and a straight-line haversine fallback.
+An offer has a short acceptance window. The default is 90 seconds and can be configured through `MATCH_OFFER_WINDOW_MS`.
 
-### 5.6 Discovery Aids
+### 4.3 Candidate selection
 
-- `spot_requests` — orange marker for "someone is looking for a spot".
-- `departure_pings` — purple marker broadcast "leaving in ~10 min" to nearby users.
-- `spot_waitlist` — scheduled-relay waitlist for future departures.
+The matcher applies hard filters for:
 
----
+- active network membership;
+- active seeker request;
+- geographic radius;
+- vehicle compatibility;
+- schedule compatibility; and
+- block or self-exclusion.
 
-## 6. Matching Engine (exclusive single-driver model)
+Ranking then considers trust, prior successful handoffs, reliability, flags, and proximity.
 
-The matching engine (`src/lib/matching/exclusive-matcher.ts`) is the heart of version 2.0:
+### 4.4 Reassignment and idempotency
 
-- **`findBestSeeker(spot)`** — scores every compatible active seeker within `MATCH_RADIUS_METERS` (default 200 m) and returns exactly one winner (see scoring in §5.3).
-- **`createExclusiveOffer(spot, seekerId)`** — creates a single `offered` match with an acceptance window (`MATCH_OFFER_WINDOW_MS`, default 90 s), increments `exclusive_attempts`, and notifies only the seeker.
-- **`reassignOffer` / `attemptNextOffer`** — chain to the next-best seeker on decline/expiry/no-show.
-- **`expireStaleOffers` / `sweepExclusiveSpots`** — TTL enforcement + public fallback after attempts run out.
-- **`incrementReliabilityCounter`** — records declines/no-shows.
+Decline and expiry use a conditional transition from `offered` to `offer_declined` or `offer_expired`. Only the worker that wins the transition performs associated side effects.
 
-**Privacy property:** because spots default to `visibility='exclusive'`, the map feed (`GET /api/spots`), the realtime channel, and every other consumer only see exclusive spots owned by the viewer. An exclusive spot is effectively invisible until it falls back to public (consumer spots only). Network-stamped spots are additionally excluded from the open feed unless the viewer is a network member, and they never fall back to public. RLS enforces this at the database level, so no client path can leak an in-flight offer.
+Repeated cron calls are safe. A previously closed offer cannot be closed again or cause repeated decline accounting. The unique index prevents reassignment races from creating duplicate live offers.
 
-Anti-abuse properties: distributed rate limiting, atomic claims, per-user active-spot caps, phone verification, block-list exclusion, and geodata validation.
+### 4.5 B2B no-public-fallback rule
+
+If a network spot has no eligible candidate or exhausts its exclusive attempts, it remains private and coordination ends. It does not become an open public map marker.
 
 ---
 
-## 7. Real-Time Infrastructure
+## 5. Application Routes
 
-Supabase Realtime channels power every "live" surface:
+### 5.1 Public and business routes
 
-| Channel | Table(s) | Purpose |
-|---------|----------|---------|
-| Map spots | `parking_spots` | live marker add/expire |
-| Chat | `ephemeral_messages` (filtered by `chat_id`) | 30-min ephemeral handoff chat |
-| Tracking | `driver_locations` | live positions during matches |
-| Control tower | `driver_locations`, `active_sessions`, `spot_matches` | admin live map + sidebar |
-| Notifications | `notifications` | in-app notification feed |
+| Route | Purpose |
+|---|---|
+| `/` | B2B homepage and pilot CTA |
+| `/auth/login` | Shared login for business and platform admins |
+| `/auth/reset-password` | Password recovery completion |
+| `/business` | User’s businesses and business creation |
+| `/business/[id]` | Business dashboard |
+| `/admin` | Platform admin dashboard |
+| `/admin/testing` | Simulation and device-test monitoring |
+| `/test/behavior` | Real phone behavior-agent test |
 
-Polling is used as a complement where push is insufficient (control tower refetches every 10 s; rate-limited 30 req/60 s).
+After login, platform users with `admin` or `moderator` roles go to `/admin`; other users go to `/business`. A `next` path is supported for protected workflows such as `/test/behavior`.
 
-Ephemerality is engineered in and documented: chats auto-close after 30 minutes or on claim completion; spots auto-expire by lead time; `pg_cron`/scripted TTL jobs sweep expired rows (`cleanup_ephemeral_chats`, `cleanup_departure_pings`, `maintain_streaks`, `cleanup_old_driver_locations`, `cleanup_expired_rate_limits`, `cleanup_expired_app_logs`). The full retention catalog lives in **`docs/DATA_RETENTION.md`**.
+### 5.2 Business API
 
----
+The current business API includes:
 
-## 8. Trust, Safety, and Reputation
+- `GET/POST /api/businesses`;
+- `GET/PATCH /api/businesses/[id]`;
+- `GET /api/businesses/[id]/dashboard`;
+- `POST /api/businesses/[id]/join`;
+- `GET/POST /api/businesses/[id]/members`;
+- `PATCH/DELETE /api/businesses/[id]/members/[userId]`; and
+- B2B-aware `/api/spots` and `/api/matches` operations.
 
-- **Flag system** — 5 reasons (`wrong_location`, `fake_spot`, `rude_user`, `dangerous_behavior`, `other`). ≥5 flags gates the account; admin can resolve or delete.
-- **Ratings** — 1–5 stars post-claim; a database trigger recomputes the owner's average; <3.0 gates the account.
-- **Block list** — permanent mutual exclusion from matching, chat, and profile visibility.
-- **Education gate** — required courses before first use.
-- **Rate limiting** — **distributed** (Postgres `rate_limits` table via `check_rate_limit` RPC), enforced consistently across all serverless instances. Fallback in-memory store only activates when Supabase is unconfigured.
-- **Phone verification** — Twilio OTP before posting.
-- **Pilot-area gating** — the app only operates inside configured bounding boxes.
-- **Safety agreement** — 7 rules (15-min max lead, don't circle blocks, don't follow people, brief handoffs, etc.).
-
----
-
-## 9. Gamification — SpotQuest
-
-A full XP/level/badge/quest layer drives retention and rewards positive behavior:
-
-- **Levels:** Rookie Parker → Cruiser → Road Warrior → Street Pro → Spot Master → Parking Legend.
-- **XP sources:** handoffs (+50 + bonuses), Perfect Park mini-game (5–25), quests, badges.
-- **Bonuses:** speed bonus (claim ≤5 min +30, ≤10 min +15), streak bonus (up to +50), reliability bonus (+20 at ≥4.5 rating).
-- **Badges:** 6 categories × 4 tiers (bronze → legendary), auto-awarded on milestones.
-- **Quests:** daily/weekly/milestone objectives tracked by RPCs fired on spots, claims, and match confirmations.
-- **Leaderboards:** neighborhood leaderboard view (Belmont Shore).
-
-### 9.1 Education & Rankings
-
-Five courses (street parking law, community safety, app risks, privacy, street sweeping) with quizzes (80% to pass). Ranking tiers (Bronze/Silver/Gold/Community Partner) gate posting limits, visibility, **and exclusive-offer priority**. Points: +100/course, +10/handoff, −20/flag; trust score starts at 5.0. DB triggers initialize profiles and update rankings on course pass, handoff, and flag events.
+Business dashboards expose active spots, members, match totals, recent activity, member roles, and lifecycle labels such as Offered, Accepted, Completed, No-show, Expired, and Declined.
 
 ---
 
-## 10. Monetization
+## 6. Authorization and Privacy
 
-| Stream | Mechanism | Status |
-|--------|-----------|--------|
-| **Business subscriptions** | Primary revenue: businesses subscribe (trial/standard/pro/enterprise) to coordinate parking across their network; white-label branding included | Live |
-| **Match credits** | $5.99/credit via Stripe Checkout; each confirmed handoff costs each party 1 credit; **first 5 free** (default balance) | Live (optional) |
-| **Tips** | Voluntary $1/$2/$5 thank-you payments | Live |
-| **Geofenced ads** | Geo-targeted placements in the Spot Details panel; impression/click tracking API; AI weekly reports | Live |
-| Data licensing | Documented in `MONETIZATION-OPTIONS.md` | Planned |
+### 6.1 Authorization guarantees
 
-**Credit flow (hardened):** user purchases → Stripe hosted checkout → `checkout.session.completed` webhook (signature-verified) → **idempotency checks**:
+An active member of Business A cannot use business API routes to read Business B configuration, dashboard, roster, or branding. Staff and ordinary members cannot add/remove members or update business configuration.
 
-1. Event replays are short-circuited via the `webhook_events` table.
-2. The grant itself is atomic and idempotent: `complete_credit_purchase` RPC only completes a `pending` `credit_purchases` row and increments `match_credits` in one transaction, returning 0 credits for an already-completed session — so retried deliveries can never double-grant.
-3. Livemode is checked against the environment, and session metadata (userId/quantity) is strictly validated.
+Database helpers include `current_user_business_role` and `user_is_network_member`. The route layer adds explicit checks because many dashboard and matching queries use the admin client.
 
-`deduct_match_credit` RPC spends a credit on match confirmation → 402 if insufficient.
+### 6.2 Member removal
 
----
+An admin removal:
 
-## 11. AI Systems
+1. verifies admin role;
+2. finds active offers addressed to the target;
+3. removes the membership;
+4. records an audit row;
+5. expires and reassigns active offers; and
+6. prevents future network eligibility.
 
-### 11.1 Configurable LLM layer
+The removal audit records only business ID, target user ID, actor user ID, action, and timestamp.
 
-`src/lib/llm.ts` abstracts the model provider behind a single `chatCompletion(messages)` function. Providers are resolved from env:
+### 6.3 Location minimization
 
-- `LLM_PROVIDER=openai` → OpenAI-compatible endpoint (`OPENAI_BASE_URL` defaults to `https://api.openai.com/v1`, `OPENAI_MODEL` defaults to `gpt-4o-mini`, key in `OPENAI_API_KEY`).
-- `LLM_PROVIDER=ollama` → local Ollama (`OLLAMA_BASE_URL`, `OLLAMA_MODEL` default `llama3`).
-- **Default:** OpenAI if configured, otherwise Ollama.
-
-The provider chain is **ordered and self-falling**: each provider is tried in sequence and the first non-empty reply wins; if all fail, `chatCompletion` returns `""` and every caller falls back to a deterministic template — the system never breaks when a model is down. `src/lib/ollama.ts` remains as a compatibility shim so all existing agents benefit automatically.
-
-### 11.2 Background LLM Agents
-
-| Agent | Trigger | Function |
-|-------|---------|----------|
-| **Demand-Match** | New spot | Offers the spot exclusively to the single best-compatible seeker, scoped to the spot's business network if posted by a business |
-| **User Growth** | New spot | Scans unregistered phones nearby, records SMS invites |
-| **Spot Prediction** | Cron | Analyzes 7-day history to predict when/where spots open; notifies users |
-| **Congestion Alert** | Cron | Flags neighborhoods with ≥10 alerts in 10 min; writes alerts + notifies |
-| **Ad Insights** | Weekly | Generates per-advertiser performance reports |
-
-### 11.3 App Agent (Admin Chat) — detailed
-
-`/admin/agent` provides an admin-facing chat UI backed by `POST /api/agents/chat` (implementation: `src/lib/agents/app-agent.ts`).
-
-**Request path:**
-1. Middleware requires a Bearer token (chat is exempted from the agent-secret rule); the handler re-checks the caller is `admin` or `moderator` in the database.
-2. The agent fetches a **live app snapshot** in one parallel batch (`getAppSnapshot`): total users, subscribing businesses, networks, active spots, active matches, active ads, active chats, plus today's congestion alerts, alerts, predictions, invites, and the top 5 neighborhoods by spot volume.
-3. The snapshot is rendered into the **system prompt**, which also describes the exclusive matching model verbatim (so the agent answers accurately about how matching works).
-4. The conversation (user/assistant turns, bounded to the last 20 messages) is sent through `chatCompletion` → the configured LLM provider.
-5. On LLM failure, a deterministic `templateReply()` answers metrics questions ("how many users…", "active spots…", "congestion…", etc.) from the same snapshot.
-6. The response reports which `engine` produced it (`openai` / `ollama` / `template`) and returns the snapshot, so the admin UI can show data provenance.
-
-### 11.4 On-Device Behavior Agent (rule-based inference)
-
-A client-side sensor-fusion agent infers driver/vehicle state from GPS + DeviceMotion without any network dependency:
-
-- **Sensors** (`src/lib/behavior/sensors.ts`): `GpsSensor` (high-accuracy watchPosition) and `MotionFeatureExtractor` (step detection via peak counting, vibration energy, step cadence from `devicemotion`).
-- **State machine** (`src/lib/behavior/agent.ts`) — 9 states:
-  `unknown → driving → parking_in_progress → parked → walking_away → away → returning → near_car → vehicle_moved`.
-- **Events** — `PARK_CONFIRMED`, `WALKING_AWAY_CONFIRMED`, `RETURNING_CONFIRMED`, `NEAR_CAR_CONFIRMED`, `CAR_MOVED_CONFIRMED`, each with a confidence score.
-- **Automation** — `PARK_CONFIRMED` can auto-save the car's location; departure events can auto-post the spot or push match status; preferences live in `behavior_agent_config`, and every fired decision is audit-logged to `agent_events`.
-- **Validation** — unit-tested state transitions; real-hardware runs recorded in `behavior_device_tests` / `behavior_test_events` and reviewable in the admin.
-
-### 11.5 Virtual Environment (multi-agent simulation)
-
-`VirtualEnvironment` (`src/lib/virtual-environment/engine.ts`) simulates an entire street grid of **autonomous agents** (owner/seeker/bystander roles) that move along waypoint routes at configurable time speed, GPS noise, and traffic density, and broadcast positions into `driver_locations` exactly like real phones. This is the substrate for load-testing the matching pipeline, control tower, and behavior detection without human involvement.
+Precise driver locations exist only for an active operational handoff. They are deleted after the operational window. Car-location traces and ephemeral chats are also cleaned. Aggregate match and business statistics remain available without preserving raw movement history.
 
 ---
 
-## 12. Admin & Operations Console
+## 7. Scheduled Jobs and Retention
 
-All admin pages live under `/admin` (role-gated to `admin`/`moderator`, enforced client-side *and* server-side on API routes).
+### 7.1 Protected API job
 
-| Page | Capabilities |
-|------|--------------|
-| **Dashboard** | Aggregate KPIs: users, spots, ads, active chats; 19 agent-metric cards; top-5 neighborhoods; ad performance table with CTR |
-| **App Agent** | Chat with the AI assistant (see §11.3) |
-| **Control Tower** | Full-screen live map of matches with owner/seeker markers, dashed route lines, ETA, status badges; sidebar with Matches/Users tabs; realtime + 10 s polling |
-| **Users** | Search, view vehicle/role, promote/demote to admin/moderator, online indicator, remote sign-out |
-| **Flags** | Search/filter, resolve, delete flagged spots; audit trail (`resolved_by`, `resolved_at`) |
-| **Ad Campaigns** | CRUD for geofenced ads; impression/click/CTR analytics |
-| **Pilot Areas** | CRUD of bounding-box beta zones that gate access |
-| **Street Sweeping** | CRUD of street sweeping schedules; drives user alerts |
-| **Potential Matches** | Review queued/compatible match candidates |
-| **Broadcast** | Push notifications to all or specific users (Web Push) |
-| **Test Suite** | GPS simulator, route playback, parking tester, tracking monitor, ETA tester, geofence tester, scenario runner, match scenario, virtual environment (§13) |
+`POST /api/cron/expire-offers` is the application-level worker. It:
 
-**Operations posture:**
-- Every admin route re-verifies `role` from the database (never trusts the client).
-- The control tower and dashboard stream live data via Realtime with polling fallback, rate-limited by the **distributed** limiter.
-- Moderation actions are audit-logged (who resolved what, when).
+- expires stale offers;
+- attempts next-candidate reassignment;
+- stops privately when no network candidate remains;
+- sweeps eligible exclusive spots; and
+- invokes the retention RPC.
 
----
+Required headers:
 
-## 13. Testing & QA Infrastructure
+```text
+Authorization: Bearer <CRON_SECRET>
+x-cron-secret: <CRON_SECRET>
+```
 
-### 13.1 Automated tests (Vitest)
+This endpoint should be called every minute by cron-job.org, Vercel Cron, or another authenticated HTTP scheduler.
 
-`npm test` → Vitest 4 (Node environment, `@` alias). **54 tests across 10 suites**, covering: exclusive matcher helpers (offer window, radius, haversine, schedule compatibility), distributed rate-limiter fallback, structured logger (JSON output, error sanitization, non-throwing persistence), Stripe metadata validation, LLM provider ordering + fallback chain (stubbed env + mocked fetch), geo/telemetry validation, `cn()`, vehicle types, map helpers, and behavior-agent state transitions.
+### 7.2 Supabase retention job
 
-### 13.2 In-app Admin Test Suite (`/admin/testing`)
+Migration `00047_pilot_retention_schedule.sql` creates `cleanup_pilot_data()` and schedules it every five minutes when `pg_cron` is available:
 
-Nine interactive panels operate real simulated devices (4 seeded test accounts) against the live stack:
+```sql
+SELECT cron.schedule(
+  'spotmatch-pilot-retention',
+  '*/5 * * * *',
+  'SELECT public.cleanup_pilot_data();'
+);
+```
 
-1. **GPS Simulator** — coordinates, presets, speed/heading/accuracy, GPS noise (±50 m), underground (signal-loss) mode, click-to-set-position map.
-2. **Route Playback** — preset routes + GPX paste/parse, play/pause/step, 1×–10× speed, waypoint markers.
-3. **Parking Tester** — "Simulate Parking (30 s)" / "Simulate Driving", detection-window logic, event log.
-4. **Tracking Monitor** — live map of all test devices with color-coded status (driving/parked/idle/offline) via realtime.
-5. **ETA Tester** — OSRM ETA with multipliers and haversine fallback; sortable results.
-6. **Geofence Tester** — polygon drawing + entry/exit simulation with event log.
-7. **Scenario Runner** — multi-step scripts across 2 devices with pass/fail export.
-8. **Match Scenario** — end-to-end simulated handoff with a dual-phone side-by-side UI and voice navigation.
-9. **Virtual Environment** — full multi-agent street simulation (see §11.5).
+The SQL job does not expire offers first because offer reassignment requires application candidate selection and notification behavior. It cleans:
 
-### 13.3 AI Test Campaign Engine
+- completed spots by marking them `taken`;
+- active spots past `expires_at` by marking them `expired`;
+- precise driver locations;
+- stale car locations;
+- expired ephemeral chats; and
+- old completed/expired chats.
 
-`AiTestRunner` (`src/lib/testing/ai-test-engine.ts`) automates test campaigns: N iterations × M routes × speed multipliers × noise/underground toggles, asserting parking-detection and match/handoff success rates, producing a structured report with detection time, match success, handoff success, and error counts.
+The operations are idempotent. Migration `00043_pilot_retention.sql` provides the broader API-invoked retention function for environments without `pg_cron`.
 
-### 13.4 Real-Device Behavior Harness
+### 7.3 Migration order
 
-The mobile app can record a hardware test run (GPS + DeviceMotion) into `behavior_device_tests`/`behavior_test_events`, letting engineers validate the behavior agent against real sensors and review results in the admin.
+For an existing database already through migration `00041`, apply:
 
----
+```text
+00042_exclusive_offer_guard.sql
+00043_pilot_retention.sql
+00044_business_member_audit.sql
+00045_business_pilot_guardrails.sql
+00046_b2b_visibility_safety.sql
+00047_pilot_retention_schedule.sql
+```
 
-## 14. Database Schema (40 migrations, ~60 objects)
-
-| Domain | Tables |
-|--------|--------|
-| **Core** | `users`, `parking_spots`, `spot_matches`, `notifications`, `contribution_stats` |
-| **Discovery** | `spot_requests`, `departure_pings`, `spot_waitlist`, `user_parking_spots`, `recurring_schedules` |
-| **Social** | `ephemeral_chats`, `ephemeral_messages`, `user_blocks` |
-| **Safety** | `spot_flags`, `user_ratings`, `phone_otps` |
-| **Monetization** | `credit_purchases`, `tips`, `ads`, `ad_analytics`, `street_sweeping`, `street_sweeping_alerts` |
-| **Gamification** | `user_game_profile`, `game_transactions`, `badges`, `user_badges`, `quests`, `user_quests` |
-| **Education** | `courses`, `user_course_progress`, `user_ranking` |
-| **Tracking** | `driver_locations`, `active_sessions`, `car_locations` |
-| **Matching (v2)** | `parking_spots.visibility/exclusive_attempts/max_exclusive_attempts`, `spot_matches` offered-state columns, `users.decline_count/no_show_count` |
-| **Growth** | `invite_conversions` |
-| **Push/Devices** | `device_push_subscriptions`, `notification_preferences`, `device_id` tracking |
-| **Admin** | `pilot_areas`, `congestion_alerts`, `spot_predictions` |
-| **Hardening (v2)** | `rate_limits` (distributed throttling), `app_logs` (structured logging, 30-day TTL), `webhook_events` (Stripe replay protection) |
-| **AI/Behavior** | `behavior_agent_config`, `agent_events`, `behavior_device_tests`, `behavior_test_events` |
-
-Notable database behavior implemented as triggers/RPCs: contribution-stats auto-update, rating recomputation, spot auto-expiry, flag-count propagation, ranking updates, default profile/game-profile initialization on signup, `deduct_match_credit`, `complete_credit_purchase` (idempotent credit grant), `check_rate_limit` (atomic window counter), `insert_webhook_event`, `insert_app_log`, `ensure_user_exists`, `maintain_streaks`, `is_user_blocked`, and the TTL cleanup jobs.
+For a new database, apply all migrations from `00001` through `00047` in order.
 
 ---
 
-## 15. Security & Privacy
+## 8. Business Guardrails
 
-- **RLS** on user-owned tables (own-row read/write policies) *and* on the exclusive-spot visibility rule; service-role used only server-side.
-- **Server-side authz** — every admin/moderation route re-verifies role from the DB; middleware provides a structural token check; agent cron endpoints additionally require `x-agent-secret`.
-- **Webhook integrity** — Stripe webhooks signature-verified, livemode-checked, replay-safe, and grant-idempotent.
-- **Distributed rate limiting** — Postgres-backed window counters shared across all instances, with strict per-endpoint limits (e.g., 30 match-status/60 s, 12 car-location/60 s, 3 ai-test/60 s).
-- **Structured logging** — JSON logs with sanitized contexts; never logs secrets; 30-day retention.
-- **Input validation** — shared `geo-validation` module enforces coordinate ranges (±90/±180) and telemetry ranges (speed ≤200 km/h, accuracy ≤5000 m, heading ≤360°) on every location-accepting route.
-- **Privacy by design** — exclusive spots are invisible until public fallback; location shared only during active matches; ephemeral chats auto-delete; versioned TOS; no data selling; retention documented in `docs/DATA_RETENTION.md`.
-- **Headers** — security headers + `Cache-Control: no-store` stamped on all API responses by middleware.
-- **Payments** — no card data touches the app; Stripe hosted checkout only.
+### 8.1 Seat limits
 
----
+Migration `00045_business_pilot_guardrails.sql` installs a row-locked membership trigger. It locks the business row, checks status, counts active members, and rejects an active insert at `seats_limit`.
 
-## 16. API Surface (highlights, ~69 route handlers)
+The application also performs an early seat/status check to return clear HTTP errors. The database trigger is authoritative during concurrent joins.
 
-- **Spots:** `POST /api/spots`, `GET /api/spots`, `GET/POST /api/parking-spots/*`, `POST /api/spots/[id]/claim`, `/cancel`, `/tip`
-- **Matches (exclusive):** `POST /api/matches/find` (single offer), `POST /api/matches/[id]` (accept/decline → reassignment), `POST /api/matches/[id]/status` (arrival/departure/no-show → reliability + re-offer), `POST /api/matches/schedule`, `/location` (+ `/start`/`/stop`)
-- **Cron:** `POST /api/cron/expire-offers` (offer TTL + public fallback; `x-cron-secret` guarded)
-- **Tracking:** `POST /api/location/update`, `POST /api/user/location`, `/api/driver-locations`, `POST /api/car-locations`, `/api/car-locations/[id]`
-- **Auth:** `/api/auth/*`, `/api/auth/phone-request`, `/api/auth/phone-verify`
-- **Payments:** `/api/purchase/checkout`, `/api/purchase/credits`, `/api/purchase/webhook`, `/api/payments/history`
-- **Push:** `/api/push/subscribe`, `/unsubscribe`, `/send-match`
-- **Ads:** `/api/ads/[id]/impression`, `/api/ads/[id]/click`
-- **Agents:** `/api/agents/{ad-insights,congestion,demand-match,grow-users,predict-spots}`, `/api/agents/chat`
-- **Admin:** `/api/admin/dashboard`, `/control-tower`, `/users/*`, `/broadcast`, `/behavior-tests`, `/potential-matches`, `/promote`, `/run-migration`
-- **Misc:** ratings, flags, tips, courses, quests/XP/badges, street sweeping, notifications preferences, waitlist, TOS acceptance.
+### 8.2 Network visibility
+
+Migration `00046_b2b_visibility_safety.sql`:
+
+- converts existing network-public spots to exclusive;
+- rejects network spots configured as public;
+- removes the broad legacy active-spot read policy; and
+- prevents exclusive network spots from becoming public discovery records.
+
+### 8.3 Notification failure
+
+Push delivery distinguishes no registered device from delivery failure. If no subscription exists, the dashboard and in-app notification remain valid. If all registered subscriptions fail, the offer is closed and reassignment proceeds.
+
+The persisted dashboard state is authoritative; push delivery is only a transport mechanism.
 
 ---
 
-## 17. Deployment & Operations
+## 9. Admin and Device Testing
 
-- **GitHub → Vercel** continuous deployment on `main`.
-- **Environment config:**
-  - Core: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-  - Payments: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-  - Verification: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `PHONE_VERIFICATION_ENABLED`
-  - Push: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL`
-  - Maps: `NEXT_PUBLIC_MAP_DEFAULT_LAT/LNG/STYLE_URL`
-  - **Matching (v2):** `MATCH_OFFER_WINDOW_MS` (default 90000), `MATCH_RADIUS_METERS` (default 200), `CRON_SECRET` (falls back to `AGENT_SECRET_KEY`)
-  - **Agents (v2):** `AGENT_SECRET_KEY`, `LLM_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`
-- **Scheduled jobs:**
-  - `POST /api/cron/expire-offers` every minute — expires stale exclusive offers, sweeps exhausted spots to public fallback (`Authorization: Bearer <any>` + `x-cron-secret`).
-  - `scripts/ttl-cleanup.ts` every 5 minutes — ephemeral chat/ping/location cleanup, streak maintenance, expired rate-limit windows, app-log retention.
-  - Agent crons hit `/api/agents/*` with `x-agent-secret`.
-- **Build health:** `npm run build` clean; `npx tsc --noEmit` passes; `npm test` green (54 tests). `npm run lint` reports only pre-existing warnings/errors in legacy files.
+### 9.1 Simulated tests
 
----
+`/admin/testing` contains simulated panels for GPS, routes, parking detection, tracking, ETA, geofencing, scenarios, match behavior, AI tests, and virtual environments.
 
-## 18. Current State, Limitations, and Roadmap
+### 9.2 Real device test
 
-### Current state
-- Feature-complete core loop (post → exclusive offer → track → complete), monetization live, full admin console, extensive simulation/testing harness, and a multi-tier AI layer.
-- Production hardening shipped: distributed rate limiting, structured logging, idempotent payments, configurable LLM providers, validated inputs, documented retention.
+The **Device Tests** panel monitors test sessions recorded from phones. The **Launch device test** action opens `/test/behavior`.
 
-### Known limitations
-- **Single-city geofence** — pilot-area gating currently targets the launch neighborhood.
-- **LLM latency/cost in serverless** — external provider calls happen inline; the template fallback covers outages but long-running agents (spot prediction, ad insights) may want queued/background execution.
-- **No native mobile app** — relies on PWA capabilities (DeviceMotion requires HTTPS and user gesture; motion permission availability varies by platform/browser).
-- **Moderation is reactive** — flag/rating gating is effective but not preventive; planned escalation tooling (human review queue) remains a roadmap item.
+On the phone:
 
-### Roadmap signals (from `MONETIZATION-OPTIONS.md`)
-Freemium Gold subscriptions, Stripe Connect payouts, business/operator subscriptions, surge pricing during events, street-sweeping data licensing, and white-labeling to other cities.
+1. Open the production URL over HTTPS.
+2. Log in on the same browser.
+3. Allow GPS and motion access.
+4. Choose Default or Fast thresholds.
+5. Tap Start Test.
+6. Drive, park, remain still, walk away, return, get in, and drive away.
+7. Tap End Test.
+
+The admin Device Tests panel then displays the recorded session, device label, duration, state transitions, agent events, GPS fixes, motion samples, and summary.
+
+If the phone is not authenticated, `/test/behavior` redirects to `/auth/login?next=/test/behavior` and returns there after login.
 
 ---
 
-## 19. Conclusion
+## 10. Deployment
 
-Parking Meeters is a complete, deployable, and unusually well-instrumented system: a real-time marketplace where the "inventory" is ephemeral by law and design, enforced by exclusive invisible matching, atomic claims, hard expiry, trust/reputation scoring, and regulatory framing. Its engineering differentiators are the **exclusive single-driver matching engine**, the **behavior-inference agent running on the device**, the **virtual environment + AI test campaign harness**, a **configurable LLM stack that degrades gracefully**, and a **serverless-safe hardening layer** (distributed rate limiting, structured observability, idempotent payments). The architecture (Next.js + Supabase Realtime + event-driven agents) is portable to other cities and other time-sensitive resource-sharing domains.
+### 10.1 Vercel
+
+The production deployment is Vercel-compatible and currently builds successfully. Required server environment variables include:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+CRON_SECRET
+```
+
+Optional integrations include VAPID, Twilio, Stripe, and model-provider variables.
+
+The Supabase URL must be a URL such as:
+
+```text
+https://project-ref.supabase.co
+```
+
+It must not be a Vercel project ID.
+
+### 10.2 Production checklist
+
+Before a live pilot:
+
+1. Configure Vercel environment variables.
+2. Apply migrations through `00047`.
+3. Verify Supabase Auth redirect URLs.
+4. Schedule `/api/cron/expire-offers` every minute.
+5. Verify `pg_cron` retention scheduling if enabled.
+6. Log in as a platform admin and confirm `/admin`.
+7. Log in as a business user and confirm `/business`.
+8. Create a business, add members, post a spot, and observe one offer.
+9. Remove a member and confirm eligibility is revoked.
+10. Run the device test from an HTTPS phone session.
 
 ---
 
-*End of paper.*
+## 11. Verification and Residual Risks
+
+Current repository checks:
+
+```text
+npm test          67 tests passed
+npx tsc --noEmit  passed
+npm run build     passed during production deployment
+```
+
+Automated tests cover matching utilities, network scoping, no-public-fallback behavior, concurrent offer simulation, idempotent expiry, and B2B route authorization.
+
+The following still require live staging verification:
+
+- concurrent inserts against actual PostgreSQL;
+- RLS behavior with JWTs from separate businesses;
+- trigger behavior at the exact seat limit;
+- migration execution in the target Supabase project;
+- `pg_cron` job execution history;
+- retention deletion against real location records; and
+- end-to-end push failure and reassignment behavior.
+
+The main residual architectural risk is use of the service-role client in server routes. Any future route that reads or writes tenant data must preserve explicit membership and role checks.
+
+---
+
+## Conclusion
+
+SpotMatch is now structured as B2B coordination software rather than a consumer parking marketplace. Its core technical guarantee is exclusive, network-scoped handoff: one departure is offered to one eligible member at a time, with conditional state transitions, database uniqueness enforcement, and no public fallback for business spots.
+
+The operational foundation includes tenant-aware business dashboards, member roles, audit-backed removal, seat/status guardrails, location retention, stale spot cleanup, protected offer expiry, and optional Supabase `pg_cron` retention scheduling. The application is deployable to Vercel, but a real pilot requires valid Supabase production configuration, ordered migrations, an external one-minute API scheduler, and live staging verification of RLS and concurrency behavior.
