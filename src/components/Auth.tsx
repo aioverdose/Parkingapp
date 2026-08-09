@@ -317,7 +317,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold">{isLogin ? "Welcome Back" : "Create Account"}</h2>
         <p className="text-zinc-500 dark:text-zinc-400">
-          {isLogin ? "Log in to find your match" : "Join ParkingMeeters and find your perfect parking spot"}
+          {isLogin ? "Log in to manage your business parking network" : "Create an account to join a business parking network"}
         </p>
       </div>
 

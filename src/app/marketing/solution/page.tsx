@@ -96,7 +96,7 @@ export default function SolutionPage() {
         </div>
         <div className="flex gap-3 shrink-0 flex-wrap">
           <Link href="/auth/signup" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition">
-            Sign up free <ArrowRight size={18} />
+            Book a business pilot <ArrowRight size={18} />
           </Link>
           <Link href="/marketing/how-it-works" className="px-6 py-3 rounded-xl font-bold border border-zinc-600 hover:border-white transition">
             How it works

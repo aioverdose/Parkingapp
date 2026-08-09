@@ -97,7 +97,7 @@ export default function LoginPage() {
             S
           </div>
           <h1 className="text-2xl font-bold">Welcome Back</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Log in to find your match</p>
+          <p className="text-zinc-500 dark:text-zinc-400">Log in to manage your business parking network</p>
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
