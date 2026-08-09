@@ -27,7 +27,7 @@ export default function LoginPage() {
     }
 
     try {
-      const { error: loginError } = await supabase.auth.signInWithPassword({
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
@@ -38,7 +38,17 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/business");
+      const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", loginData.user.id)
+        .maybeSingle();
+
+      const destination = profile?.role === "admin" || profile?.role === "moderator"
+        ? "/admin"
+        : "/business";
+
+      router.replace(destination);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to log in. Please try again.");
