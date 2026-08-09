@@ -354,7 +354,7 @@ export default function BehaviorDeviceTestPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
       if (!session?.user) {
-        router.push("/");
+        router.replace("/auth/login?next=/test/behavior");
         return;
       }
       tokenRef.current = session.access_token;

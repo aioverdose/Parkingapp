@@ -44,9 +44,15 @@ export default function LoginPage() {
         .eq("id", loginData.user.id)
         .maybeSingle();
 
-      const destination = profile?.role === "admin" || profile?.role === "moderator"
-        ? "/admin"
-        : "/business";
+      const requestedDestination = new URLSearchParams(window.location.search).get("next");
+      const safeDestination = requestedDestination?.startsWith("/") && !requestedDestination.startsWith("//")
+        ? requestedDestination
+        : null;
+      const destination = safeDestination ?? (
+        profile?.role === "admin" || profile?.role === "moderator"
+          ? "/admin"
+          : "/business"
+      );
 
       router.replace(destination);
       router.refresh();
