@@ -132,15 +132,25 @@ export function DeviceTestMonitor() {
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Smartphone size={16} className="text-violet-600" />
-            <h3 className="text-sm font-bold">Device Tests</h3>
-            <span className="text-[10px] text-zinc-400">({tests.length})</span>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold">Device Tests</h3>
+              <span className="text-[10px] text-zinc-400">({tests.length})</span>
+            </div>
           </div>
-          <button
+          <div className="flex items-center gap-2">
+            <a
+              href="/test/behavior"
+              className="rounded-lg bg-violet-600 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-violet-700"
+            >
+              Launch device test
+            </a>
+            <button
             onClick={fetchTests}
             className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-          >
-            <RefreshCw size={13} /> Refresh
-          </button>
+            >
+              <RefreshCw size={13} /> Refresh
+            </button>
+          </div>
         </div>
         {error && (
           <div className="m-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2 text-xs text-red-600 flex items-center gap-1.5">

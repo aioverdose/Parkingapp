@@ -91,23 +91,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </nav>
 
       {/* Mobile nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex">
-        <a href="/admin" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><LayoutDashboard size={20} />Dashboard</a>
-        <a href="/admin/control-tower" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Radar size={20} />Tower</a>
-        <a href="/admin/agent" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Brain size={20} />Agent</a>
-        <a href="/admin/testing" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><FlaskConical size={20} />Tests</a>
-        <a href="/admin/ads" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Megaphone size={20} />Ads</a>
-        <a href="/admin/users" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Users size={20} />Users</a>
-        <a href="/admin/flags" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><AlertTriangle size={20} />Flags</a>
-        <a href="/admin/pilot-areas" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Globe size={20} />Pilot</a>
-        <a href="/admin/street-sweeping" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Truck size={20} />Sweeping</a>
-        <a href="/admin/potential-matches" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><GitCompare size={20} />Matches</a>
-        <a href="/admin/broadcast" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Bell size={20} />Broadcast</a>
-        <a href="/marketing" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><Share2 size={20} />Marketing</a>
-        <a href="/" className="flex-1 flex flex-col items-center py-3 text-xs text-zinc-500"><ArrowLeft size={20} />App</a>
-      </div>
+      <details className="md:hidden fixed top-3 right-3 z-50">
+        <summary className="cursor-pointer list-none rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-bold text-white shadow-lg [&::-webkit-details-marker]:hidden">Admin menu</summary>
+        <nav className="absolute right-0 top-12 grid w-64 grid-cols-2 gap-1 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl">
+          <a href="/admin" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Dashboard</a>
+          <a href="/admin/testing" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Testing</a>
+          <a href="/admin/control-tower" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Control Tower</a>
+          <a href="/admin/users" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Users</a>
+          <a href="/admin/pilot-areas" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Pilot Areas</a>
+          <a href="/admin/street-sweeping" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Sweeping</a>
+          <a href="/admin/flags" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Flags</a>
+          <a href="/admin/broadcast" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Broadcast</a>
+          <a href="/admin/agent" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Agent</a>
+          <a href="/admin/ads" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Ads</a>
+          <a href="/marketing" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Marketing</a>
+          <a href="/" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Back to app</a>
+        </nav>
+      </details>
 
-      <div className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</div>
+      <div className="flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }
