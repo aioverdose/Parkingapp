@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
+import { getAuthenticatedUser, createAuthenticatedSupabaseClient } from "@/lib/api/auth-helpers";
 import { getBusinessOperationalState } from "@/lib/api/business-helpers";
 import { logger } from "@/lib/logger";
 
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "This business is not accepting members" }, { status: 409 });
     }
 
-    const supabase = createAdminClient();
+    const supabase = createAuthenticatedSupabaseClient(request);
     const { data, error } = await supabase.rpc("join_business", {
       p_business_id: id,
     });
@@ -38,6 +38,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       route: "/api/businesses/[id]/join",
       user_id: user.id,
       business_id: id,
+    });
+
+    await createAdminClient().from("business_join_events").insert({
+      business_id: id,
+      user_id: user.id,
+      source: request.nextUrl.searchParams.get("source") === "qr" ? "qr" : "link",
+      event_type: "join",
     });
 
     return NextResponse.json({ membership: data }, { status: 201 });

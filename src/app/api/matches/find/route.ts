@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { findBestSeeker, createExclusiveOffer, expireStaleOffers, type ExclusiveSpot } from "@/lib/matching/exclusive-matcher";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { spot_id } = body;
 
@@ -28,7 +34,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Spot not found" }, { status: 404 });
     }
 
-    if (spot.status !== "active") {
+    if (spot.user_id !== user.id) {
+      return NextResponse.json({ error: "Only the spot owner can start matching" }, { status: 403 });
+    }
+
+    const now = Date.now();
+    if (
+      spot.status !== "active" ||
+      !spot.expires_at ||
+      new Date(spot.expires_at).getTime() <= now ||
+      !spot.departure_time ||
+      new Date(spot.departure_time).getTime() <= now
+    ) {
       return NextResponse.json({ error: "Spot is not active" }, { status: 400 });
     }
 

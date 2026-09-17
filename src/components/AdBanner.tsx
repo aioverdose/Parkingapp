@@ -11,6 +11,7 @@ interface Ad {
   tagline: string | null;
   image_url: string | null;
   link_url: string | null;
+  placement?: string;
 }
 
 function trackClick(adId: string) {
@@ -41,7 +42,7 @@ function isNearby(
   return dist <= ad.target_radius_meters;
 }
 
-export function AdBanner({ latitude, longitude }: { latitude?: number; longitude?: number }) {
+export function AdBanner({ latitude, longitude, placement = "spot_details" }: { latitude?: number; longitude?: number; placement?: string }) {
   const supabase = createBrowserClient();
   const [ad, setAd] = useState<Ad | null>(null);
   const [dismissed, setDismissed] = useState(false);
@@ -49,8 +50,9 @@ export function AdBanner({ latitude, longitude }: { latitude?: number; longitude
   useEffect(() => {
     supabase
       .from("ads")
-      .select("id, title, business_name, tagline, image_url, link_url, target_lat, target_lng, target_radius_meters")
-      .eq("active", true)
+       .select("id, title, business_name, tagline, image_url, link_url, placement, target_lat, target_lng, target_radius_meters")
+       .eq("active", true)
+       .in("placement", ["all", placement])
       .lte("start_date", new Date().toISOString())
       .order("created_at", { ascending: false })
       .then(({ data }) => {
@@ -61,12 +63,12 @@ export function AdBanner({ latitude, longitude }: { latitude?: number; longitude
           trackImpression(chosen.id);
         }
       });
-  }, [latitude, longitude]);
+  }, [latitude, longitude, placement]);
 
   if (!ad || dismissed) return null;
 
   return (
-    <div className="relative bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl overflow-hidden shadow-lg">
+    <div className="app-primary relative overflow-hidden rounded-2xl text-white shadow-lg">
       <button
         onClick={() => setDismissed(true)}
         className="absolute top-2 right-2 text-white/70 hover:text-white z-10"
@@ -94,15 +96,16 @@ export function AdBanner({ latitude, longitude }: { latitude?: number; longitude
   );
 }
 
-export function AdSidebar() {
+export function AdSidebar({ placement = "sidebar" }: { placement?: string }) {
   const supabase = createBrowserClient();
   const [ads, setAds] = useState<Ad[]>([]);
 
   useEffect(() => {
     supabase
       .from("ads")
-      .select("id, title, business_name, tagline, image_url, link_url")
-      .eq("active", true)
+       .select("id, title, business_name, tagline, image_url, link_url, placement")
+       .eq("active", true)
+       .in("placement", ["all", placement])
       .lte("start_date", new Date().toISOString())
       .order("created_at", { ascending: false })
       .limit(3)
@@ -112,7 +115,7 @@ export function AdSidebar() {
           data.forEach((ad) => trackImpression(ad.id));
         }
       });
-  }, []);
+  }, [placement]);
 
   if (ads.length === 0) return null;
 
@@ -126,9 +129,9 @@ export function AdSidebar() {
           target={ad.link_url ? "_blank" : undefined}
           rel={ad.link_url ? "noopener noreferrer" : undefined}
           onClick={() => trackClick(ad.id)}
-          className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
+           className="flex items-center gap-3 rounded-xl border border-[var(--app-border)] bg-white/90 p-3 transition hover:border-[var(--app-accent)] hover:bg-[#f2f6ff]"
         >
-          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 shrink-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#edf3ff] text-[var(--app-accent)]">
             <Megaphone size={16} />
           </div>
           <div className="flex-1 min-w-0">

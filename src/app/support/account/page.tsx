@@ -27,12 +27,12 @@ const TOPICS = [
   {
     icon: Mail,
     title: "Change Your Email",
-    desc: "Email changes must be done through your Supabase Auth account. Contact support@spotmatch.app for assistance.",
+    desc: "Email changes must be done through your Supabase Auth account. Contact support@parkingmeeters.com for assistance.",
   },
   {
     icon: Trash2,
     title: "Delete Your Account",
-    desc: "To delete your account and all associated data, email privacy@spotmatch.app from your registered email. Processing takes up to 48 hours.",
+    desc: "To delete your account and all associated data, email privacy@parkingmeeters.com from your registered email. Processing takes up to 48 hours.",
   },
 ];
 
@@ -40,10 +40,10 @@ export default function AccountPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="public-shell min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push("/support")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
+          <button aria-label="Back to Support center" onClick={() => router.push("/support")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-2xl font-bold">Account Management</h1>
@@ -55,7 +55,7 @@ export default function AccountPage() {
 
         <div className="flex flex-col gap-3 mb-8">
           {TOPICS.map((topic) => (
-            <div key={topic.title} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 flex gap-4">
+             <div key={topic.title} className="public-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 flex gap-4">
               <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                 <topic.icon size={20} className="text-blue-600" />
               </div>
@@ -70,8 +70,9 @@ export default function AccountPage() {
         <div className="bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800 p-5 flex items-start gap-3">
           <Shield size={20} className="text-amber-600 shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
-            For security-related requests or account recovery, always email us directly at{" "}
-            <a href="mailto:support@spotmatch.app" className="underline font-medium">support@spotmatch.app</a>.
+            For security-related requests or account recovery, email{" "}
+            <a href="mailto:security@parkingmeeters.com" className="underline font-medium">security@parkingmeeters.com</a> for security issues or{" "}
+            <a href="mailto:support@parkingmeeters.com" className="underline font-medium">support@parkingmeeters.com</a> for account help.
           </p>
         </div>
       </div>

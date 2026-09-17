@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import MapComponent, { Marker, NavigationControl, Popup } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { TEST_USERS, LONG_BEACH_CENTER, IDLE_TIMEOUT_MS, PARKING_SPEED_THRESHOLD } from "@/lib/testing/constants";
 import type { DeviceStatus } from "@/lib/testing/types";
 import { MAP_STYLE_URL } from "@/lib/map";
-import { Radar, Wifi, WifiOff, Clock, Car, Coffee, Moon } from "lucide-react";
+import { Wifi, WifiOff, Clock, Car, Coffee, Moon } from "lucide-react";
 
 interface DeviceState {
   userId: string;
@@ -185,7 +185,7 @@ export function TrackingMonitor() {
                 </span>
               </div>
               <div className="text-zinc-500 space-y-0.5">
-                <div>{d.lat.toFixed(5)}, {d.lng.toFixed(5)}</div>
+                <div>Location captured privately</div>
                 <div>Speed: {(d.speed * 2.23694).toFixed(1)} mph | Accuracy: ±{d.accuracy.toFixed(0)}m</div>
                 <div className="flex items-center gap-1">
                   <Clock size={10} />

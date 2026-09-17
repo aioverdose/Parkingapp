@@ -27,7 +27,7 @@ const ISSUES = [
   {
     icon: Phone,
     title: "Phone verification not working",
-    desc: "If SMS doesn't arrive, try again after 60 seconds. Still stuck? The system has a dev-mode fallback that accepts any 6-digit code. If both methods fail, email support@spotmatch.app.",
+    desc: "If SMS doesn't arrive, try again after 60 seconds. Still stuck? The system has a dev-mode fallback that accepts any 6-digit code. If both methods fail, email support@parkingmeeters.com.",
   },
   {
     icon: RefreshCw,
@@ -42,7 +42,7 @@ const ISSUES = [
   {
     icon: Globe,
     title: "Can't sign in or account issues",
-    desc: 'Use the "Forgot Password" link to reset. If that doesn\'t work or your account seems locked, contact support@spotmatch.app from the email you registered with.',
+    desc: 'Use the "Forgot Password" link to reset. If that doesn\'t work or your account seems locked, contact support@parkingmeeters.com from the email you registered with.',
   },
 ];
 
@@ -50,7 +50,7 @@ export default function TroubleshootingPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="public-shell min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-8">
           <button onClick={() => router.push("/support")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
@@ -85,7 +85,7 @@ export default function TroubleshootingPage() {
             If none of these solutions help, our support team can assist you directly.
           </p>
           <a
-            href="mailto:support@spotmatch.app"
+            href="mailto:support@parkingmeeters.com"
             className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition"
           >
             <Mail size={16} />

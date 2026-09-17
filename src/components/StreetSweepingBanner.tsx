@@ -66,7 +66,7 @@ export function StreetSweepingBanner({ sweepingData, loading, userId, onDismiss 
       alertTime = new Date(sweepDate.getTime() - 2 * 60 * 60 * 1000);
     }
 
-    await (supabase as any)
+    await supabase
       .from("street_sweeping_alerts")
       .insert({ user_id: userId, street_name, alert_time: alertTime.toISOString() });
 

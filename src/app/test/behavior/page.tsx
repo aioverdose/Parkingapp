@@ -456,9 +456,7 @@ export default function BehaviorDeviceTestPage() {
             <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 col-span-2">
               <span className="text-zinc-400">Parked location</span>
               <p className="font-mono font-bold mt-0.5">
-                {snapshot.parkedLocation
-                  ? `${snapshot.parkedLocation.lat.toFixed(5)}, ${snapshot.parkedLocation.lng.toFixed(5)}`
-                  : "Not parked yet"}
+                 {snapshot.parkedLocation ? "Location captured privately" : "Not parked yet"}
               </p>
             </div>
           </div>
@@ -491,7 +489,7 @@ export default function BehaviorDeviceTestPage() {
             {gpsStatus.last ? (
               <>
                 <p className="font-mono text-[10px] text-zinc-500 truncate">
-                  {gpsStatus.last.lat.toFixed(5)}, {gpsStatus.last.lng.toFixed(5)}
+                   Location captured privately
                 </p>
                 <p className="text-[10px] text-zinc-400">
                   ±{Math.round(gpsStatus.last.accuracy ?? 0)} m · {gpsStatus.last.speedMs != null ? `${gpsStatus.last.speedMs.toFixed(1)} m/s` : "no speed"}

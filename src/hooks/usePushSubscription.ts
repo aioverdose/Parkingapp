@@ -22,7 +22,9 @@ function urlBase64ToUint8Array(base64String: string) {
 export function usePushSubscription() {
   const supabase = createBrowserClient();
   const [subscribed, setSubscribed] = useState(false);
-  const [permission, setPermission] = useState<NotificationPermission>("default");
+  const [permission, setPermission] = useState<NotificationPermission>(() =>
+    typeof Notification === "undefined" ? "default" : Notification.permission,
+  );
 
   const subscribe = useCallback(async () => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
@@ -107,9 +109,9 @@ export function usePushSubscription() {
   // Auto-subscribe on mount if permission already granted
   useEffect(() => {
     if (!("Notification" in window)) return;
-    setPermission(Notification.permission);
     if (Notification.permission === "granted") {
-      subscribe();
+      const subscribeTimer = window.setTimeout(() => { void subscribe(); }, 0);
+      return () => window.clearTimeout(subscribeTimer);
     }
   }, [subscribe]);
 

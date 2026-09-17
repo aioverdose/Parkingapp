@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { isValidCoords } from "@/lib/geo-validation";
+import { checkRateLimit } from "@/lib/api/rate-limit";
+import { getClientIp } from "@/lib/api/request-security";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +12,9 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (userError || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rateCheck = await checkRateLimit(`waitlist-join:${user.id}:${getClientIp(req)}`, 5, 60_000);
+    if (!rateCheck.allowed) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
 
     const { latitude, longitude, radius_meters, vehicle_type } = await req.json();
 

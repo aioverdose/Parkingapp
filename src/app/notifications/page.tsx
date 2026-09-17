@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { ArrowLeft, Bell, CheckCheck, Loader2 } from "lucide-react";
 import type { Database } from "@/lib/database.types";
@@ -19,14 +20,9 @@ export default function NotificationsPage() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) { router.push("/"); return; }
 
-      const { data } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      setNotifications((data ?? []) as Notification[]);
+      const response = await fetch("/api/notifications", { headers: { Authorization: `Bearer ${session.access_token}` } });
+      const body = await response.json() as { notifications?: Notification[] };
+      setNotifications(body.notifications ?? []);
       setLoading(false);
     });
   }, [router]);
@@ -109,6 +105,11 @@ export default function NotificationsPage() {
                       month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
                     })}
                   </p>
+                  {n.match_id && n.type === "match" && (
+                    <Link href={`/match/${n.match_id}`} className="mt-2 inline-flex text-xs font-bold text-blue-600 hover:underline" onClick={() => void markAsRead(n.id)}>
+                      Review match
+                    </Link>
+                  )}
                 </div>
                 {!n.read && (
                   <button

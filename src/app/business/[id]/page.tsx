@@ -3,13 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabaseClient";
+import Map, { Marker } from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { MAP_STYLE_URL } from "@/lib/map";
 import {
   MapPin, Users, Handshake, CalendarClock, Building2, Plus, Loader2,
 } from "lucide-react";
+import KnownDeparturesSection from "@/components/business/KnownDeparturesSection";
 
 interface DashboardData {
   business: {
     id: string;
+    slug: string;
     name: string;
     description: string | null;
     plan: string;
@@ -20,9 +25,14 @@ interface DashboardData {
     primary_color: string | null;
     accent_color: string | null;
     app_name: string | null;
+    welcome_message: string | null;
+    house_notes: string | null;
+    promo_text: string | null;
+    info_link: string | null;
   };
   role: string;
   network_id: string | null;
+  joinUrl: string;
   stats: {
     members: number;
     activeMembers: number;
@@ -30,6 +40,22 @@ interface DashboardData {
     spotsToday: number;
     matchesToday: number;
     matchesTotal: number;
+    departures7d: number;
+    departures30d: number;
+    newMembers7d: number;
+    newMembers30d: number;
+    offersSent: number;
+    acceptedOffers: number;
+    acceptanceRate: number;
+    declinedOffers: number;
+    expiredOffers: number;
+    noShows: number;
+    successfulHandoffs: number;
+    qrJoins: number;
+    linkJoins: number;
+    qrVisits: number;
+    pwaInstallsApprox: number;
+    medianResponseMinutes: number | null;
   };
   recentSpots: any[];
   recentMatches: any[];
@@ -55,7 +81,12 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
   const [postError, setPostError] = useState<string | null>(null);
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
 
-  const [branding, setBranding] = useState({ app_name: "", primary_color: "", accent_color: "", logo_url: "" });
+  const belmontShoreCenter = { latitude: 33.7637, longitude: -118.1679 };
+  const selectedLatitude = Number(spotForm.latitude);
+  const selectedLongitude = Number(spotForm.longitude);
+  const hasSelectedPin = Number.isFinite(selectedLatitude) && Number.isFinite(selectedLongitude) && Boolean(spotForm.latitude && spotForm.longitude);
+
+  const [branding, setBranding] = useState({ app_name: "", primary_color: "", accent_color: "", logo_url: "", welcome_message: "", house_notes: "", promo_text: "", info_link: "" });
   const [savingBranding, setSavingBranding] = useState(false);
   const [brandingMsg, setBrandingMsg] = useState<string | null>(null);
 
@@ -84,6 +115,10 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
         primary_color: json.business?.primary_color ?? "",
         accent_color: json.business?.accent_color ?? "",
         logo_url: json.business?.logo_url ?? "",
+        welcome_message: json.business?.welcome_message ?? "",
+        house_notes: json.business?.house_notes ?? "",
+        promo_text: json.business?.promo_text ?? "",
+        info_link: json.business?.info_link ?? "",
       });
       if (json.business?.operating_lat != null) {
         setSpotForm((f) => ({
@@ -169,6 +204,10 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
           primary_color: branding.primary_color || null,
           accent_color: branding.accent_color || null,
           logo_url: branding.logo_url || null,
+          welcome_message: branding.welcome_message || null,
+          house_notes: branding.house_notes || null,
+          promo_text: branding.promo_text || null,
+          info_link: branding.info_link || null,
         }),
       });
       if (!res.ok) {
@@ -208,6 +247,8 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
     { label: "Active Members", value: data.stats.activeMembers, icon: Users, color: "text-blue-600 bg-blue-100" },
     { label: "Matches Today", value: data.stats.matchesToday, icon: Handshake, color: "text-amber-600 bg-amber-100" },
     { label: "Matches Total", value: data.stats.matchesTotal, icon: CalendarClock, color: "text-purple-600 bg-purple-100" },
+    { label: "QR Joins", value: data.stats.qrJoins, icon: Users, color: "text-cyan-600 bg-cyan-100" },
+    { label: "Handoffs", value: data.stats.successfulHandoffs, icon: Handshake, color: "text-emerald-600 bg-emerald-100" },
   ];
 
   const formatDate = (iso: string) => new Date(iso).toLocaleString();
@@ -251,7 +292,7 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
       </div>
 
       <p className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        Street rules, posted time limits, permits, and sweeping restrictions always apply. SpotMatch coordinates departures; it does not sell, rent, or reserve public parking.
+         Street rules, posted time limits, permits, and sweeping restrictions always apply. Parking Meeters coordinates departures; it does not sell, rent, or reserve public parking.
       </p>
 
       {postSuccess && (
@@ -264,25 +305,25 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
       {showPost && (
         <form onSubmit={postSpot} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-6 space-y-4">
           <h2 className="font-bold">Post a spot to your network</h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div><label className="text-xs font-medium text-zinc-500 block">Where is the departure? *</label><p className="text-xs text-zinc-400 mt-1">Tap the map to drop a pin in Belmont Shore.</p></div>
+              <span className={`text-xs font-semibold ${hasSelectedPin ? "text-green-600" : "text-amber-600"}`}>{hasSelectedPin ? "Pin selected" : "Select a pin"}</span>
+            </div>
+            <div className="h-56 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-700">
+              <Map
+                initialViewState={{ ...belmontShoreCenter, zoom: 14 }}
+                mapStyle={MAP_STYLE_URL}
+                onClick={(event) => setSpotForm((form) => ({ ...form, latitude: event.lngLat.lat.toFixed(6), longitude: event.lngLat.lng.toFixed(6) }))}
+              >
+                {hasSelectedPin && <Marker latitude={selectedLatitude} longitude={selectedLongitude} anchor="bottom"><MapPin className="fill-blue-600 text-white drop-shadow-md" size={32} /></Marker>}
+              </Map>
+            </div>
+            <input required type="hidden" value={spotForm.latitude} readOnly />
+            <input required type="hidden" value={spotForm.longitude} readOnly />
+             {hasSelectedPin && <p className="text-xs text-zinc-500">Selected location saved privately</p>}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-zinc-500 block mb-1">Latitude *</label>
-              <input
-                required
-                value={spotForm.latitude}
-                onChange={(e) => setSpotForm({ ...spotForm, latitude: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-zinc-500 block mb-1">Longitude *</label>
-              <input
-                required
-                value={spotForm.longitude}
-                onChange={(e) => setSpotForm({ ...spotForm, longitude: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
-              />
-            </div>
             <div className="md:col-span-2">
               <label className="text-xs font-medium text-zinc-500 block mb-1">Address</label>
               <input
@@ -333,18 +374,32 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
         ))}
       </div>
 
+      <KnownDeparturesSection businessId={id} isAdmin={data.role === "admin"} />
+
       {data.role === "admin" && (
         <form onSubmit={saveBranding} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-8 space-y-4">
           <h2 className="font-bold">White-label Branding</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-zinc-500 block mb-1">App name</label>
               <input
                 value={branding.app_name}
                 onChange={(e) => setBranding({ ...branding, app_name: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
-                placeholder="Shown to your network instead of SpotMatch"
+                 placeholder="Shown to your network instead of Parking Meeters"
               />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(["welcome_message", "house_notes", "promo_text"] as const).map((field) => (
+                <div key={field} className="md:col-span-1">
+                  <label className="text-xs font-medium text-zinc-500 block mb-1">{field === "welcome_message" ? "Welcome message" : field === "house_notes" ? "House notes" : "Promo / ad text"}</label>
+                  <textarea value={branding[field]} onChange={(e) => setBranding({ ...branding, [field]: e.target.value })} maxLength={2000} rows={3} className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm" placeholder="Plain text shown to your network" />
+                </div>
+              ))}
+              <div>
+                <label className="text-xs font-medium text-zinc-500 block mb-1">Website / menu link</label>
+                <input value={branding.info_link} onChange={(e) => setBranding({ ...branding, info_link: e.target.value })} type="url" className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm" placeholder="https://..." />
+              </div>
             </div>
             <div>
               <label className="text-xs font-medium text-zinc-500 block mb-1">Logo URL</label>
@@ -383,6 +438,21 @@ export default function BusinessDashboard() {  const params = useParams<{ id: st
           </button>
         </form>
       )}
+
+      <section className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 mb-8">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div><h2 className="font-bold">Grow your private network</h2><p className="text-sm text-zinc-500 mt-1">Share this link for heads-ups from your business network. It is not a parking reservation.</p></div>
+          <div className="flex gap-2"><a href={`/business/${id}/print/table-tent`} target="_blank" className="px-3 py-2 rounded-xl border text-sm font-semibold">Table tent</a><a href={`/business/${id}/print/flyer`} target="_blank" className="px-3 py-2 rounded-xl border text-sm font-semibold">Flyer</a></div>
+        </div>
+        <div className="mt-4 flex flex-col md:flex-row gap-5 items-center">
+          <img src={`https://quickchart.io/qr?size=240&text=${encodeURIComponent(data.joinUrl)}`} alt="Business join QR code" className="w-40 h-40 border rounded-xl" />
+          <div className="min-w-0 flex-1 w-full"><p className="text-xs text-zinc-500 mb-1">Stable join link</p><code className="block bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 text-xs break-all">{data.joinUrl}</code><div className="flex gap-2 mt-3"><button onClick={() => navigator.clipboard.writeText(data.joinUrl)} className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold">Copy link</button><a download={`${data.business.slug}-join-qr.png`} href={`https://quickchart.io/qr?size=1000&text=${encodeURIComponent(data.joinUrl)}`} className="px-3 py-2 rounded-xl border text-sm font-semibold">Download QR PNG</a></div><p className="text-xs text-zinc-500 mt-3">{data.stats.qrJoins} QR joins · {data.stats.linkJoins} link joins · {data.stats.qrVisits} QR scans recorded</p></div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        {[['Departures 7d', data.stats.departures7d], ['New members 7d', data.stats.newMembers7d], ['Offer acceptance', `${data.stats.acceptanceRate}%`], ['Declined / expired', `${data.stats.declinedOffers} / ${data.stats.expiredOffers}`], ['No-shows', data.stats.noShows], ['Handoffs', data.stats.successfulHandoffs], ['PWA installs (approx.)', data.stats.pwaInstallsApprox], ['Median response', data.stats.medianResponseMinutes == null ? 'Not enough data' : `${data.stats.medianResponseMinutes}m`], ['Departures 30d', data.stats.departures30d]].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4"><p className="text-lg font-bold">{value}</p><p className="text-xs text-zinc-500 mt-1">{label}</p></div>)}
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">

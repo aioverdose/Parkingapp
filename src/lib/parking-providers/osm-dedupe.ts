@@ -1,0 +1,3 @@
+import type { NormalizedParkingRecord } from "./types";
+const distance = (a: NormalizedParkingRecord, b: NormalizedParkingRecord) => { const dx = (a.centroid_lng - b.centroid_lng) * 111 * Math.cos(a.centroid_lat * Math.PI / 180), dy = (a.centroid_lat - b.centroid_lat) * 111; return Math.sqrt(dx * dx + dy * dy) * 1000; };
+export function flagSpatialDuplicates(records: NormalizedParkingRecord[]): number[] { const flags: number[] = []; for (let i = 0; i < records.length; i++) for (let j = i + 1; j < records.length; j++) { const sameName = records[i].name.toLowerCase() === records[j].name.toLowerCase() && records[i].name !== "Unnamed parking reference"; const meters = distance(records[i], records[j]); if (meters < 35 && sameName) flags.push(j); } return flags; }

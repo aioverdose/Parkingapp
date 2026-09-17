@@ -9,7 +9,7 @@ import { parseGpx, waypointsToGeoJson } from "@/lib/testing/gpxParser";
 import { LONG_BEACH_CENTER } from "@/lib/testing/constants";
 import type { SimulatedPosition, RouteWaypoint, PlaybackState } from "@/lib/testing/types";
 import { MAP_STYLE_URL } from "@/lib/map";
-import { Route, Play, Pause, Square, SkipForward, SkipBack, Upload, ChevronDown } from "lucide-react";
+import { Route, Play, Pause, Square, SkipForward, SkipBack, Upload } from "lucide-react";
 
 interface Props {
   device: SimulatedDevice | null;

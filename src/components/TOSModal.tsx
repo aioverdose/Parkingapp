@@ -106,7 +106,7 @@ export function TOSModal({ onAccept, open, onClose, mode }: TOSModalProps) {
                 <p className="text-xs text-red-600 dark:text-red-500 mt-1">
                   Under California law, it is illegal to sell, rent, or charge for
                   public on-street parking spaces. We only sell access to our
-                  matching technology — never a spot, and never a reservation.
+                  coordination technology — never a spot, space, right, or reservation.
                   Violators may face fines and towing.
                 </p>
               </div>

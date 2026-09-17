@@ -56,8 +56,8 @@ export default function BusinessesPage() {
       }
       const data = await res.json();
       setBusinesses(data.businesses ?? []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load businesses");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load businesses");
     } finally {
       setLoading(false);
     }
@@ -105,8 +105,8 @@ export default function BusinessesPage() {
       setForm({ name: "", slug: "", description: "", address: "", phone: "", operating_lat: "33.7637", operating_lng: "-118.1679", operating_radius_meters: "200" });
       await load();
       window.location.href = `/business/${data.business.id}`;
-    } catch (err: any) {
-      setSaveError(err?.message || "Failed to create business");
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Failed to create business");
     } finally {
       setSaving(false);
     }
@@ -186,22 +186,11 @@ export default function BusinessesPage() {
                 placeholder="(562) 555-0123"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-zinc-500 block mb-1">Operating lat</label>
-              <input
-                value={form.operating_lat}
-                onChange={(e) => setForm({ ...form, operating_lat: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-zinc-500 block mb-1">Operating lng</label>
-              <input
-                value={form.operating_lng}
-                onChange={(e) => setForm({ ...form, operating_lng: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-transparent text-sm"
-              />
-            </div>
+             <div className="md:col-span-2">
+               <p className="text-xs font-medium text-zinc-500">Operating area saved privately</p>
+               <input type="hidden" value={form.operating_lat} readOnly />
+               <input type="hidden" value={form.operating_lng} readOnly />
+             </div>
           </div>
           {saveError && <p className="text-red-500 text-sm">{saveError}</p>}
           <button

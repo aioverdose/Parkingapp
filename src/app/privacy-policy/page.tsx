@@ -1,16 +1,17 @@
 import { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — ParkingMeeters",
+  title: "Privacy Policy | Parking Meeters",
 };
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 flex flex-col">
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-6 py-4">
-        <a href="/" className="text-sm text-blue-600 hover:underline mb-1 inline-block">&larr; Back to App</a>
+        <Link href="/" className="text-sm text-blue-600 hover:underline mb-1 inline-block">&larr; Back to App</Link>
         <h1 className="text-xl font-bold">Privacy Policy</h1>
-        <p className="text-sm text-zinc-500">Last updated: June 2026</p>
+        <p className="text-sm text-zinc-500">Last updated: September 2026</p>
       </header>
       <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-8 space-y-8 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
         <section>
@@ -20,6 +21,8 @@ export default function PrivacyPolicyPage() {
             <li><strong>Location data (GPS coordinates)</strong> — used to show nearby parking spots and match seekers with posters</li>
             <li><strong>Live GPS location (optional)</strong> — shared in real time with your matched driver during a confirmed handoff, only when you explicitly consent</li>
             <li><strong>Phone number</strong> — used for identity verification and to prevent abuse</li>
+            <li><strong>Username</strong> — a pseudonymous public identifier used in member-facing experiences</li>
+            <li><strong>Age attestation</strong> — a timestamp recording that you confirmed you meet the minimum age requirement in your location</li>
             <li><strong>Email address</strong> — used for account creation</li>
             <li>Timestamps of app usage and interactions</li>
             <li>User ratings and reports submitted by other users</li>
@@ -81,7 +84,7 @@ export default function PrivacyPolicyPage() {
             <li><strong>Right to Opt-Out:</strong> We do not sell data, so no opt-out is needed. You may opt out of live location sharing at any time by tapping &quot;Stop Sharing&quot; in the app</li>
             <li><strong>Right to Non-Discrimination:</strong> We will not discriminate against you for exercising your CCPA rights</li>
           </ul>
-          <p className="mt-2">To exercise your rights, email: <a href="mailto:privacy@spotmatch.app" className="text-blue-600 hover:underline">privacy@spotmatch.app</a></p>
+          <p className="mt-2">To exercise your rights, email: <a href="mailto:privacy@parkingmeeters.com" className="text-blue-600 hover:underline">privacy@parkingmeeters.com</a></p>
         </section>
 
         <section>
@@ -101,8 +104,10 @@ export default function PrivacyPolicyPage() {
 
         <section>
           <h2 className="text-lg font-bold mb-2">10. Contact</h2>
-          <p>Privacy questions: <a href="mailto:privacy@spotmatch.app" className="text-blue-600 hover:underline">privacy@spotmatch.app</a></p>
-          <p>Data deletion requests: <a href="mailto:privacy@spotmatch.app" className="text-blue-600 hover:underline">privacy@spotmatch.app</a></p>
+          <p>Privacy questions: <a href="mailto:privacy@parkingmeeters.com" className="text-blue-600 hover:underline">privacy@parkingmeeters.com</a></p>
+          <p>Data deletion requests: <a href="mailto:privacy@parkingmeeters.com" className="text-blue-600 hover:underline">privacy@parkingmeeters.com</a></p>
+           <p>Security reports: <a href="mailto:security@parkingmeeters.com" className="text-blue-600 hover:underline">security@parkingmeeters.com</a></p>
+           <p className="mt-2"><Link href="/legal" className="text-blue-600 hover:underline">Visit the Legal Center</Link></p>
         </section>
       </div>
     </div>

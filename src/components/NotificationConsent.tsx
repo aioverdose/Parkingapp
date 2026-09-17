@@ -52,7 +52,7 @@ export function NotificationConsent({ open, onDismiss }: NotificationConsentProp
             Stay Notified
           </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
-            Get instant alerts when someone accepts your parking spot or when a match is found nearby.
+             Get alerts when a match is found, someone accepts coordination, or a message needs your attention.
           </p>
 
           <div className="bg-zinc-50 dark:bg-zinc-900 rounded-2xl p-4 mb-6 text-left">

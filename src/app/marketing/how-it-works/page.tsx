@@ -13,37 +13,37 @@ const STEPS = [
   {
     step: "01",
     icon: Car,
-    title: "Mark your spot",
-    body: "Tap the map, drop a pin where you're parked, and tell us when you'll leave and when you'll be back. Our arrival and departure detection takes it from there.",
+    title: "Share your departure window",
+    body: "Tap the map, share an approximate location, and tell us when you expect to leave. The app uses that departure window to coordinate with nearby members.",
   },
   {
     step: "02",
     icon: CalendarClock,
     title: "Publish your departure",
-    body: "When you leave, the app knows. A live departure signal is sent to compatible drivers, matched to the exact window you'll be gone.",
+    body: "When you leave, a live departure signal can be sent to compatible drivers. Signals are estimates and never create a reservation or guarantee availability.",
   },
   {
     step: "03",
     icon: BellRing,
     title: "Get matched to arrivals",
-    body: "Looking for a spot nearby? We ping you the moment one opens within your search area, schedule, and vehicle type.",
+    body: "Looking for parking nearby? We can notify you when a compatible departure signal appears within your search area, schedule, and vehicle type.",
   },
   {
     step: "04",
     icon: Handshake,
-    title: "Confirm the handoff",
-    body: "Both parties confirm. You get directions, a temporary chat to coordinate, and a verified handoff — no guessing, no circling.",
+    title: "Coordinate the arrival",
+    body: "Members can confirm they are coordinating, use directions, and chat temporarily. The app does not reserve, hold, or guarantee a public parking space.",
   },
 ];
 
 export default function HowItWorksPage() {
   return (
-    <main className="max-w-6xl mx-auto px-4 py-16">
+    <main className="public-shell min-h-screen max-w-6xl mx-auto px-4 py-16">
       <div className="max-w-2xl mb-12">
         <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">How It Works</p>
         <h1 className="text-3xl md:text-5xl font-black">Coming and going, made to meet</h1>
         <p className="text-lg text-zinc-600 dark:text-zinc-400 mt-4">
-          Four steps between &quot;no parking anywhere&quot; and &quot;a spot is waiting for you.&quot;
+          Four steps between &quot;circling the block&quot; and &quot;better arrival coordination.&quot;
         </p>
       </div>
 

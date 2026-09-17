@@ -101,12 +101,17 @@ export function useLocationSharing(
     }
 
     if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser");
-      return;
+      const errorTimer = window.setTimeout(
+        () => setError("Geolocation is not supported by your browser"),
+        0,
+      );
+      return () => window.clearTimeout(errorTimer);
     }
 
-    setSharing(true);
-    setError(null);
+    const stateTimer = window.setTimeout(() => {
+      setSharing(true);
+      setError(null);
+    }, 0);
 
     // Watch position continuously but only upload periodically
     // This gives us the most accurate position for the UI while
@@ -153,6 +158,7 @@ export function useLocationSharing(
     }, updateIntervalMs);
 
     return () => {
+      window.clearTimeout(stateTimer);
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;

@@ -49,7 +49,7 @@ export function BlockUserModal({ open, userId, userName, onClose }: BlockUserMod
           <div className="flex flex-col items-center py-6 text-center space-y-2">
             <CheckCircle size={48} className="text-red-500" />
             <p className="text-lg font-bold">{userName} Blocked</p>
-            <p className="text-sm text-zinc-500">They won't be able to match or chat with you.</p>
+             <p className="text-sm text-zinc-500">They won&apos;t be able to match or chat with you.</p>
             <button onClick={onClose} className="mt-2 h-10 px-6 rounded-full bg-blue-600 text-white font-bold text-sm">
               Done
             </button>
@@ -57,7 +57,7 @@ export function BlockUserModal({ open, userId, userName, onClose }: BlockUserMod
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Block <strong>{userName}</strong>? They won't be able to:
+               Block <strong>{userName}</strong>? They won&apos;t be able to:
             </p>
             <ul className="text-sm text-zinc-500 space-y-1 ml-4 list-disc">
               <li>Match with your spots</li>

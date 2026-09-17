@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import { checkRateLimit } from "@/lib/api/rate-limit";
+import { getClientIp } from "@/lib/api/request-security";
 
 export async function POST(
   _request: NextRequest,
@@ -7,6 +9,8 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    const rateCheck = await checkRateLimit(`ad-impression:${getClientIp(_request)}:${id}`, 30, 60_000);
+    if (!rateCheck.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     const supabase = createAdminClient();
 
     const { data: ad, error: fetchError } = await supabase

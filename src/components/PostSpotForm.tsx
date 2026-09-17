@@ -272,7 +272,7 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
         <div className="space-y-2">
           <h2 className="text-xl font-bold">Location Access Required</h2>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-            To share your parking spot, we need to know where it is.
+             To share a departure alert, we need an approximate location.
           </p>
         </div>
 
@@ -305,7 +305,7 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-xl font-bold">Share Your Parking Spot</h2>
+           <h2 className="text-xl font-bold">Share a Departure Alert</h2>
           <p className="text-xs text-blue-600 font-bold flex items-center gap-1">
             <MapPin size={12} /> {address || "Detecting address..."}
           </p>
@@ -317,8 +317,8 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
       <div className="flex flex-col gap-4">
         <p className="text-zinc-600 dark:text-zinc-400 text-sm">
           {relayMode === "imminent"
-            ? "Set when you'll depart and return. The system will match you with compatible drivers."
-            : "Commit your departure in advance. The system will match you with drivers arriving at that time."}
+             ? "Set when you expect to depart and return. The system will suggest compatible coordination."
+             : "Share an expected departure in advance. The system will suggest drivers arriving around that time."}
         </p>
 
         <div className="flex gap-2">
@@ -382,13 +382,13 @@ export function PostSpotForm({ onClose, onSuccess }: PostSpotFormProps) {
           <p className="font-bold">How matching works</p>
           {relayMode === "imminent" ? (
             <p>
-              Your spot is shown in real-time to nearby drivers looking for parking.
-              The sooner you depart, the faster the match.
+               Your departure alert is shown in real-time to nearby drivers looking for parking.
+               It is an estimate, not a reservation or guarantee.
             </p>
           ) : (
             <p>
-              Your committed departure is matched with drivers who need parking at that
-              time and location. They get certainty; you earn relay points for reliable handoffs.
+               Your expected departure is used to suggest coordination with drivers who need parking at that
+               time and location. No space is held or guaranteed.
             </p>
           )}
         </div>

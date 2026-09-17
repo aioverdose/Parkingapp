@@ -189,6 +189,7 @@ describe("findBestSeeker network scoping", () => {
         user_ranking: [],
         users: [],
         user_blocks: [],
+        spot_matches: [{ spot_owner_id: "seeker-1", status: "completed" }],
       }) as never,
     );
 
@@ -212,6 +213,24 @@ describe("findBestSeeker network scoping", () => {
     const best = await findBestSeeker(spot);
 
     expect(best).toBeNull();
+  });
+
+  it("offers a spot to a member without requiring a completed departure handoff", async () => {
+    const spot = makeSpot({ business_id: null, network_id: null });
+
+    vi.mocked(createAdminClient).mockReturnValue(
+      makeFakeClient({
+        spot_requests: [makeNearbyRequest("seeker-1")],
+        spot_matches: [],
+        user_ranking: [],
+        users: [],
+        user_blocks: [],
+      }) as never,
+    );
+
+    const best = await findBestSeeker(spot);
+
+    expect(best?.user_id).toBe("seeker-1");
   });
 
   it("returns null when no network member has an active request", async () => {
@@ -311,7 +330,7 @@ describe("expireStaleOffers", () => {
 
     const client = {
       from(table: string) {
-        let filters: Record<string, unknown> = {};
+        const filters: Record<string, unknown> = {};
         let updateValues: Record<string, unknown> | null = null;
         const chain: Record<string, unknown> = {
           select: () => chain,

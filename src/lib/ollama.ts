@@ -1,6 +1,6 @@
 import { chatCompletion, llmProviders, type LlmMessage } from "@/lib/llm";
 
-export interface OllamaMessage extends LlmMessage {}
+export type OllamaMessage = LlmMessage;
 
 export async function ollamaChatMessages(messages: OllamaMessage[]): Promise<string> {
   return chatCompletion(messages);

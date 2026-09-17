@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const SAFE_URL_RE = /^https?:\/\/[^\s<>"']+$/i;
 
 async function loadBusiness(supabase: ReturnType<typeof createAdminClient>, id: string) {
   const { data, error } = await supabase
@@ -94,17 +95,33 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (body.phone !== undefined) updates.phone = body.phone ?? null;
 
     if (body.logo_url !== undefined) {
-      if (typeof body.logo_url !== "string") {
+      if (body.logo_url !== null && (typeof body.logo_url !== "string" || body.logo_url.length > 2048 || !SAFE_URL_RE.test(body.logo_url))) {
         return NextResponse.json({ error: "logo_url must be a string" }, { status: 400 });
       }
       updates.logo_url = body.logo_url || null;
     }
     if (body.app_name !== undefined) {
-      if (typeof body.app_name !== "string" || body.app_name.trim().length === 0) {
+      if (body.app_name !== null && (typeof body.app_name !== "string" || body.app_name.trim().length === 0 || body.app_name.length > 80)) {
         return NextResponse.json({ error: "app_name must be a non-empty string" }, { status: 400 });
       }
-      updates.app_name = body.app_name.trim();
+      updates.app_name = body.app_name ? body.app_name.trim() : null;
     }
+
+    for (const field of ["welcome_message", "house_notes", "promo_text"] as const) {
+      if (body[field] !== undefined) {
+        if (body[field] !== null && (typeof body[field] !== "string" || body[field].length > 2000)) {
+          return NextResponse.json({ error: `${field} must be plain text under 2000 characters` }, { status: 400 });
+        }
+        updates[field] = body[field] || null;
+      }
+    }
+    if (body.info_link !== undefined) {
+      if (body.info_link !== null && (typeof body.info_link !== "string" || body.info_link.length > 2048 || !SAFE_URL_RE.test(body.info_link))) {
+        return NextResponse.json({ error: "info_link must be a valid https:// or http:// URL" }, { status: 400 });
+      }
+      updates.info_link = body.info_link || null;
+    }
+    if (body.onboarding_completed_at !== undefined) updates.onboarding_completed_at = body.onboarding_completed_at || new Date().toISOString();
     for (const field of ["primary_color", "accent_color"] as const) {
       if (body[field] !== undefined) {
         if (typeof body[field] !== "string" || !HEX_COLOR_RE.test(body[field])) {

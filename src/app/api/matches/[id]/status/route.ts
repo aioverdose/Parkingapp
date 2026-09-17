@@ -86,7 +86,7 @@ export async function POST(
       await supabase.from("notifications").insert({
         user_id: match.seeker_id,
         title: "Spot is ready!",
-        message: "The owner has departed. The spot is waiting for you!",
+        message: "The departing member has left. Check posted signs and current conditions before deciding whether to proceed.",
         type: "match",
       });
 

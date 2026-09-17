@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient, isSupabaseConfigured } from "@/lib/supabaseClient";
-import { Loader2, Mail, Lock } from "lucide-react";
+import { Loader2, Mail, Lock, Phone } from "lucide-react";
 
 export default function LoginPage() {
   const supabase = createBrowserClient();
@@ -14,6 +14,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneStep, setPhoneStep] = useState<"phone" | "code">("phone");
+  const [phoneLoading, setPhoneLoading] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -40,9 +44,14 @@ export default function LoginPage() {
 
       const { data: profile } = await supabase
         .from("users")
-        .select("role")
+        .select("role, vehicle_type, schedule_arrival, schedule_departure")
         .eq("id", loginData.user.id)
         .maybeSingle();
+
+      const { count: savedAreaCount } = await supabase
+        .from("user_parking_spots")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", loginData.user.id);
 
       const requestedDestination = new URLSearchParams(window.location.search).get("next");
       const safeDestination = requestedDestination?.startsWith("/") && !requestedDestination.startsWith("//")
@@ -51,7 +60,9 @@ export default function LoginPage() {
       const destination = safeDestination ?? (
         profile?.role === "admin" || profile?.role === "moderator"
           ? "/admin"
-          : "/business"
+          : profile?.vehicle_type && profile.schedule_arrival && profile.schedule_departure && (savedAreaCount ?? 0) > 0
+            ? "/profile"
+            : "/profile/setup"
       );
 
       router.replace(destination);
@@ -89,15 +100,35 @@ export default function LoginPage() {
     }
   }
 
+  async function requestPhoneCode() {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) { setError("Enter a valid mobile number."); return; }
+    setPhoneLoading(true); setError(null);
+    const response = await fetch("/api/auth/phone-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: `+1${digits}`, mode: "login" }) });
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    if (!response.ok) setError(body.error || "Phone sign-in is unavailable."); else setPhoneStep("code");
+    setPhoneLoading(false);
+  }
+
+  async function verifyPhoneCode(event: React.FormEvent) {
+    event.preventDefault();
+    if (phoneCode.length !== 6) { setError("Enter the 6-digit code."); return; }
+    setPhoneLoading(true); setError(null);
+    const response = await fetch("/api/auth/phone-verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: `+1${phone.replace(/\D/g, "")}`, code: phoneCode, mode: "login" }) });
+    const body = await response.json().catch(() => ({})) as { error?: string; action_link?: string };
+    if (!response.ok || !body.action_link) setError(body.error || "Unable to verify that code."); else window.location.assign(body.action_link);
+    setPhoneLoading(false);
+  }
+
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="premium-shell premium-grid flex min-h-screen items-center justify-center p-4">
+      <div className="auth-surface w-full max-w-md p-6 sm:p-8">
         <div className="text-center space-y-2 mb-8">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto">
-            S
+           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#e85d3f] text-2xl font-bold text-white shadow-lg shadow-[#e85d3f]/20">
+             P
           </div>
           <h1 className="text-2xl font-bold">Welcome Back</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Log in to manage your business parking network</p>
+           <p className="text-[#5f756c]">Log in to manage your business parking network</p>
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
@@ -110,7 +141,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+               className="app-input w-full rounded-xl border py-3 pl-10 pr-4 outline-none transition"
             />
           </div>
 
@@ -129,7 +160,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                 className="app-input w-full rounded-xl border py-3 pl-10 pr-4 outline-none transition"
                 />
               </div>
 
@@ -137,7 +168,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={resetLoading}
-                className="text-xs text-blue-600 hover:underline self-end -mt-2 disabled:opacity-50"
+                 className="app-link text-xs hover:underline self-end -mt-2 disabled:opacity-50"
               >
                 {resetLoading ? "Sending..." : "Forgot Password?"}
               </button>
@@ -147,7 +178,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-14 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 text-white font-bold text-lg disabled:cursor-not-allowed transition flex items-center justify-center"
+                 className="app-primary flex h-14 w-full items-center justify-center rounded-full text-lg font-bold transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? <Loader2 className="animate-spin" /> : "Log In"}
               </button>
@@ -155,9 +186,19 @@ export default function LoginPage() {
           )}
         </form>
 
-        <p className="text-center mt-6 text-sm text-zinc-500">
+        <div className="my-7 flex items-center gap-3 text-xs text-zinc-400"><span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" /><span>or use your mobile</span><span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" /></div>
+        {phoneStep === "phone" ? (
+          <div className="space-y-3">
+             <div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718a80]" size={18} /><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Mobile number" className="app-input w-full rounded-xl border py-3 pl-10 pr-4 outline-none transition" /></div>
+             <button type="button" onClick={() => void requestPhoneCode()} disabled={phoneLoading} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#e5a08d] text-sm font-bold text-[#b93d29] transition hover:bg-[#fff1eb] disabled:opacity-50">{phoneLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Phone className="h-4 w-4" />Continue with phone</>}</button>
+          </div>
+        ) : (
+          <form onSubmit={(event) => void verifyPhoneCode(event)} className="space-y-3"><p className="text-center text-sm text-zinc-500">Code sent to {phone}</p><input autoFocus inputMode="numeric" maxLength={6} value={phoneCode} onChange={(event) => setPhoneCode(event.target.value.replace(/\D/g, ""))} placeholder="6-digit code" className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-center text-lg font-bold tracking-[0.35em] outline-none focus:border-blue-500 dark:border-zinc-700 dark:bg-zinc-800" /><button type="submit" disabled={phoneLoading} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#17211e] text-sm font-bold text-white transition hover:bg-zinc-700 disabled:opacity-50">{phoneLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify and sign in"}</button><button type="button" onClick={() => setPhoneStep("phone")} className="w-full text-xs font-semibold text-zinc-400 hover:text-zinc-700">Use a different number</button></form>
+        )}
+
+         <p className="text-center mt-6 text-sm text-[#5f756c]">
           Don&apos;t have an account?{" "}
-          <a href="/auth/signup" className="text-blue-600 hover:underline font-medium">Sign up</a>
+           <a href="/auth/signup" className="app-link font-medium hover:underline">Sign up</a>
         </p>
       </div>
     </div>

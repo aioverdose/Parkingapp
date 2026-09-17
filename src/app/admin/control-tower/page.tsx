@@ -8,13 +8,9 @@ import {
   Loader2,
   MapPin,
   Navigation,
-  Clock,
   AlertTriangle,
-  CheckCircle2,
-  XCircle,
   RefreshCw,
   Users,
-  ChevronRight,
   Wifi,
 } from "lucide-react";
 import { MAP_STYLE_URL } from "@/lib/map";

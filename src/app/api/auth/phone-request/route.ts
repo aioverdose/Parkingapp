@@ -5,10 +5,22 @@ import { checkRateLimit } from "@/lib/api/rate-limit";
 import { requestOtp, isPhoneVerificationEnabled } from "@/lib/otp";
 import { isTwilioConfigured } from "@/lib/twilio";
 import { logger } from "@/lib/logger";
+import { getClientIp } from "@/lib/api/request-security";
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isPhoneVerificationEnabled()) {
+    const body = await request.json();
+    const loginMode = body.mode === "login";
+
+    if (loginMode && !isTwilioConfigured()) {
+      return NextResponse.json({ error: "Phone sign-in is temporarily unavailable." }, { status: 503 });
+    }
+
+    if (!isPhoneVerificationEnabled() && process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "Phone verification is not configured. Please contact support." }, { status: 503 });
+    }
+
+    if (!isPhoneVerificationEnabled() && !loginMode) {
       return NextResponse.json({
         success: true,
         method: "simulated",
@@ -16,23 +28,40 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const user = await getAuthenticatedUser(request);
+    const user = loginMode ? null : await getAuthenticatedUser(request);
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (!loginMode) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const ip = getClientIp(request);
+    const normalizedPhone = String(body.phone ?? "").replace(/\D/g, "");
     const rateCheck = await checkRateLimit(`phone-request:${ip}`, 5, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
     }
+    const phoneRateCheck = await checkRateLimit(`phone-request:${ip}:${normalizedPhone}`, 3, 10 * 60_000);
+    if (!phoneRateCheck.allowed) return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
 
-    const { phone } = await request.json();
+    const { phone } = body;
     if (!phone || phone.replace(/\D/g, "").length < 10) {
       return NextResponse.json({ error: "Valid phone number is required" }, { status: 400 });
     }
 
     const supabase = createAdminClient();
+
+    if (loginMode) {
+      // Keep the response generic so phone sign-in cannot enumerate accounts.
+      const { data: account } = await supabase
+        .from("users")
+        .select("id")
+        .eq("phone_number", phone)
+        .eq("phone_verified", true)
+        .maybeSingle();
+      if (account?.id) await requestOtp(phone, account.id);
+      return NextResponse.json({ success: true, method: "twilio" });
+    }
+
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     // Use app Twilio directly when configured (more reliable than Supabase SMS)
     if (isTwilioConfigured()) {
@@ -59,7 +88,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, method: "supabase" });
     }
 
-    // No SMS provider configured — dev mode
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "SMS verification is temporarily unavailable. Please contact support." }, { status: 503 });
+    }
+
+    // No SMS provider configured — local development only
     logger.warn("phone OTP unavailable (no SMS provider configured)", {
       route: "/api/auth/phone-request",
       userId: user.id,

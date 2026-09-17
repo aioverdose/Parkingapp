@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     const uniqueUserIds = [...latestUserLocs.keys()].filter((id) => !matchUserIds.has(id));
 
-    let userProfileMap = new Map<string, { name: string | null; email: string | null; device_id: string | null }>();
+    const userProfileMap = new Map<string, { name: string | null; email: string | null; device_id: string | null }>();
     if (uniqueUserIds.length > 0) {
       const { data: profiles } = await supabase
         .from("users")

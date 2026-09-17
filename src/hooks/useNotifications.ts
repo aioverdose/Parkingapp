@@ -25,8 +25,20 @@ export function useNotifications(
             table: "notifications",
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            onNotification(payload.new as Record<string, unknown>);
+          async (payload) => {
+            const notification = payload.new as Record<string, unknown>;
+            if (!notification.match_id) {
+              onNotification(notification);
+              return;
+            }
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData.session) return;
+            const response = await fetch(`/api/notifications?id=${encodeURIComponent(String(notification.id))}`, {
+              headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+            });
+            if (!response.ok) return;
+            const body = await response.json() as { notifications?: Record<string, unknown>[] };
+            if (body.notifications?.some((item) => item.id === notification.id)) onNotification(notification);
           }
         )
         .subscribe();

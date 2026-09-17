@@ -1,10 +1,35 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 
 interface SpeechRecognitionResult {
   transcript: string;
   confidence: number;
+}
+
+interface SpeechRecognitionEventLike {
+  results: ArrayLike<ArrayLike<{ transcript: string; confidence: number }>>;
+}
+
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
 }
 
 /**
@@ -15,16 +40,13 @@ interface SpeechRecognitionResult {
  */
 export function useVoiceInput(onResult: (result: SpeechRecognitionResult) => void) {
   const [listening, setListening] = useState(false);
-  const [supported, setSupported] = useState(false);
-  const recognitionRef = useRef<any>(null);
-
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    setSupported(!!SpeechRecognition);
-  }, []);
+  const [supported] = useState(() =>
+    typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition),
+  );
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const startListening = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
@@ -34,7 +56,7 @@ export function useVoiceInput(onResult: (result: SpeechRecognitionResult) => voi
 
     recognition.onstart = () => setListening(true);
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       const result = event.results[0];
       if (result) {
         onResult({

@@ -5,8 +5,8 @@ import { createBrowserClient } from "@/lib/supabaseClient";
 import { TEST_USERS } from "@/lib/testing/constants";
 import type { DualPhoneState, PhoneNotification, VoiceNavInstruction } from "@/lib/testing/types";
 import {
-  Wifi, WifiOff, MapPin, Navigation, Car, Coffee, Moon, Bell,
-  Volume2, Loader2, X, ChevronDown,
+  Wifi, WifiOff, MapPin, Car, Coffee, Moon, Bell,
+  Volume2, X, ChevronDown,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -90,12 +90,19 @@ export function DualPhoneView({ running }: Props) {
           filter: `user_id=in.(${userIds.join(",")})`,
         },
         (payload) => {
-          const row = payload.new as any;
+          const row = payload.new as {
+            user_id: string;
+            latitude: number;
+            longitude: number;
+            speed?: number;
+            heading?: number;
+            accuracy?: number;
+          };
           const idx = row.user_id === userIds[0] ? 0 : 1;
           setDevices((prev) => {
             const next = [...prev] as [DualPhoneState, DualPhoneState];
             const speed = row.speed ?? 0;
-            let status: string = speed < 1 ? "parked" : "driving";
+            const status = speed < 1 ? "parked" : "driving";
             next[idx] = {
               ...next[idx],
               lat: row.latitude,
@@ -103,7 +110,7 @@ export function DualPhoneView({ running }: Props) {
               speed,
               heading: row.heading ?? next[idx].heading,
               accuracy: row.accuracy ?? next[idx].accuracy,
-              status: status as any,
+              status,
             };
             return next;
           });
@@ -130,7 +137,14 @@ export function DualPhoneView({ running }: Props) {
           filter: `user_id=in.(${userIds.join(",")})`,
         },
         (payload) => {
-          const row = payload.new as any;
+          const row = payload.new as {
+            id: string;
+            user_id: string;
+            title: string;
+            message: string;
+            type: string;
+            created_at: string;
+          };
           const notif: PhoneNotification = {
             id: row.id,
             title: row.title,
@@ -198,8 +212,8 @@ export function DualPhoneView({ running }: Props) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 h-full">
-      {devices.map((device, idx) => (
-        <PhoneFrame key={device.userId} device={device} index={idx} onDismissNotif={dismissNotif} />
+      {devices.map((device) => (
+        <PhoneFrame key={device.userId} device={device} onDismissNotif={dismissNotif} />
       ))}
     </div>
   );
@@ -207,11 +221,9 @@ export function DualPhoneView({ running }: Props) {
 
 function PhoneFrame({
   device,
-  index,
   onDismissNotif,
 }: {
   device: DualPhoneState;
-  index: number;
   onDismissNotif: (userId: string, notifId: string) => void;
 }) {
   const notifEndRef = useRef<HTMLDivElement>(null);
@@ -290,9 +302,9 @@ function PhoneFrame({
                 style={{ backgroundColor: STATUS_COLORS[device.status] || "#6b7280" }}
               />
             </div>
-            {/* Coordinates */}
+             {/* Location values remain internal to the simulation. */}
             <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-mono">
-              {device.lat.toFixed(5)}, {device.lng.toFixed(5)}
+              Location captured privately
             </div>
             {/* Accuracy ring */}
             <div className="absolute bottom-2 right-2 text-[9px] text-zinc-400 font-mono">

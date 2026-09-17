@@ -131,10 +131,10 @@ export default function CourseDetailPage() {
   const questions = course.quiz_questions;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
+    <div className="public-shell min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
       <div className="max-w-lg mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={() => router.push("/courses")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
+          <button aria-label="Back to courses" onClick={() => router.push("/courses")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
             <ArrowLeft size={20} />
           </button>
           <div>

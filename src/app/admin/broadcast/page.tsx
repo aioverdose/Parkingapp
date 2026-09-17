@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Send, Users } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 
 const NOTIFICATION_TYPES = [
   "broadcast", "match", "claim", "agent", "waitlist", "promotional", "system",

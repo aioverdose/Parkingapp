@@ -43,11 +43,15 @@ export async function POST(request: NextRequest) {
     if (device_id && typeof device_id === "string" && device_id.length <= 200) {
       await supabase.from("users").update({ device_id }).eq("id", user.id);
     }
+    // Unmatched admin visibility uses coarse coordinates; precise locations are
+    // only stored through a confirmed match location session.
+    const coarseLatitude = Math.round(latitude * 1000) / 1000;
+    const coarseLongitude = Math.round(longitude * 1000) / 1000;
     const { error } = await supabase.from("driver_locations").insert({
       user_id: user.id,
       match_id: null,
-      latitude,
-      longitude,
+      latitude: coarseLatitude,
+      longitude: coarseLongitude,
       heading: heading ?? null,
       speed: speed ?? null,
       accuracy: accuracy ?? null,

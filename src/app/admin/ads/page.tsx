@@ -16,6 +16,10 @@ interface Ad {
   end_date: string | null;
   impressions: number;
   clicks: number;
+  target_lat: number | null;
+  target_lng: number | null;
+  target_radius_meters: number | null;
+  placement: "all" | "spot_details" | "sidebar" | "dashboard";
 }
 
 export default function AdminAdsPage() {
@@ -33,6 +37,10 @@ export default function AdminAdsPage() {
   const [linkUrl, setLinkUrl] = useState("");
   const [active, setActive] = useState(true);
   const [endDate, setEndDate] = useState("");
+  const [targetLat, setTargetLat] = useState("");
+  const [targetLng, setTargetLng] = useState("");
+  const [targetRadius, setTargetRadius] = useState("1000");
+  const [placement, setPlacement] = useState<Ad["placement"]>("all");
 
   async function loadAds() {
     const { data } = await supabase.from("ads").select("*").order("created_at", { ascending: false });
@@ -40,11 +48,14 @@ export default function AdminAdsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadAds(); }, []);
+  useEffect(() => {
+    const loadTimer = window.setTimeout(() => { void loadAds(); }, 0);
+    return () => window.clearTimeout(loadTimer);
+  }, []);
 
   function openNew() {
     setEditing(null);
-    setTitle(""); setBusinessName(""); setTagline(""); setImageUrl(""); setLinkUrl(""); setActive(true); setEndDate("");
+    setTitle(""); setBusinessName(""); setTagline(""); setImageUrl(""); setLinkUrl(""); setActive(true); setEndDate(""); setTargetLat(""); setTargetLng(""); setTargetRadius("1000"); setPlacement("all");
     setShowForm(true);
   }
 
@@ -53,6 +64,8 @@ export default function AdminAdsPage() {
     setTitle(ad.title); setBusinessName(ad.business_name); setTagline(ad.tagline ?? "");
     setImageUrl(ad.image_url ?? ""); setLinkUrl(ad.link_url ?? ""); setActive(ad.active);
     setEndDate(ad.end_date ? ad.end_date.split("T")[0] : "");
+    setTargetLat(ad.target_lat?.toString() ?? ""); setTargetLng(ad.target_lng?.toString() ?? ""); setTargetRadius(ad.target_radius_meters?.toString() ?? "1000");
+    setPlacement(ad.placement ?? "all");
     setShowForm(true);
   }
 
@@ -67,6 +80,10 @@ export default function AdminAdsPage() {
       link_url: linkUrl || null,
       active,
       end_date: endDate ? new Date(endDate).toISOString() : null,
+      target_lat: targetLat ? Number(targetLat) : null,
+      target_lng: targetLng ? Number(targetLng) : null,
+      target_radius_meters: targetLat && targetLng ? Number(targetRadius) || 1000 : null,
+      placement,
     };
 
     if (editing) {
@@ -144,8 +161,18 @@ export default function AdminAdsPage() {
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" />
               <input placeholder="Image URL (optional)" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" />
-              <input placeholder="Link URL (optional)" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" />
+               <input placeholder="Link URL (optional)" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)}
+                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" />
+              <div className="rounded-2xl border border-[#dce3df] bg-[#f6f8f6] p-4">
+                <p className="text-sm font-bold text-[#17211e]">Placement targeting</p>
+                <p className="mt-1 text-xs leading-5 text-[#71807b]">Show this ad near a specific neighborhood. Leave coordinates blank to show it across the app.</p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <input type="number" step="any" min="-90" max="90" placeholder="Latitude" value={targetLat} onChange={(e) => setTargetLat(e.target.value)} className="app-input w-full rounded-xl border px-3 py-2.5 text-sm outline-none" />
+                  <input type="number" step="any" min="-180" max="180" placeholder="Longitude" value={targetLng} onChange={(e) => setTargetLng(e.target.value)} className="app-input w-full rounded-xl border px-3 py-2.5 text-sm outline-none" />
+                </div>
+                <label className="mt-3 block text-xs font-bold text-[#71807b]">Radius in meters<input type="number" min="100" max="50000" value={targetRadius} onChange={(e) => setTargetRadius(e.target.value)} className="app-input mt-1 w-full rounded-xl border px-3 py-2.5 text-sm outline-none" /></label>
+              </div>
+              <label className="block text-xs font-bold text-[#71807b]">Ad placement<select value={placement} onChange={(e) => setPlacement(e.target.value as Ad["placement"])} className="app-input mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none"><option value="all">All app surfaces</option><option value="spot_details">Spot details</option><option value="sidebar">Map/sidebar</option><option value="dashboard">Member dashboard</option></select></label>
               <div className="flex items-center gap-3">
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
                   className="flex-1 px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" />

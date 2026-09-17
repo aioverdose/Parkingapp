@@ -26,12 +26,12 @@ export async function saveParkingSpot(
 
   const spotLabel = label || "Current Spot";
 
-  const { data: existing } = await (supabase
+  const { data: existing } = await supabase
     .from("user_parking_spots")
     .select("id")
     .eq("user_id", userId)
     .eq("label", spotLabel)
-    .maybeSingle()) as any;
+    .maybeSingle();
 
   if (existing) {
     const { data, error } = await supabase

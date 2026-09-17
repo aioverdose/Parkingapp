@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, CheckCircle2, X, Clock, Car, MessageSquare, AlertTriangle, UserCircle, Star, CalendarClock } from "lucide-react";
 import { useLeavingTimer } from "@/hooks/useLeavingTimer";
-import { useExpirationTimer } from "@/hooks/useExpirationTimer";
 import { claimSpot } from "@/lib/api-client";
 import { createEphemeralChat } from "@/actions/social";
 import { createBrowserClient } from "@/lib/supabaseClient";
@@ -16,6 +15,7 @@ import { RatingModal } from "./RatingModal";
 import { SpotExpirationCountdown } from "./SpotExpirationCountdown";
 import { RankBadge } from "./RankBadge";
 import type { RankTier } from "@/lib/ranking";
+import { MatchFitSummary } from "./MatchFitSummary";
 
 interface SpotDetailsProps {
   spot: Spot;
@@ -26,32 +26,34 @@ interface SpotDetailsProps {
 export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
   const supabase = createBrowserClient();
   const { formatted, isExpired } = useLeavingTimer(spot.departure_time);
-  const expTimer = useExpirationTimer(spot.expires_at ?? spot.departure_time);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [ownerName, setOwnerName] = useState<string | null>(null);
   const [ownerRating, setOwnerRating] = useState<number | null>(null);
-  const [ownerRank, setOwnerRank] = useState<{ rank_tier: string; trust_score: number } | null>(null);
+  const [ownerRank, setOwnerRank] = useState<{ rank_tier: string; trust_score: number; successful_handoffs: number; flags_received: number } | null>(null);
+  const [ownerFlags, setOwnerFlags] = useState<number | null>(null);
+  const [ownerReliability, setOwnerReliability] = useState<{ decline_count: number; no_show_count: number } | null>(null);
 
   // Flag & rating modals
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const [claimedUserId, setClaimedUserId] = useState<string | null>(null);
-  const [flagCount, setFlagCount] = useState<number>(spot.flag_count ?? 0);
+  const flagCount = spot.flag_count ?? 0;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUserId(session?.user?.id ?? null);
     });
     Promise.all([
-      (supabase as any).from("users").select("name, average_rating").eq("id", spot.user_id).maybeSingle(),
-      (supabase as any).from("user_ranking").select("rank_tier, trust_score").eq("user_id", spot.user_id).maybeSingle(),
-    ]).then(([userRes, rankRes]: any[]) => {
+      supabase.from("users").select("name, average_rating, flag_count, decline_count, no_show_count").eq("id", spot.user_id).maybeSingle(),
+      supabase.from("user_ranking").select("rank_tier, trust_score, successful_handoffs, flags_received").eq("user_id", spot.user_id).maybeSingle(),
+    ]).then(([userRes, rankRes]) => {
       if (userRes.data) {
         setOwnerName(userRes.data.name);
         setOwnerRating(userRes.data.average_rating);
+        setOwnerFlags(userRes.data.flag_count);
+        setOwnerReliability({ decline_count: userRes.data.decline_count, no_show_count: userRes.data.no_show_count });
       }
       if (rankRes.data) {
         setOwnerRank(rankRes.data);
@@ -85,8 +87,7 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
         return;
       }
       setIsSuccess(true);
-      setClaimedUserId(currentUserId);
-      // Show rating prompt after claiming
+      // Show rating prompt after coordinating a departure
       setTimeout(() => {
         if (currentUserId) {
           setShowRatingModal(true);
@@ -137,8 +138,8 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
           <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 mb-4">
             <CheckCircle2 size={48} />
           </div>
-          <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Spot Claimed!</h3>
-          <p className="text-zinc-500 text-center mt-2">Happy parking. Remember to pay it forward!</p>
+          <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Coordination Started</h3>
+          <p className="text-zinc-500 text-center mt-2">This signal is informational, not a reservation. Follow public rules, check conditions when safely stopped, and confirm the space is actually open.</p>
         </div>
       ) : (
         <>
@@ -211,6 +212,28 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
           <p className="text-sm font-medium">Fits: {getVehicleTypeLabel(spot.vehicle_type)}</p>
         </div>
 
+        <MatchFitSummary
+          relayMode={spot.relay_mode}
+          departureTime={spot.departure_time}
+          returnTime={spot.return_time}
+          spotVehicleType={spot.vehicle_type}
+          areaLabel="shared area"
+        />
+
+        {!isOwner && (ownerRating !== null || ownerRank) && (
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Trust indicators</p>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-zinc-600 dark:text-zinc-300">
+              {ownerRating !== null && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><Star size={11} className="mr-1 inline" />{ownerRating.toFixed(1)} average rating</span>}
+              {ownerRank && <span className="rounded-full bg-blue-100 px-2.5 py-1 font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Trust score {ownerRank.trust_score.toFixed(1)}</span>}
+              {ownerRank && <span className="rounded-full bg-green-100 px-2.5 py-1 font-medium text-green-700 dark:bg-green-900/30 dark:text-green-300">{ownerRank.successful_handoffs} successful handoffs</span>}
+              {ownerReliability && <span className="rounded-full bg-zinc-200 px-2.5 py-1 font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{ownerReliability.decline_count} declines · {ownerReliability.no_show_count} no-shows</span>}
+              {ownerFlags === 0 && <span className="rounded-full bg-zinc-200 px-2.5 py-1 font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">No user flags reported</span>}
+              {(ownerFlags ?? 0) > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">{ownerFlags} user flag{ownerFlags === 1 ? "" : "s"}</span>}
+            </div>
+          </div>
+        )}
+
         {spot.lead_minutes && (
           <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 px-1">
             <Clock size={14} />
@@ -245,7 +268,7 @@ export function SpotDetails({ spot, onClose, onChatStart }: SpotDetailsProps) {
           {currentUserId && currentUserId !== spot.user_id && (
             <Button onClick={handleClaimSpot} disabled={isClaiming} className="h-12 px-1 text-xs bg-green-600 hover:bg-green-700">
               <CheckCircle2 className="mr-1 h-4 w-4" />
-              Take Spot
+              Request Coordination
             </Button>
           )}
           {/* Flag button */}

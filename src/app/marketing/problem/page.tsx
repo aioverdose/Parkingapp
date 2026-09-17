@@ -44,7 +44,7 @@ const COSTS = [
 
 export default function ProblemPage() {
   return (
-    <main className="max-w-6xl mx-auto px-4 py-16">
+    <main className="public-shell min-h-screen max-w-6xl mx-auto px-4 py-16">
       <div className="max-w-2xl mb-12">
         <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">Why It&apos;s Broken</p>
         <h1 className="text-3xl md:text-5xl font-black">Parking is a matching problem, not a scarcity problem</h1>

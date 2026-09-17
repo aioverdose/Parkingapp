@@ -1,0 +1,10 @@
+import type { Metadata } from "next";
+import { Checklist, DocCard, DocSection, PublicDocShell } from "@/components/PublicDocShell";
+
+export const metadata: Metadata = { title: "Community Guide | Parking Meeters", description: "Use the community feed, manage posts, and understand moderation and privacy." };
+
+export default function CommunityGuide() { return <PublicDocShell title="Community" eyebrow="Support guide" intro="The community feed is a place for local context, questions, and useful parking-related updates. Keep contributions respectful and privacy-aware.">
+  <div className="grid gap-4 sm:grid-cols-2"><DocCard title="Feed toggle">Use the feed preference or toggle in the app to show or hide community content where that control is available.</DocCard><DocCard title="Posts, comments, and media">Share relevant text, comments, images, or video without publishing private addresses, identifying information, or unsafe instructions.</DocCard><DocCard title="Edit or delete your posts">You can edit or delete content you own using the controls on your post. Deleting a post may not remove records needed for safety, security, or moderation.</DocCard><DocCard title="Admin moderation">Administrators may review, hide, remove, or restrict content that violates community guidelines, creates safety risk, or appears abusive or misleading.</DocCard></div>
+  <DocSection title="Privacy and participation"><p>Community content may be visible to other members according to the feed settings and product controls. Avoid posting precise home locations, license plates, phone numbers, or another person&apos;s image without permission. The feed is not an official city alert channel.</p></DocSection>
+  <DocSection title="Before posting"><Checklist items={["Ask whether the post helps a local driver or neighbor.", "Remove personal or precise location details.", "Use accurate, non-threatening language.", "Report harmful content instead of escalating in comments."]} /></DocSection>
+</PublicDocShell>; }

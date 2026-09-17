@@ -5,30 +5,58 @@ import { checkRateLimit } from "@/lib/api/rate-limit";
 import { verifyOtp } from "@/lib/otp";
 import { isTwilioConfigured } from "@/lib/twilio";
 import { logger } from "@/lib/logger";
+import { getClientIp } from "@/lib/api/request-security";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const body = await request.json();
+    const loginMode = body.mode === "login";
+    const user = loginMode ? null : await getAuthenticatedUser(request);
+    if (!user && !loginMode) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    const ip = getClientIp(request);
+    const normalizedPhone = String(body.phone ?? "").replace(/\D/g, "");
     const rateCheck = await checkRateLimit(`phone-verify:${ip}`, 10, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
     }
+    const phoneRateCheck = await checkRateLimit(`phone-verify:${ip}:${normalizedPhone}`, 6, 10 * 60_000);
+    if (!phoneRateCheck.allowed) return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
 
-    const { phone, code } = await request.json();
+    const { phone, code } = body;
     if (!phone || !code) {
       return NextResponse.json({ error: "Phone and code are required" }, { status: 400 });
     }
 
     const supabase = createAdminClient();
 
+    if (loginMode) {
+      const { data: account } = await supabase
+        .from("users")
+        .select("id, email")
+        .eq("phone_number", phone)
+        .eq("phone_verified", true)
+        .maybeSingle();
+      if (!account?.id || !account.email) return NextResponse.json({ error: "Invalid verification code" }, { status: 400 });
+      try {
+        await verifyOtp(phone, code, account.id);
+      } catch {
+        return NextResponse.json({ error: "Invalid verification code" }, { status: 400 });
+      }
+      const { data: link, error: linkError } = await supabase.auth.admin.generateLink({
+        type: "magiclink",
+        email: account.email,
+        options: { redirectTo: new URL("/", request.url).toString() },
+      });
+      if (linkError || !link.properties?.action_link) return NextResponse.json({ error: "Unable to create sign-in session" }, { status: 500 });
+      return NextResponse.json({ success: true, verified: true, method: "twilio", action_link: link.properties.action_link });
+    }
+
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     // Use app Twilio OTP verification when configured
     if (isTwilioConfigured()) {
-      const result = await verifyOtp(phone, code, user.id);
+      await verifyOtp(phone, code, user.id);
       await supabase
         .from("users")
         .update({
@@ -60,8 +88,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, verified: true, method: "supabase" });
     }
 
-    // Dev mode: accept any 6-digit code
-    if (code.length === 6 && /^\d{6}$/.test(code)) {
+    // Development-only fallback. Never accept arbitrary codes in production.
+    if (process.env.NODE_ENV !== "production" && code.length === 6 && /^\d{6}$/.test(code)) {
       await supabase
         .from("users")
         .update({

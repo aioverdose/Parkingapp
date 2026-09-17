@@ -7,12 +7,12 @@ export const createAdminClient = () => {
   const url = getUrl();
   const key = getKey();
   if (!url || !key)
-    return createClient<any>(
+    return createClient(
       "https://placeholder.supabase.co",
       "placeholder-key",
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
-  return createClient<any>(url, key, {
+  return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 };

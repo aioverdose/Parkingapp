@@ -47,7 +47,15 @@ export async function GET(request: NextRequest) {
         query = query.eq("visibility", "public").is("network_id", null);
       }
     } else {
-      query = query.eq("status", status);
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // Historical spot rows contain exact locations and participant IDs. They
+      // are only needed by the owner or the user who claimed the spot.
+      query = query
+        .eq("status", status)
+        .or(`user_id.eq.${user.id},claimed_by.eq.${user.id}`);
     }
 
     const { data, error } = await query.order("departure_time", { ascending: true });
@@ -190,7 +198,14 @@ export async function POST(request: NextRequest) {
     // Trigger matching engine asynchronously
     fetch(new URL("/api/matches/find", request.url), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      // The proxy protects API routes, including this internal handoff. Keep
+      // the caller's bearer token on the internal request so matching can run.
+      headers: {
+        "Content-Type": "application/json",
+        ...(request.headers.get("Authorization")
+          ? { Authorization: request.headers.get("Authorization") as string }
+          : {}),
+      },
       body: JSON.stringify({ spot_id: data.id }),
     }).catch(() => {});
 

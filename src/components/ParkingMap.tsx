@@ -380,7 +380,10 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
 
   // Load saved parking spots
   useEffect(() => {
-    if (!user) { setSavedSpots([]); return; }
+    if (!user) {
+      const reset = window.setTimeout(() => setSavedSpots([]), 0);
+      return () => window.clearTimeout(reset);
+    }
     getParkingSpots(user.id).then((res) => {
       if (res.spots) setSavedSpots(res.spots);
     });
@@ -427,7 +430,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
   // Fetch street sweeping when location is obtained
   useEffect(() => {
     if (!userLocation) return;
-    setSweepingLoading(true);
+    const loadingTimer = window.setTimeout(() => setSweepingLoading(true), 0);
 
     reverseGeocodeStreet(userLocation.latitude, userLocation.longitude).then((geo) => {
       if (!geo.street) { setSweepingLoading(false); return; }
@@ -443,6 +446,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
           setSweepingLoading(false);
         });
     });
+    return () => window.clearTimeout(loadingTimer);
   }, [userLocation]);
 
   // Handle ?signup=success and ?verify_phone=true from redirect
@@ -450,8 +454,9 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
     const signup = searchParams.get("signup");
     const verifyPhone = searchParams.get("verify_phone");
     if (signup === "success" && verifyPhone === "true" && user && profileChecked) {
-      setShowPhoneVerification(true);
+      const verificationTimer = window.setTimeout(() => setShowPhoneVerification(true), 0);
       router.replace("/", { scroll: false });
+      return () => window.clearTimeout(verificationTimer);
     } else if (signup === "success") {
       router.replace("/", { scroll: false });
     }
@@ -609,7 +614,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
             const filtered = prev.filter((s) => s.label !== "Current Spot");
             return [data.spot as SavedParkingSpot, ...filtered];
           });
-          setSaveSuccess(`Parking spot saved at ${address || latitude.toFixed(4) + ", " + longitude.toFixed(4)}`);
+           setSaveSuccess(`Parking spot saved at ${address || "Location saved privately"}`);
           setTimeout(() => setSaveSuccess(null), 4000);
         }
       },
@@ -917,7 +922,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold truncate">{spot.label}</p>
                         <p className="text-[10px] text-zinc-400 truncate">
-                          {spot.address || `${spot.latitude.toFixed(4)}, ${spot.longitude.toFixed(4)}`}
+                           {spot.address || "Location saved privately"}
                         </p>
                         {spot.accuracy && spot.accuracy > 50 && (
                           <p className="text-[10px] text-amber-500">Low accuracy — update?</p>
@@ -951,7 +956,7 @@ export function ParkingMap({ onSpotClick, fullHeight }: ParkingMapProps) {
                 </button>
               </div>
               <p className="text-xs text-zinc-500 truncate">
-                {selectedLeaveSpot.address || `${selectedLeaveSpot.latitude.toFixed(4)}, ${selectedLeaveSpot.longitude.toFixed(4)}`}
+                 {selectedLeaveSpot.address || "Location saved privately"}
               </p>
               <div className="flex gap-2">
                 {[5, 10, 15].map((m) => (

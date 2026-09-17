@@ -73,8 +73,10 @@ export function useTurnByTurn({ destination, voiceEnabled = true, onArrive }: Us
   const stepsRef = useRef(steps);
   const announcedArrivalRef = useRef(false);
 
-  statusRef.current = status;
-  stepsRef.current = steps;
+  useEffect(() => {
+    statusRef.current = status;
+    stepsRef.current = steps;
+  }, [status, steps]);
 
   const speakText = useCallback((text: string, rate = 0.92) => {
     if (voiceEnabled) speak(text, { rate, pitch: 1 });

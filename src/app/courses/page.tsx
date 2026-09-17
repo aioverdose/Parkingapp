@@ -12,7 +12,6 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [progress, setProgress] = useState<Record<string, UserCourseProgress>>({});
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -20,7 +19,6 @@ export default function CoursesPage() {
         router.push("/");
         return;
       }
-      setUser(session.user);
 
       const [coursesRes, progressRes] = await Promise.all([
         fetch("/api/courses"),
@@ -34,7 +32,7 @@ export default function CoursesPage() {
       setCourses(coursesData.courses ?? []);
 
       const progressMap: Record<string, UserCourseProgress> = {};
-      (progressRes.data ?? []).forEach((p: any) => {
+      (progressRes.data ?? []).forEach((p) => {
         progressMap[p.course_id] = p as UserCourseProgress;
       });
       setProgress(progressMap);
@@ -54,10 +52,10 @@ export default function CoursesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
+      <div className="public-shell min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
       <div className="max-w-lg mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={() => router.push("/")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
+          <button aria-label="Back to Parking Meeters" onClick={() => router.push("/")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-2xl font-bold">Courses</h1>
@@ -83,7 +81,7 @@ export default function CoursesPage() {
               <Trophy size={28} />
             </div>
             <h2 className="text-lg font-black mb-1">All Courses Complete!</h2>
-            <p className="text-green-100 text-xs mb-4">You've finished all {totalCourses} courses. Great job!</p>
+            <p className="text-green-100 text-xs mb-4">You&apos;ve finished all {totalCourses} courses. Great job!</p>
             <button
               onClick={() => router.push("/profile")}
               className="w-full h-11 rounded-xl bg-white text-green-700 font-bold text-sm hover:bg-green-50 transition"

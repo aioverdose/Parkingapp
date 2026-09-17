@@ -24,13 +24,11 @@ export function usePresencePing(enabled: boolean = true, intervalMs: number = 10
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [active, setActive] = useState(false);
   const lastGeofenceRef = useRef<Record<string, number>>({});
-  const supabaseRef = useRef(supabase);
-  supabaseRef.current = supabase;
 
   const checkGeofences = useCallback(
     async (token: string, lat: number, lng: number) => {
       try {
-        const { data: matches } = await supabaseRef.current
+        const { data: matches } = await supabase
           .from("spot_matches")
           .select("id, spot_id, parking_spots!inner(latitude, longitude, address)")
           .in("status", ["pending", "confirmed", "confirmed_by_owner", "confirmed_by_seeker"])
@@ -40,7 +38,7 @@ export function usePresencePing(enabled: boolean = true, intervalMs: number = 10
 
         const now = Date.now();
         for (const m of matches) {
-          const spot = (m as any).parking_spots;
+          const spot = m.parking_spots[0] as { latitude: number; longitude: number } | undefined;
           if (!spot) continue;
 
           const dist = haversine(lat, lng, spot.latitude, spot.longitude);
@@ -60,16 +58,13 @@ export function usePresencePing(enabled: boolean = true, intervalMs: number = 10
         }
       } catch {}
     },
-    [],
+    [supabase],
   );
-
-  const checkGeofencesRef = useRef(checkGeofences);
-  checkGeofencesRef.current = checkGeofences;
 
   const sendPing = useCallback(
     async (lat: number, lng: number, heading?: number, speed?: number, accuracy?: number) => {
       try {
-        const { data } = await supabaseRef.current.auth.getSession();
+        const { data } = await supabase.auth.getSession();
         const token = data.session?.access_token;
         if (!token) return;
 
@@ -89,13 +84,37 @@ export function usePresencePing(enabled: boolean = true, intervalMs: number = 10
           }),
         });
 
-        checkGeofencesRef.current(token, lat, lng);
+        checkGeofences(token, lat, lng);
       } catch {
         // Silent — presence ping is best-effort
       }
     },
-    [],
+    [checkGeofences, supabase],
   );
+
+  // Presence should not depend on geolocation permission. Location sharing is
+  // optional, while admins still need to see authenticated users online.
+  useEffect(() => {
+    if (!enabled) return;
+
+    const sendPresence = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) return;
+        await fetch("/api/user/presence", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        // Presence is best-effort and must not interrupt the app.
+      }
+    };
+
+    void sendPresence();
+    const presenceInterval = setInterval(sendPresence, intervalMs);
+    return () => clearInterval(presenceInterval);
+  }, [enabled, intervalMs, supabase]);
 
   useEffect(() => {
     if (!enabled || !("geolocation" in navigator)) return;

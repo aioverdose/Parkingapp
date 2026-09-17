@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let cachedClient: SupabaseClient<any> | null = null;
+let cachedClient: SupabaseClient | null = null;
 let configured = true;
 
 export const isSupabaseConfigured = (): boolean => {
@@ -8,15 +8,16 @@ export const isSupabaseConfigured = (): boolean => {
   return configured;
 };
 
-export const createBrowserClient = (): SupabaseClient<any> => {
+export const createBrowserClient = (): SupabaseClient => {
   if (cachedClient) return cachedClient;
 
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
   const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+  const validUrl = /^https:\/\/[^\s/]+(?:\/.*)?$/.test(url);
 
-  if (!url || !key) {
+  if (!validUrl || !key) {
     configured = false;
-    cachedClient = createClient<any>(
+    cachedClient = createClient(
       "https://placeholder.supabase.co",
       "placeholder-key",
     );
@@ -24,7 +25,7 @@ export const createBrowserClient = (): SupabaseClient<any> => {
   }
 
   configured = true;
-  cachedClient = createClient<any>(url, key, {
+  cachedClient = createClient(url, key, {
     auth: {
       flowType: "pkce",
       autoRefreshToken: true,

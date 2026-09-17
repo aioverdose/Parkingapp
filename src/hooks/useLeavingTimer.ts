@@ -10,8 +10,8 @@ export function useLeavingTimer(leavingAt: string | null | undefined) {
 
   useEffect(() => {
     if (!leavingAt) {
-      setRemainingMs(0);
-      return;
+      const reset = window.setTimeout(() => setRemainingMs(0), 0);
+      return () => window.clearTimeout(reset);
     }
 
     const interval = window.setInterval(() => {

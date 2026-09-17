@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { Loader2, Lock, Eye, EyeOff, AlertCircle, ArrowLeft } from "lucide-react";
 
@@ -22,8 +23,8 @@ export default function ResetPasswordPage() {
     const isRecovery = !!code || hash.includes("type=recovery") || hash.includes("type=recover");
 
     if (!isRecovery) {
-      setExpired(true);
-      return;
+      const expiredTimer = window.setTimeout(() => setExpired(true), 0);
+      return () => window.clearTimeout(expiredTimer);
     }
 
     let cancelled = false;
@@ -49,7 +50,7 @@ export default function ResetPasswordPage() {
         setReady(true);
         return;
       }
-      const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+       const { data: listener } = supabase.auth.onAuthStateChange((event) => {
         if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
           if (!cancelled) setReady(true);
         }
@@ -84,12 +85,12 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center p-4">
+       <div className="premium-shell premium-grid min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto"><Lock size={32} className="text-green-600" /></div>
           <h1 className="text-2xl font-bold">Password Reset!</h1>
           <p className="text-zinc-500">You can now log in with your new password.</p>
-          <a href="/" className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition"><ArrowLeft size={16} /> Go to App</a>
+            <Link href="/" className="app-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"><ArrowLeft size={16} /> Go to App</Link>
         </div>
       </div>
     );
@@ -97,12 +98,12 @@ export default function ResetPasswordPage() {
 
   if (expired) {
     return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center p-4">
+       <div className="premium-shell premium-grid min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-sm">
           <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto"><AlertCircle size={32} className="text-red-500" /></div>
           <h1 className="text-2xl font-bold">Link Expired or Invalid</h1>
           <p className="text-zinc-500 text-sm">This reset link didn&apos;t work. Try requesting a new one from the app.</p>
-          <a href="/" className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition"><ArrowLeft size={16} /> Back to App</a>
+            <Link href="/" className="app-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"><ArrowLeft size={16} /> Back to App</Link>
         </div>
       </div>
     );
@@ -110,9 +111,9 @@ export default function ResetPasswordPage() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center p-4">
+       <div className="premium-shell premium-grid min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">
-          <Loader2 className="animate-spin h-8 w-8 text-blue-600 mx-auto" />
+           <Loader2 className="animate-spin h-8 w-8 text-[#d94f35] mx-auto" />
           <p className="text-zinc-500">Verifying reset link...</p>
         </div>
       </div>
@@ -120,10 +121,10 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="premium-shell premium-grid min-h-screen flex items-center justify-center p-4">
+       <div className="auth-surface w-full max-w-md p-6 sm:p-8">
         <div className="text-center space-y-2 mb-8">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto">S</div>
+           <div className="w-12 h-12 bg-gradient-to-br from-[#164d3b] to-[#246b50] rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto">S</div>
           <h1 className="text-2xl font-bold">Reset Your Password</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Enter your new password below.</p>
         </div>
@@ -138,7 +139,7 @@ export default function ResetPasswordPage() {
             <input type="password" placeholder="Confirm New Password" required minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" />
           </div>
           {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
-          <button type="submit" disabled={loading} className="w-full h-14 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 text-white font-bold text-lg disabled:cursor-not-allowed transition flex items-center justify-center">{loading ? <Loader2 className="animate-spin" /> : "Reset Password"}</button>
+           <button type="submit" disabled={loading} className="app-primary w-full h-14 rounded-full text-white font-bold text-lg disabled:cursor-not-allowed transition flex items-center justify-center">{loading ? <Loader2 className="animate-spin" /> : "Reset Password"}</button>
         </form>
       </div>
     </div>

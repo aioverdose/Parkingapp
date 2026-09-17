@@ -3,15 +3,28 @@
 import { useState, useEffect } from "react";
 
 export function useExpirationTimer(expiresAt: string | null) {
-  const [timeLeft, setTimeLeft] = useState<string>("");
-  const [isExpired, setIsExpired] = useState(false);
-  const [fraction, setFraction] = useState(1);
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (!expiresAt) return "";
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    if (diff <= 0) return "Expired";
+    return `${Math.floor(diff / 60000)}:${Math.floor((diff % 60000) / 1000).toString().padStart(2, "0")}`;
+  });
+  const [isExpired, setIsExpired] = useState(() =>
+    Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now()),
+  );
+  const [fraction, setFraction] = useState(() => {
+    if (!expiresAt) return 1;
+    return Math.max(0, Math.min((new Date(expiresAt).getTime() - Date.now()) / (15 * 60 * 1000), 1));
+  });
 
   useEffect(() => {
     if (!expiresAt) {
-      setTimeLeft("");
-      setIsExpired(false);
-      return;
+      const reset = window.setTimeout(() => {
+        setTimeLeft("");
+        setIsExpired(false);
+        setFraction(1);
+      }, 0);
+      return () => window.clearTimeout(reset);
     }
 
     const update = () => {
@@ -32,9 +45,12 @@ export function useExpirationTimer(expiresAt: string | null) {
       setTimeLeft(`${mins}:${secs.toString().padStart(2, "0")}`);
     };
 
-    update();
+    const initialUpdate = window.setTimeout(update, 0);
     const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialUpdate);
+      clearInterval(interval);
+    };
   }, [expiresAt]);
 
   return { timeLeft, isExpired, fraction };

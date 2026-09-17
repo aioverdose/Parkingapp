@@ -45,7 +45,7 @@ export function EtaTester() {
         setError("Invalid coordinates");
         return;
       }
-      let etas = await calculateEta(oLat, oLng, dLat, dLng);
+      const etas = await calculateEta(oLat, oLng, dLat, dLng);
       if (rushHour) etas.durationSeconds *= 1.3;
       if (offPeak) etas.durationSeconds *= 0.9;
       setResult({ name: destName || "Destination", ...etas });
@@ -189,7 +189,7 @@ export function EtaTester() {
                   <div key={i} className="flex items-center justify-between text-xs bg-zinc-50 dark:bg-zinc-800 rounded-lg px-3 py-2">
                     <span>{d.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-zinc-400 font-mono">{d.lat.toFixed(4)}, {d.lng.toFixed(4)}</span>
+                      <span className="text-zinc-400 font-mono">Location captured privately</span>
                       <button onClick={() => handleRemoveDestination(i)} className="text-zinc-400 hover:text-red-500"><X size={12} /></button>
                     </div>
                   </div>

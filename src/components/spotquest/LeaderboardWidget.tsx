@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
 import type { LeaderboardEntry } from "@/lib/spotquest/types";
-import { Trophy, Flame, Zap, Crown } from "lucide-react";
+import { Trophy, Flame } from "lucide-react";
 
 interface LeaderboardWidgetProps {
   entries: LeaderboardEntry[];

@@ -14,7 +14,7 @@ export function BottomButtons({ onPostSpot, onLookForSpot, disabled }: BottomBut
       <button
         onClick={onPostSpot}
         disabled={disabled}
-        className="flex-1 h-14 rounded-full shadow-2xl bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 text-white text-base font-bold flex items-center justify-center gap-2 transition disabled:cursor-not-allowed"
+        className="app-primary flex-1 h-14 rounded-full shadow-2xl text-white text-base font-bold flex items-center justify-center gap-2 transition disabled:bg-zinc-300 disabled:text-white disabled:cursor-not-allowed"
       >
         <Plus size={22} strokeWidth={3} />
         LEAVING SOON

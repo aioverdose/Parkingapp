@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { Shield, User, Loader2, Search, LogOut, Wifi, WifiOff, Check } from "lucide-react";
+import { Shield, Loader2, Search, LogOut, Wifi, WifiOff, Check } from "lucide-react";
 
 interface UserProfile {
   id: string;

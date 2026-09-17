@@ -20,6 +20,7 @@ export function PerfectParkMiniGame({ onComplete, onClose }: PerfectParkMiniGame
   const [carX, setCarX] = useState(50);
   const [slotX] = useState(50);
   const [isPerfect, setIsPerfect] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const animRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
   const moveDirRef = useRef<1 | -1>(1);
@@ -37,6 +38,7 @@ export function PerfectParkMiniGame({ onComplete, onClose }: PerfectParkMiniGame
 
     const animate = () => {
       const elapsed = Date.now() - startTimeRef.current;
+      setElapsedMs(elapsed);
 
       // Car moves back and forth with increasing speed
       speedRef.current = 2 + elapsed * 0.0008;
@@ -78,7 +80,7 @@ export function PerfectParkMiniGame({ onComplete, onClose }: PerfectParkMiniGame
     setGameState("result");
 
     onComplete(finalScore).then(setResult);
-  }, [carX, onComplete]);
+  }, [carX, onComplete, slotX]);
 
   useEffect(() => {
     return () => cancelAnimationFrame(animRef.current);
@@ -154,7 +156,7 @@ export function PerfectParkMiniGame({ onComplete, onClose }: PerfectParkMiniGame
                   <div
                     className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 rounded-full"
                     style={{
-                      width: `${Math.max(0, 100 - ((Date.now() - startTimeRef.current) / 3000) * 100)}%`,
+                      width: `${Math.max(0, 100 - (elapsedMs / 3000) * 100)}%`,
                       transition: "width 0.1s linear",
                     }}
                   />

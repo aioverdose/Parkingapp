@@ -107,9 +107,12 @@ export function DeviceTestMonitor() {
   }, [supabase]);
 
   useEffect(() => {
-    fetchTests();
+    const fetchTimer = window.setTimeout(() => { void fetchTests(); }, 0);
     const interval = setInterval(fetchTests, 15_000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(fetchTimer);
+      clearInterval(interval);
+    };
   }, [fetchTests]);
 
   const selectTest = useCallback((test: DeviceTest) => {
@@ -298,7 +301,7 @@ export function DeviceTestMonitor() {
                 {selected.summary.parkedLocation && (
                   <p className="text-[10px] text-zinc-400 mt-3 flex items-center gap-1.5">
                     <MapPin size={12} className="text-blue-500" />
-                    Parked at {selected.summary.parkedLocation.lat.toFixed(5)}, {selected.summary.parkedLocation.lng.toFixed(5)}
+                     Parked location captured privately
                   </p>
                 )}
               </div>
@@ -332,7 +335,7 @@ export function DeviceTestMonitor() {
                     ) : null}
                     {e.latitude != null && (
                       <span className="text-zinc-400 font-mono shrink-0">
-                        {e.latitude.toFixed(5)},{e.longitude?.toFixed(5)}
+                         Location captured privately
                       </span>
                     )}
                     {e.vibration_energy != null && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { getNeighborhoodLeaderboard, getAllNeighborhoods } from "@/actions/rankings";
 import { RankingList } from "@/components/RankingList";
 import { Loader2, Trophy, Flame, Clock, MapPin } from "lucide-react";
@@ -46,7 +47,7 @@ export default function RankingsPage() {
             </h1>
             <p className="text-xs text-zinc-500">Top contributors &middot; anonymous</p>
           </div>
-          <a href="/" className="text-sm text-blue-600 hover:underline">Back to map</a>
+           <Link href="/" className="text-sm text-blue-600 hover:underline">Back to map</Link>
         </div>
       </header>
 

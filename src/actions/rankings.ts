@@ -1,6 +1,9 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import type { Database } from "@/lib/database.types";
+
+type ContributionStats = Database["public"]["Tables"]["contribution_stats"]["Row"];
 
 export async function getNeighborhoodLeaderboard(neighborhood?: string) {
   const supabase = createAdminClient();
@@ -21,7 +24,8 @@ export async function getNeighborhoodLeaderboard(neighborhood?: string) {
     return [];
   }
 
-  return (data ?? []).map((row, i) => ({
+  const rows = (data ?? []) as ContributionStats[];
+  return rows.map((row, i) => ({
     rank: i + 1,
     ...row,
   }));

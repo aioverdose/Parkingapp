@@ -1,0 +1,1 @@
+export default function AuditPage() { return <main className="mx-auto max-w-3xl p-5 md:p-10"><h1 className="text-3xl font-black text-blue-950">Import Audit Log</h1><p className="mt-4 text-zinc-600">All job, review, attribution, settings, and publication mutations are recorded in the existing admin audit log.</p></main>; }

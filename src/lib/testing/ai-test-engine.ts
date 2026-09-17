@@ -301,10 +301,10 @@ async function runSingleScenario(
 
     let currentWpIdx = 0;
     let position = { lat: waypoints[0].lat, lng: waypoints[0].lng, speed: waypoints[0].speed ?? 0, heading: 0 };
-    let speedBuffer: number[] = [];
+    const speedBuffer: number[] = [];
     let parkingConfirmed = false;
     let parkingConfirmedAt: number | null = null;
-    let matchId: string | null = null;
+    const matchId: string | null = null;
 
     const updatePosition = (lat: number, lng: number, speed: number, heading: number) => {
       position = { lat, lng, speed, heading };

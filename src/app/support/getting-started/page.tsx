@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MapPin, Clock, Car, Bell, MessageCircle, Handshake, Search } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const STEPS: { icon: any; id?: string; title: string; desc: string }[] = [
+const STEPS: { icon: LucideIcon; id?: string; title: string; desc: string }[] = [
   {
     icon: MapPin,
     title: "Select a Spot on the Map",
@@ -46,10 +47,10 @@ export default function GettingStartedPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="public-shell min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push("/support")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
+          <button aria-label="Back to Support center" onClick={() => router.push("/support")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-2xl font-bold">Getting Started</h1>
@@ -62,7 +63,7 @@ export default function GettingStartedPage() {
 
         <div className="flex flex-col gap-4">
           {STEPS.map((step, i) => (
-            <div key={i} id={step.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 flex gap-4">
+            <div key={i} id={step.id} className="public-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 flex gap-4">
               <div className="flex flex-col items-center">
                 <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                   <step.icon size={20} className="text-blue-600" />

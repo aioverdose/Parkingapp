@@ -8,16 +8,15 @@ import { VirtualEnvironment } from "@/lib/virtual-environment/engine";
 import { TEST_ROUTES } from "@/lib/testing/testRoutes";
 import { LONG_BEACH_CENTER } from "@/lib/testing/constants";
 import type { VenvAgentState, VenvTimelineEvent, VenvEnvironmentConfig } from "@/lib/virtual-environment/types";
-import { AGENT_COLORS } from "@/lib/virtual-environment/types";
+import { DEFAULT_ENV_CONFIG } from "@/lib/virtual-environment/types";
 import { MAP_STYLE_URL } from "@/lib/map";
 import { BehaviorAgent } from "@/lib/behavior/agent";
 import { DEFAULT_BEHAVIOR_AGENT_CONFIG } from "@/lib/behavior/types";
 import type { BehaviorAgentConfig, BehaviorAgentEvent, BehaviorAgentState } from "@/lib/behavior/types";
 import {
   Play, Square, RotateCcw, Plus, Trash2, Download,
-  Car, Footprints, Navigation, MapPin, Radio, Clock,
-  Gauge, Smartphone, ChevronDown, ChevronUp, AlertTriangle,
-  Target, Route, Sparkles,
+  Navigation, Radio, Clock, Gauge, Smartphone, ChevronDown, ChevronUp,
+  Target, Sparkles,
 } from "lucide-react";
 
 export function VirtualEnvironmentSandbox() {
@@ -27,7 +26,7 @@ export function VirtualEnvironmentSandbox() {
   const [running, setRunning] = useState(false);
   const [simTime, setSimTime] = useState(0);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [config, setConfig] = useState<VenvEnvironmentConfig>(envRef.current.getConfig());
+  const [config, setConfig] = useState<VenvEnvironmentConfig>(DEFAULT_ENV_CONFIG);
   const [viewState, setViewState] = useState({
     latitude: LONG_BEACH_CENTER.lat,
     longitude: LONG_BEACH_CENTER.lng,
@@ -75,9 +74,12 @@ export function VirtualEnvironmentSandbox() {
   useEffect(() => {
     behaviorAgentRef.current = new BehaviorAgent(SIM_AGENT_CONFIG, (e) => setBehaviorEvent(e));
     lastIngestRef.current = 0;
-    setBehaviorState("unknown");
-    setBehaviorEvent(null);
+    const resetTimer = window.setTimeout(() => {
+      setBehaviorState("unknown");
+      setBehaviorEvent(null);
+    }, 0);
     return () => {
+      window.clearTimeout(resetTimer);
       behaviorAgentRef.current = null;
     };
   }, [selectedAgentId]);
@@ -458,7 +460,7 @@ export function VirtualEnvironmentSandbox() {
                         }`}>
                           {a.status}
                         </span>
-                        <span>{a.lat.toFixed(4)}, {a.lng.toFixed(4)}</span>
+                        <span>Location captured privately</span>
                         <span>{a.broadcastCount} tx</span>
                         <span className={a.userId.startsWith("virtual-") ? "text-zinc-700" : "text-blue-500"}>
                           {a.userId.startsWith("virtual-") ? "virt" : "live"}
@@ -505,7 +507,7 @@ export function VirtualEnvironmentSandbox() {
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 <div className="bg-zinc-800 rounded p-2">
                   <span className="text-zinc-500">Position</span>
-                  <p className="text-zinc-300 font-mono">{selectedAgent.lat.toFixed(5)}, {selectedAgent.lng.toFixed(5)}</p>
+                  <p className="text-zinc-300 font-mono">Location captured privately</p>
                 </div>
                 <div className="bg-zinc-800 rounded p-2">
                   <span className="text-zinc-500">Speed</span>

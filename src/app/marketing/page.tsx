@@ -87,7 +87,7 @@ export default function MarketingHomePage() {
           <p className="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mt-6">
             Millions of empty spaces sit idle while drivers circle the block.
             ParkingMeeters connects the people leaving a spot with the people
-            arriving — so every space gets used.
+             arriving — so drivers can coordinate around spaces that may become available.
           </p>
           <div className="flex items-center justify-center gap-3 mt-10 flex-wrap">
             <Link
@@ -176,7 +176,7 @@ export default function MarketingHomePage() {
             <div className="flex-1">
               <p className="font-bold text-lg">The fix isn&apos;t more parking. It&apos;s smarter parking.</p>
               <p className="text-sm text-zinc-500 mt-1">
-                When someone leaves their spot, someone else should already know about it. That&apos;s what we built.
+               When someone expects to leave, nearby drivers can receive a departure signal. That&apos;s what we built.
               </p>
             </div>
             <Link

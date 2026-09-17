@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { sendPushToUser } from "@/lib/push";
+import { isSyntheticAccount } from "@/lib/testing/synthetic-account";
+import { appDateKey, nextAppOccurrence } from "@/lib/schedule-time";
 
 /**
  * POST /api/matches/schedule
@@ -39,10 +41,14 @@ interface ScheduleRow {
   return_time: string;
   vehicle_type: string | null;
   active: boolean;
+  start_date?: string | null;
+  end_date?: string | null;
+  vehicle_id?: string | null;
 }
 
 interface UserScheduleRow {
   id: string;
+  email: string;
   name: string | null;
   vehicle_type: string | null;
   schedule_arrival: string | null;
@@ -77,17 +83,14 @@ function timesClose(a: string, b: string, toleranceMinutes: number): boolean {
   return Math.abs(timeToMinutes(a) - timeToMinutes(b)) <= toleranceMinutes;
 }
 
-/** Next Date on one of `days` at local time-of-day `time`, strictly after `after`. */
-function nextOccurrence(time: string, days: number[], after: Date): Date {
-  const target = timeToMinutes(time);
-  const start = new Date(after);
-  for (let offset = 0; offset < 8; offset++) {
-    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + offset);
-    if (!days.includes(d.getDay())) continue;
-    d.setHours(Math.floor(target / 60), target % 60, 0, 0);
-    if (d.getTime() > after.getTime()) return d;
-  }
-  throw new Error("No future occurrence for schedule");
+function scheduleIsInDateWindow(schedule: ScheduleRow, date = new Date()): boolean {
+  const day = appDateKey(date);
+  return (!schedule.start_date || schedule.start_date <= day) && (!schedule.end_date || schedule.end_date >= day);
+}
+
+function vehiclesCompatible(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b || a === "any" || b === "any") return true;
+  return a.toLowerCase() === b.toLowerCase();
 }
 
 interface MatchCandidate {
@@ -100,7 +103,15 @@ interface MatchCandidate {
   days: number[];
   departure: Date;
   returnTime: Date;
+  departureClock: string;
   vehicleType: string | null;
+}
+
+function formatClock(time: string): string {
+  const [hourText, minute = "00"] = time.split(":");
+  const hour = Number(hourText);
+  if (!Number.isFinite(hour)) return time;
+  return `${hour % 12 || 12}:${minute} ${hour >= 12 ? "PM" : "AM"}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -115,7 +126,7 @@ export async function POST(request: NextRequest) {
     // Load my profile + schedules
     const { data: me } = await supabase
       .from("users")
-      .select("id, name, vehicle_type, schedule_arrival, schedule_departure, schedule_days")
+      .select("id, email, name, vehicle_type, schedule_arrival, schedule_departure, schedule_days")
       .eq("id", user.id)
       .single();
 
@@ -125,45 +136,83 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .eq("active", true);
 
-    if (!mySchedules || mySchedules.length === 0) {
+    const today = appDateKey();
+    const { data: myDateEntries } = await supabase.from("schedule_date_entries").select("*").eq("user_id", user.id).eq("active", true).gte("schedule_date", today);
+    const currentMySchedules = [...(mySchedules ?? []).map((schedule) => ({
+      ...schedule,
+      // Profile times are the member's canonical commute preference. The
+      // planner supplies the location and recurring days.
+      departure_time: me?.schedule_departure || schedule.departure_time,
+      return_time: me?.schedule_arrival || schedule.return_time,
+    })), ...(myDateEntries ?? []).map((entry) => ({ ...entry, days_of_week: [new Date(`${entry.schedule_date}T00:00:00Z`).getUTCDay()], departure_time: entry.departure_time, return_time: entry.arrival_time, vehicle_type: null, start_date: entry.schedule_date, end_date: entry.schedule_date }))];
+
+    if (currentMySchedules.length === 0) {
       return NextResponse.json({ matches_created: 0, total_candidates: 0, reason: "No recurring schedules" });
     }
 
     // Load every other driver's schedule profile + recurring schedules
     const { data: allUsers } = await supabase
       .from("users")
-      .select("id, name, vehicle_type, schedule_arrival, schedule_departure, schedule_days")
+      .select("id, email, name, vehicle_type, schedule_arrival, schedule_departure, schedule_days")
       .neq("id", user.id);
+
+    const syntheticRequester = isSyntheticAccount((me as UserScheduleRow | null)?.email ?? user.email);
+    const allowedUsers = (allUsers ?? []).filter((candidate) =>
+      isSyntheticAccount(candidate.email) === syntheticRequester,
+    );
+    const allowedUserIds = new Set(allowedUsers.map((candidate) => candidate.id));
 
     const { data: allSchedules } = await supabase
       .from("recurring_schedules")
       .select("*")
       .eq("active", true);
+    const { data: allDateEntries } = await supabase.from("schedule_date_entries").select("*").eq("active", true).gte("schedule_date", today);
+    const { data: vehicles } = await supabase.from("user_vehicles").select("id, vehicle_type").eq("active", true);
+    const vehicleTypes = new Map((vehicles ?? []).map((vehicle) => [vehicle.id, vehicle.vehicle_type]));
+    const profileById = new Map((allowedUsers as UserScheduleRow[]).map((candidate) => [candidate.id, candidate]));
+    const currentAllSchedules = [...(allSchedules ?? []).filter((schedule) => allowedUserIds.has(schedule.user_id)).map((schedule) => {
+      const profile = profileById.get(schedule.user_id);
+      return {
+        ...schedule,
+        departure_time: profile?.schedule_departure || schedule.departure_time,
+        return_time: profile?.schedule_arrival || schedule.return_time,
+      };
+    }), ...(allDateEntries ?? []).filter((entry) => allowedUserIds.has(entry.user_id)).map((entry) => ({ ...entry, days_of_week: [new Date(`${entry.schedule_date}T00:00:00Z`).getUTCDay()], departure_time: entry.departure_time, return_time: entry.arrival_time, vehicle_type: vehicleTypes.get(entry.vehicle_id) ?? null, start_date: entry.schedule_date, end_date: entry.schedule_date }))]
+      .map((schedule) => ({ ...schedule, vehicle_type: schedule.vehicle_type || vehicleTypes.get(schedule.vehicle_id) || null }));
+    const currentMySchedulesWithVehicleTypes = currentMySchedules.map((schedule) => ({ ...schedule, vehicle_type: schedule.vehicle_type || vehicleTypes.get(schedule.vehicle_id) || null }));
 
     if (!allUsers || !allSchedules) {
       return NextResponse.json({ matches_created: 0, total_candidates: 0, reason: "No data" });
     }
 
+    // New members can receive their first match after completing their profile.
+    // Reliability history affects ranking, not basic eligibility.
+    const eligibleDepartureUsers = new Set<string>(allowedUsers.map((candidate) => candidate.id));
+    eligibleDepartureUsers.add(user.id);
+
     const usersById = new Map<string, UserScheduleRow>();
-    for (const u of allUsers as UserScheduleRow[]) usersById.set(u.id, u);
+    for (const u of allowedUsers as UserScheduleRow[]) usersById.set(u.id, u);
 
     const candidates: MatchCandidate[] = [];
     const seen = new Set<string>();
+    const seenPairs = new Set<string>();
 
     const myArrival = (me as UserScheduleRow | null)?.schedule_arrival ?? null;
     const myDays = (me as UserScheduleRow | null)?.schedule_days ?? null;
 
     // ----- Direction A: I am the departing owner -----
-    for (const sched of mySchedules as ScheduleRow[]) {
+    for (const sched of currentMySchedulesWithVehicleTypes.filter((item) => scheduleIsInDateWindow(item as ScheduleRow)) as ScheduleRow[]) {
       const depMinutes = timeToMinutes(sched.departure_time);
 
-      for (const other of allUsers as UserScheduleRow[]) {
+      for (const other of allowedUsers as UserScheduleRow[]) {
+        if (!eligibleDepartureUsers.has(other.id)) continue;
         if (!other.schedule_arrival) continue;
         if (!timesClose(sched.departure_time, other.schedule_arrival, TIME_TOLERANCE_MINUTES)) continue;
         if (!daysOverlap(sched.days_of_week, other.schedule_days)) continue;
+        if (!vehiclesCompatible(sched.vehicle_type || me?.vehicle_type, other.vehicle_type)) continue;
 
         // The seeker must actually be parked nearby (has a recurring schedule in the area)
-        const seekerNearby = (allSchedules as ScheduleRow[]).some(
+        const seekerNearby = (currentAllSchedules as ScheduleRow[]).some(
           (os) =>
             os.user_id === other.id &&
             haversineDistance(sched.latitude, sched.longitude, os.latitude, os.longitude) <= MATCH_RADIUS_METERS,
@@ -171,8 +220,11 @@ export async function POST(request: NextRequest) {
         if (!seekerNearby) continue;
 
         const key = `A:${sched.id}:${other.id}`;
+        const pairKey = [user.id, other.id].sort().join(":");
+        if (seenPairs.has(pairKey)) continue;
         if (seen.has(key)) continue;
         seen.add(key);
+        seenPairs.add(pairKey);
 
         candidates.push({
           ownerId: user.id,
@@ -182,30 +234,35 @@ export async function POST(request: NextRequest) {
           longitude: sched.longitude,
           address: sched.label || "Parking spot",
           days: sched.days_of_week,
-          departure: nextOccurrence(sched.departure_time, sched.days_of_week, new Date()),
-          returnTime: nextOccurrence(sched.return_time, sched.days_of_week, new Date()),
+              departure: nextAppOccurrence(sched.departure_time, sched.days_of_week, new Date()),
+              returnTime: nextAppOccurrence(sched.return_time, sched.days_of_week, new Date()),
+          departureClock: sched.departure_time,
           vehicleType: sched.vehicle_type || (me as UserScheduleRow | null)?.vehicle_type || null,
         });
       }
     }
 
     // ----- Direction B: I am the arriving seeker -----
-    if (myArrival) {
-      for (const mySched of mySchedules as ScheduleRow[]) {
-        for (const otherSched of allSchedules as ScheduleRow[]) {
+    if (myArrival && eligibleDepartureUsers.has(user.id)) {
+        for (const mySched of currentMySchedulesWithVehicleTypes.filter((item) => scheduleIsInDateWindow(item as ScheduleRow)) as ScheduleRow[]) {
+          for (const otherSched of (currentAllSchedules as ScheduleRow[]).filter((item) => scheduleIsInDateWindow(item))) {
           if (otherSched.user_id === user.id) continue;
-          if (!timesClose(myArrival, otherSched.departure_time, TIME_TOLERANCE_MINUTES)) continue;
-          if (!daysOverlap(myDays, otherSched.days_of_week)) continue;
+           if (!timesClose(myArrival, otherSched.departure_time, TIME_TOLERANCE_MINUTES)) continue;
+           if (!daysOverlap(myDays, otherSched.days_of_week)) continue;
 
           const dist = haversineDistance(mySched.latitude, mySched.longitude, otherSched.latitude, otherSched.longitude);
           if (dist > MATCH_RADIUS_METERS) continue;
 
           const otherUser = usersById.get(otherSched.user_id);
           if (!otherUser) continue;
+          if (!vehiclesCompatible(me?.vehicle_type, otherSched.vehicle_type || otherUser.vehicle_type)) continue;
 
-          const key = `B:${otherSched.id}:${user.id}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
+           const key = `B:${otherSched.id}:${user.id}`;
+           const pairKey = [otherSched.user_id, user.id].sort().join(":");
+           if (seenPairs.has(pairKey)) continue;
+           if (seen.has(key)) continue;
+           seen.add(key);
+           seenPairs.add(pairKey);
 
           candidates.push({
             ownerId: otherSched.user_id,
@@ -215,8 +272,9 @@ export async function POST(request: NextRequest) {
             longitude: otherSched.longitude,
             address: otherSched.label || "Parking spot",
             days: otherSched.days_of_week,
-            departure: nextOccurrence(otherSched.departure_time, otherSched.days_of_week, new Date()),
-            returnTime: nextOccurrence(otherSched.return_time, otherSched.days_of_week, new Date()),
+              departure: nextAppOccurrence(otherSched.departure_time, otherSched.days_of_week, new Date()),
+              returnTime: nextAppOccurrence(otherSched.return_time, otherSched.days_of_week, new Date()),
+             departureClock: otherSched.departure_time,
             vehicleType: otherSched.vehicle_type || otherUser.vehicle_type || null,
           });
         }
@@ -225,7 +283,7 @@ export async function POST(request: NextRequest) {
 
     // ----- Persist scheduled spots + pending matches -----
     let matchesCreated = 0;
-    const created: Array<{ match_id: string; spot_id: string; role: string; partner_id: string }> = [];
+    const created: Array<{ match_id: string; spot_id: string; role: string; partner_id: string; push_sent?: number; push_failed?: number }> = [];
 
     for (const cand of candidates) {
       // Block check
@@ -252,6 +310,13 @@ export async function POST(request: NextRequest) {
           return diffMin <= REUSE_WINDOW_MINUTES;
         });
         spotId = reuse?.id ?? null;
+        if (spotId) {
+          await supabase.from("parking_spots").update({
+            departure_time: cand.departure.toISOString(),
+            return_time: cand.returnTime.toISOString(),
+            address: cand.address,
+          }).eq("id", spotId);
+        }
       }
 
       if (!spotId) {
@@ -277,13 +342,13 @@ export async function POST(request: NextRequest) {
 
       if (!spotId) continue;
 
-      // Don't duplicate a match for this spot + seeker
+      // A pair gets one live Match Protocol record, even when either member
+      // has multiple overlapping saved locations.
       const { data: existingMatch } = await supabase
         .from("spot_matches")
         .select("id")
-        .eq("spot_id", spotId)
-        .eq("seeker_id", cand.seekerId)
-        .neq("status", "rejected")
+        .or(`and(spot_owner_id.eq.${cand.ownerId},seeker_id.eq.${cand.seekerId}),and(spot_owner_id.eq.${cand.seekerId},seeker_id.eq.${cand.ownerId})`)
+        .in("status", ["pending", "offered", "confirmed_by_owner", "confirmed_by_seeker", "confirmed"])
         .maybeSingle();
       if (existingMatch) continue;
 
@@ -304,27 +369,29 @@ export async function POST(request: NextRequest) {
       const role = cand.seekerId === user.id ? "seeker" : "owner";
       created.push({ match_id: match.id, spot_id: spotId, role, partner_id: role === "owner" ? cand.seekerId : cand.ownerId });
 
-      // Notify both drivers via push so each confirms the handoff
-      sendPushToUser(cand.seekerId, {
-        type: "match_found",
-        title: "Scheduled parking match!",
-        body: `${cand.ownerName} is leaving a spot${cand.address !== "Parking spot" ? ` on ${cand.address}` : ""} around ${new Date(cand.departure).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Confirm to navigate!`,
+       // Await both sends so a serverless request cannot end before delivery starts.
+       const [seekerPush, ownerPush] = await Promise.all([
+         sendPushToUser(cand.seekerId, {
+         type: "match_found",
+         title: "Scheduled parking match!",
+          body: `${cand.ownerName} is leaving a spot${cand.address !== "Parking spot" ? ` on ${cand.address}` : ""} around ${formatClock(cand.departureClock)}. Confirm to navigate!`,
         match_id: match.id,
         spot_lat: cand.latitude,
         spot_lon: cand.longitude,
-        spot_street: cand.address,
-        departing_user_name: cand.ownerName,
-      });
-
-      sendPushToUser(cand.ownerId, {
-        type: "match_found",
-        title: "Handoff partner found",
-        body: "A driver with a matching schedule wants your spot. Confirm the handoff.",
+         spot_street: cand.address,
+         departing_user_name: cand.ownerName,
+         }),
+         sendPushToUser(cand.ownerId, {
+         type: "match_found",
+         title: "Handoff partner found",
+         body: "A driver with a matching schedule wants your spot. Confirm the handoff.",
         match_id: match.id,
         spot_lat: cand.latitude,
-        spot_lon: cand.longitude,
-        spot_street: cand.address,
-      });
+         spot_lon: cand.longitude,
+         spot_street: cand.address,
+         }),
+       ]);
+       created[created.length - 1] = { ...created[created.length - 1], push_sent: seekerPush.sent + ownerPush.sent, push_failed: seekerPush.failed + ownerPush.failed };
     }
 
     return NextResponse.json({

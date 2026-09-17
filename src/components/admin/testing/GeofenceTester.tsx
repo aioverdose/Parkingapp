@@ -2,12 +2,13 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import Map, { Marker, Source, Layer, NavigationControl, MapRef } from "react-map-gl/maplibre";
+import type { MapMouseEvent } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { SimulatedDevice } from "@/lib/testing/simulatedDevice";
 import { LONG_BEACH_CENTER } from "@/lib/testing/constants";
 import type { GeofenceZone, GeofenceEvent } from "@/lib/testing/types";
 import { MAP_STYLE_URL } from "@/lib/map";
-import { Fence, Plus, Trash2, LogIn, LogOut, Clock, Crosshair } from "lucide-react";
+import { Fence, Trash2, LogIn, LogOut, Clock, Crosshair } from "lucide-react";
 
 interface Props {
   device: SimulatedDevice | null;
@@ -37,7 +38,7 @@ export function GeofenceTester({ device }: Props) {
     const map = mapRef.current?.getMap();
     if (!map) return;
 
-    const handler = (e: any) => {
+    const handler = (e: MapMouseEvent) => {
       if (!drawingRef.current) return;
       const lngLat = e.lngLat;
       currentDrawRef.current = [...currentDrawRef.current, { lat: lngLat.lat, lng: lngLat.lng }];
@@ -71,18 +72,6 @@ export function GeofenceTester({ device }: Props) {
     setGeofences((prev) => prev.filter((g) => g.id !== id));
     if (selectedGeofence === id) setSelectedGeofence(null);
   }, [selectedGeofence]);
-
-  const isPointInPolygon = (lat: number, lng: number, polygon: { lat: number; lng: number }[]): boolean => {
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].lng, yi = polygon[i].lat;
-      const xj = polygon[j].lng, yj = polygon[j].lat;
-      if ((yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
-        inside = !inside;
-      }
-    }
-    return inside;
-  };
 
   const handleSimulateEntry = useCallback(
     (gfId: string) => {
@@ -198,7 +187,7 @@ export function GeofenceTester({ device }: Props) {
           ))}
           {geofences.length === 0 && !drawing && (
             <p className="text-xs text-zinc-400 text-center mt-4">
-              Click "Draw Geofence" then click the map to add vertices.
+               Click &quot;Draw Geofence&quot; then click the map to add vertices.
             </p>
           )}
         </div>
@@ -271,7 +260,7 @@ export function GeofenceTester({ device }: Props) {
               </div>
               <div className="text-zinc-500 flex items-center gap-1">
                 <Clock size={10} /> {new Date(evt.timestamp).toLocaleTimeString()}
-                <span className="ml-1">{evt.lat.toFixed(5)}, {evt.lng.toFixed(5)}</span>
+                <span className="ml-1">Location captured privately</span>
               </div>
             </div>
           ))}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
+import { getAuthenticatedUser, createAuthenticatedSupabaseClient } from "@/lib/api/auth-helpers";
 import { getMyBusinesses } from "@/lib/api/business-helpers";
 import { isValidCoords } from "@/lib/geo-validation";
 import { logger } from "@/lib/logger";
@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const supabase = createAdminClient();
+    // The RPC uses auth.uid(); do not call it with the service-role client.
+    const supabase = createAuthenticatedSupabaseClient(request);
     const { data, error } = await supabase.rpc("create_business", {
       p_name: name.trim(),
       p_slug: slug.trim(),
@@ -80,6 +81,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "That slug is already taken" }, { status: 409 });
       }
       return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    if ((data as { id?: string } | null)?.id) {
+      await createAdminClient().from("businesses").update({ onboarding_completed_at: new Date().toISOString() }).eq("id", (data as { id: string }).id);
     }
 
     logger.info("businesses: created", {

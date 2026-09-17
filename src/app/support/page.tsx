@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Shield, MessageCircle, User, Wrench, HelpCircle, ChevronDown, ChevronUp, Mail, ExternalLink, Terminal } from "lucide-react";
+import { BookOpen, Shield, MessageCircle, User, Wrench, HelpCircle, ChevronDown, ChevronUp, Mail, ExternalLink, Terminal, Bell, Users } from "lucide-react";
+import { AppPageShell } from "@/components/AppPageShell";
 
 const CATEGORIES = [
   {
@@ -14,8 +14,32 @@ const CATEGORIES = [
   {
     icon: MessageCircle,
     title: "Matching & Chats",
-    desc: "How matching works, confirming matches, and using ephemeral chat.",
-    href: "/support/getting-started#matching",
+    desc: "Matching, schedules, mutual acceptance, and temporary messaging.",
+    href: "/support/matching",
+  },
+  {
+    icon: BookOpen,
+    title: "Schedules",
+    desc: "Recurring schedules, date ranges, specific dates, and vehicles.",
+    href: "/support/schedules",
+  },
+  {
+    icon: Bell,
+    title: "Notifications",
+    desc: "Browser permissions, web push, in-app fallback, and troubleshooting.",
+    href: "/support/notifications",
+  },
+  {
+    icon: Users,
+    title: "Community",
+    desc: "Feed controls, posts, media, privacy, and moderation.",
+    href: "/support/community",
+  },
+  {
+    icon: MessageCircle,
+    title: "Messaging",
+    desc: "Temporary conversations, expiration, privacy, and reports.",
+    href: "/support/messaging",
   },
   {
     icon: Shield,
@@ -68,19 +92,19 @@ const QUICK_TOPICS = [
   },
 ];
 
+const QUICK_LINKS = [
+  ["Matching", "/support/matching"],
+  ["Schedules", "/support/schedules"],
+  ["Notifications", "/support/notifications"],
+  ["Messaging", "/support/messaging"],
+  ["Community", "/support/community"],
+];
+
 export default function SupportPage() {
-  const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push("/")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-2xl font-bold">Support Center</h1>
-        </div>
+    <AppPageShell title="Support center">
 
         {/* Categories */}
         <div className="grid gap-3 mb-8">
@@ -88,7 +112,7 @@ export default function SupportPage() {
             <a
               key={cat.href}
               href={cat.href}
-              className="flex items-center gap-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 hover:border-blue-300 dark:hover:border-blue-700 transition group"
+              className="public-card flex items-center gap-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 hover:border-blue-300 dark:hover:border-blue-700 transition group"
             >
               <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                 <cat.icon size={24} className="text-blue-600" />
@@ -102,12 +126,21 @@ export default function SupportPage() {
           ))}
         </div>
 
+        <div className="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+          <h2 className="text-sm font-bold text-blue-950">Feature guides</h2>
+          <nav aria-label="Feature guides" className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+            {QUICK_LINKS.map(([label, href]) => <a key={href} href={href} className="text-sm font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-600">{label}</a>)}
+          </nav>
+        </div>
+
         {/* Quick topics */}
         <h2 className="text-lg font-bold mb-3">Quick Topics</h2>
         <div className="flex flex-col gap-2 mb-8">
           {QUICK_TOPICS.map((topic, i) => (
             <div key={i} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden transition">
               <button
+                aria-expanded={openIndex === i}
+                aria-controls={`support-answer-${i}`}
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 className="w-full flex items-center justify-between p-4 text-left"
               >
@@ -119,7 +152,7 @@ export default function SupportPage() {
                 )}
               </button>
               {openIndex === i && (
-                <div className="px-4 pb-4 pt-0">
+                <div id={`support-answer-${i}`} className="px-4 pb-4 pt-0">
                   <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{topic.a}</p>
                 </div>
               )}
@@ -128,18 +161,17 @@ export default function SupportPage() {
         </div>
 
         {/* Contact */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
+          <div className="public-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
           <h2 className="font-bold mb-2">Still need help?</h2>
           <p className="text-sm text-zinc-500 mb-4">Contact our support team and we&apos;ll get back to you.</p>
           <a
-            href="mailto:support@spotmatch.app"
+            href="mailto:support@parkingmeeters.com"
             className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition"
           >
             <Mail size={16} />
             Email Support
           </a>
         </div>
-      </div>
-    </div>
+    </AppPageShell>
   );
 }

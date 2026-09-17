@@ -17,10 +17,15 @@ export async function POST(request: NextRequest) {
     }
 
     const [expired, swept] = await Promise.all([expireStaleOffers(), sweepExclusiveSpots()]);
-    const { data: retention, error: retentionError } = await createAdminClient().rpc("cleanup_pilot_retention", {});
+    const db = createAdminClient();
+    const { data: retention, error: retentionError } = await db.rpc("cleanup_pilot_retention", {});
 
     if (retentionError) {
       throw new Error(`Retention cleanup failed: ${retentionError.message}`);
+    }
+    const { data: messengerDeleted, error: messengerError } = await db.rpc("cleanup_messenger_messages");
+    if (messengerError) {
+      throw new Error(`Messenger retention cleanup failed: ${messengerError.message}`);
     }
 
     logger.info("cron: offer sweep complete", {
@@ -32,6 +37,7 @@ export async function POST(request: NextRequest) {
       swept_offered: swept.offered,
       swept_fallback: swept.fallback,
       retention,
+      messenger_deleted: messengerDeleted ?? 0,
     });
 
     return NextResponse.json({
@@ -43,6 +49,7 @@ export async function POST(request: NextRequest) {
       swept_offered: swept.offered,
       swept_fallback: swept.fallback,
       retention,
+      messenger_deleted: messengerDeleted ?? 0,
     });
   } catch (err) {
     logger.error("cron: offer sweep failed", {

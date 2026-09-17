@@ -1,0 +1,9 @@
+"use client";
+import * as Icons from "lucide-react";
+import Link from "next/link";
+type Category = { slug: string; name: string; description: string; icon_name?: string; theme?: string; badge?: string | null; image?: { image_url?: string | null; thumbnail_url?: string | null; alt_text?: string | null } | null };
+const tones: Record<string, string> = { coral: "bg-[#fff0eb] text-[#d94f35]", sage: "bg-[#e6f0e8] text-[#4b805d]", navy: "bg-[#e7eef4] text-[#426d86]", sand: "bg-[#f6eee0] text-[#a36b2a]", lavender: "bg-[#f0e9f5] text-[#79538f]", sky: "bg-[#e7eef4] text-[#426d86]" };
+export function ExploreCategoryCard({ category }: { category: Category }) {
+  const Icon = (Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[category.icon_name || "MapPin"] || Icons.MapPin;
+  return <Link href={category.slug === "live-departure-signals" ? "#live-signals" : category.slug === "community" ? "/community" : category.slug === "businesses" ? "/business" : "#coming-soon"} className="group overflow-hidden rounded-2xl border border-[#dce3df] bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-[#e5a08d] hover:shadow-md">{category.image?.thumbnail_url && <img src={category.image.thumbnail_url} alt={category.image.alt_text || category.name} loading="lazy" className="aspect-[16/9] w-full object-cover" />}{!category.image?.thumbnail_url && <span className={`mx-4 mt-4 flex h-9 w-9 items-center justify-center rounded-xl ${tones[category.theme || "sage"] || tones.sage}`}><Icon className="h-4 w-4" aria-hidden="true" /></span>}<span className="block p-4 pt-3 text-sm font-black leading-tight text-[#17211e]">{category.name}</span><span className="block px-4 text-[11px] leading-4 text-[#71807b]">{category.description}</span>{category.badge && <span className="mx-4 mb-4 mt-3 inline-flex rounded-full bg-[#fff0eb] px-2 py-1 text-[9px] font-black uppercase tracking-wide text-[#d94f35]">{category.badge}</span>}</Link>;
+}

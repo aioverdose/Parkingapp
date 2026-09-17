@@ -4,10 +4,10 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import Map, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { SimulatedDevice } from "@/lib/testing/simulatedDevice";
-import { LONG_BEACH_CENTER, PARKING_SPEED_THRESHOLD, PARKING_DETECTION_WINDOW, MPH_TO_MS, MS_TO_MPH } from "@/lib/testing/constants";
+import { LONG_BEACH_CENTER, PARKING_SPEED_THRESHOLD, PARKING_DETECTION_WINDOW, MPH_TO_MS } from "@/lib/testing/constants";
 import type { SimulatedPosition, ParkingDetectionEvent } from "@/lib/testing/types";
 import { MAP_STYLE_URL } from "@/lib/map";
-import { Gauge, Car, AlertTriangle, CheckCircle, XCircle, Clock, Zap, ArrowDown, Play, Square } from "lucide-react";
+import { Gauge, Car, CheckCircle, XCircle, Clock, Zap, ArrowDown, Play, Square } from "lucide-react";
 
 interface Props {
   device: SimulatedDevice | null;
@@ -291,7 +291,7 @@ export function ParkingTester({ device, events, onParkingEvent, onPositionUpdate
                   <Clock size={10} />
                   {new Date(evt.timestamp).toLocaleTimeString()}
                 </div>
-                <div>{evt.lat.toFixed(5)}, {evt.lng.toFixed(5)}</div>
+                <div>Location captured privately</div>
                 <div>Speed: {evt.speed.toFixed(1)} m/s | Method: {evt.method}</div>
               </div>
             </div>

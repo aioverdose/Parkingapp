@@ -15,9 +15,18 @@ vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn() } }));
 import { GET as getBusiness, PATCH as updateBusiness } from "@/app/api/businesses/[id]/route";
 import { GET as getDashboard } from "@/app/api/businesses/[id]/dashboard/route";
 import { GET as getMembers, POST as addMember } from "@/app/api/businesses/[id]/members/route";
+import { GET as getKnownDepartures, POST as addKnownDeparture } from "@/app/api/businesses/[id]/known-departures/route";
 
 function request(method = "GET") {
   return new NextRequest("http://localhost/api/businesses/00000000-0000-0000-0000-000000000002", { method });
+}
+
+function departureRequest(method: string, body?: Record<string, unknown>) {
+  return new NextRequest("http://localhost/api/businesses/00000000-0000-0000-0000-000000000002/known-departures", {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
 }
 
 beforeEach(() => {
@@ -82,5 +91,43 @@ describe("B2B business authorization", () => {
 
     expect(response.status).toBe(403);
     expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("blocks a member of Business A from reading Business B known departures", async () => {
+    getBusinessMembership.mockResolvedValue(null);
+
+    const response = await getKnownDepartures(departureRequest("GET"), { params: Promise.resolve({ id: "00000000-0000-0000-0000-000000000002" }) });
+
+    expect(response.status).toBe(403);
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("blocks staff from creating known departures", async () => {
+    getBusinessMembership.mockResolvedValue({ role: "staff", network_id: "network-a" });
+
+    const response = await addKnownDeparture(departureRequest("POST", { category: "shift_end", day_of_week: [1], start_time: "17:00" }), { params: Promise.resolve({ id: "00000000-0000-0000-0000-000000000002" }) });
+
+    expect(response.status).toBe(403);
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("allows an admin to create and list known departures", async () => {
+    getBusinessMembership.mockResolvedValue({ role: "admin", network_id: "network-a" });
+    const row = { id: "departure-1", business_id: "00000000-0000-0000-0000-000000000002", category: "shift_end", day_of_week: [1], start_time: "17:00" };
+    const chain: any = {};
+    chain.from = vi.fn(() => chain);
+    chain.select = vi.fn(() => chain);
+    chain.eq = vi.fn(() => chain);
+    chain.order = vi.fn(() => chain);
+    chain.insert = vi.fn(() => chain);
+    chain.single = vi.fn().mockResolvedValue({ data: row, error: null });
+    createAdminClient.mockReturnValue(chain);
+
+    const created = await addKnownDeparture(departureRequest("POST", { category: "shift_end", day_of_week: [1], start_time: "17:00" }), { params: Promise.resolve({ id: row.business_id }) });
+    const listed = await getKnownDepartures(departureRequest("GET"), { params: Promise.resolve({ id: row.business_id }) });
+
+    expect(created.status).toBe(201);
+    expect(await created.json()).toEqual({ departure: row });
+    expect(listed.status).toBe(200);
   });
 });

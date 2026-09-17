@@ -73,7 +73,9 @@ export function useSpotQuest(): UseSpotQuestReturn {
   }, [userId]);
 
   useEffect(() => {
-    if (userId) refresh();
+    if (!userId) return;
+    const refreshTimer = window.setTimeout(() => { void refresh(); }, 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [userId, refresh]);
 
   const toggleGameModeHandler = useCallback(async (enabled: boolean) => {

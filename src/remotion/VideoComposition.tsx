@@ -1,0 +1,41 @@
+import React from "react";
+import { AbsoluteFill, Audio, Sequence, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import type { VideoProject, VideoScene } from "@/lib/video/types";
+
+function PhoneScreen({ screenId = "search" }: { screenId?: string }) {
+  const labels: Record<string, { title: string; detail: string }> = { search: { title: "Find parking", detail: "Near 2nd Street" }, options: { title: "Nearby options", detail: "Compare distance & restrictions" }, navigate: { title: "You're on your way", detail: "Start walking to your destination" } };
+  const screen = labels[screenId] ?? labels.search;
+  return <div className="vc-phone"><div className="vc-notch" /><div className="vc-appbar"><span>Parking Meeters</span><span className="vc-dot" /></div><div className="vc-search">⌕ <b>{screen.detail}</b></div><div className="vc-map"><i className="vc-marker one" /><i className="vc-marker two" /><i className="vc-marker three" /><span>Belmont Shore</span></div><div className="vc-card"><strong>{screen.title}</strong><small>Smart local coordination</small><button>{screenId === "navigate" ? "Start walking" : screenId === "options" ? "View options" : "Search"}</button></div></div>;
+}
+
+export function AnimatedPhoneMockup({ scene }: { scene: VideoScene }) {
+  const frame = useCurrentFrame(); const { fps } = useVideoConfig();
+  const enter = spring({ frame, fps, config: { damping: 14, stiffness: 90 } });
+  return <div style={{ transform: `translateY(${interpolate(enter, [0, 1], [180, 0])}px) rotate(${interpolate(enter, [0, 1], [5, 0])}deg)`, opacity: enter }}><PhoneScreen screenId={scene.visual.screenId} /></div>;
+}
+
+export function CaptionOverlay({ text, enabled }: { text?: string; enabled: boolean }) { return enabled && text ? <div className="vc-caption">{text}</div> : null; }
+
+function SceneVisual({ scene }: { scene: VideoScene }) {
+  const frame = useCurrentFrame(); const { fps } = useVideoConfig(); const reveal = spring({ frame, fps, config: { damping: 18 } });
+  if (scene.visual.type === "phone-mockup") return <AnimatedPhoneMockup scene={scene} />;
+  if (scene.visual.type === "map") return <div className="vc-map-scene"><div className="vc-road r1" /><div className="vc-road r2" /><div className="vc-road r3" /><i className="vc-large-marker m1" /><i className="vc-large-marker m2" /><i className="vc-large-marker m3" /><span className="vc-map-label">2nd Street · Belmont Shore</span></div>;
+  return <div className={`vc-feature ${scene.visual.type}`} style={{ opacity: reveal }}><div className="vc-orb" /><div className="vc-feature-line" /><div className="vc-feature-line short" /></div>;
+}
+
+export function CallToActionScene({ scene, brand }: { scene: VideoScene; brand: VideoProject["brand"] }) { return <div className="vc-cta" style={{ color: scene.textColor || "#ffffff" }}><div className="vc-cta-mark">P</div><h2>{scene.headline}</h2><p>{scene.body}</p><div className="vc-cta-button">{brand.website}</div></div>; }
+
+export function VideoComposition({ project }: { project: VideoProject }) {
+  useVideoConfig();
+  return <AbsoluteFill className="vc-root" style={{ background: project.brand.secondary }}>
+    <style>{`.vc-root{font-family:Arial,sans-serif;color:#fff;overflow:hidden}.vc-scene{padding:9%;display:flex;flex-direction:column;justify-content:center;position:relative}.vc-kicker{font-size:24px;font-weight:700;color:#93c5fd;margin-bottom:24px}.vc-headline{font-size:64px;line-height:1.03;font-weight:800;letter-spacing:-2px;max-width:88%;z-index:2}.vc-body{font-size:26px;line-height:1.25;color:#cbd5e1;margin-top:24px;max-width:82%;z-index:2}.vc-caption{position:absolute;bottom:8%;left:8%;right:8%;padding:16px 20px;background:rgba(15,23,42,.88);border-radius:14px;text-align:center;font-size:24px;font-weight:700;z-index:10}.vc-phone{width:330px;height:650px;border:10px solid #0f172a;border-radius:42px;background:#f8fafc;color:#0f172a;padding:30px 18px 18px;box-shadow:0 24px 50px #02061780;position:relative}.vc-notch{position:absolute;top:8px;left:105px;width:100px;height:18px;border-radius:0 0 15px 15px;background:#0f172a}.vc-appbar{display:flex;justify-content:space-between;font-weight:800;margin:8px 4px 18px}.vc-dot{width:13px;height:13px;border-radius:50%;background:#22c55e}.vc-search{background:#e2e8f0;border-radius:12px;padding:14px;font-size:13px}.vc-map{height:250px;background:linear-gradient(130deg,#bfdbfe,#dcfce7);margin:14px 0;border-radius:16px;position:relative;padding:18px;font-weight:800;color:#2563eb}.vc-marker,.vc-large-marker{position:absolute;width:20px;height:20px;background:#2563eb;border:4px solid #fff;border-radius:50%;box-shadow:0 2px 5px #0004}.vc-marker.one{top:60px;left:70px}.vc-marker.two{top:120px;right:70px}.vc-marker.three{bottom:40px;left:130px}.vc-card{padding:12px;border:1px solid #cbd5e1;border-radius:14px;display:flex;flex-direction:column;gap:5px}.vc-card small{color:#64748b}.vc-card button,.vc-cta-button{background:#2563eb;color:#fff;border:0;border-radius:9px;padding:10px;font-weight:700;margin-top:8px}.vc-map-scene{position:absolute;inset:0;background:linear-gradient(135deg,#172554,#0f766e);opacity:.9}.vc-road{position:absolute;height:34px;width:150%;background:#334155;transform:rotate(-25deg);left:-20%;border-top:3px solid #facc15;border-bottom:3px solid #facc15}.vc-road.r1{top:25%}.vc-road.r2{top:55%;transform:rotate(18deg)}.vc-road.r3{top:78%;transform:rotate(-8deg)}.vc-large-marker{width:32px;height:32px}.vc-large-marker.m1{top:35%;left:25%}.vc-large-marker.m2{top:54%;left:65%;background:#f59e0b}.vc-large-marker.m3{top:72%;left:42%;background:#22c55e}.vc-map-label{position:absolute;top:10%;left:9%;font-size:25px;font-weight:800}.vc-feature{position:relative;width:80%;height:50%;background:#ffffff12;border:1px solid #ffffff30;border-radius:32px;padding:15%;box-sizing:border-box}.vc-orb{width:100px;height:100px;background:#f59e0b;border-radius:50%;box-shadow:0 0 80px #f59e0b}.vc-feature-line{height:24px;background:#ffffffaa;border-radius:99px;margin-top:35px;width:90%}.vc-feature-line.short{width:60%;margin-top:14px;opacity:.5}.vc-cta{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:10%}.vc-cta-mark{width:100px;height:100px;border-radius:30px;background:#fff;color:#2563eb;font-size:70px;font-weight:900;display:flex;align-items:center;justify-content:center}.vc-cta h2{font-size:58px;line-height:1.05;margin:35px 0 0}.vc-cta p{font-size:25px;color:#dbeafe}.vc-cta-button{padding:16px 28px;background:#fff;color:#2563eb;border-radius:999px}.vc-phone+.vc-caption{bottom:4%}`}</style>
+    {project.scenes.reduce<{ scene: VideoScene; from: number }[]>((items, scene) => [...items, { scene, from: (items.at(-1)?.from ?? 0) + (items.at(-1)?.scene.durationInFrames ?? 0) }], []).map(({ scene, from }) => <Sequence key={scene.id} from={from} durationInFrames={scene.durationInFrames}><SceneFrame scene={scene} project={project} /></Sequence>)}
+    {project.music.enabled && project.music.sourceUrl ? <Audio src={project.music.sourceUrl} volume={project.music.volume} /> : null}
+  </AbsoluteFill>;
+}
+
+function SceneFrame({ scene, project }: { scene: VideoScene; project: VideoProject }) {
+  const frame = useCurrentFrame(); const opacity = scene.transition === "fade" ? interpolate(frame, [0, Math.min(12, scene.durationInFrames / 3), Math.max(12, scene.durationInFrames - 12), scene.durationInFrames], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) : 1;
+  const isCta = scene.sceneType === "cta";
+  return <AbsoluteFill className="vc-scene" style={{ background: scene.visual.background || project.brand.secondary, opacity, color: scene.textColor || "#ffffff" }}><div className="vc-kicker" style={{ color: scene.textColor || "#93c5fd" }}>{String(scene.order + 1).padStart(2, "0")} / {project.scenes.length}</div>{isCta ? <CallToActionScene scene={scene} brand={project.brand} /> : <><div className="vc-headline">{scene.headline}</div><div className="vc-body" style={{ color: scene.textColor || "#cbd5e1" }}>{scene.body}</div><div style={{ position: "absolute", right: "8%", bottom: "8%" }}><SceneVisual scene={scene} /></div></>}<CaptionOverlay text={scene.narration} enabled={scene.captionsEnabled} /></AbsoluteFill>;
+}

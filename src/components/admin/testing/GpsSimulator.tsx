@@ -4,9 +4,9 @@ import { useState, useCallback } from "react";
 import Map, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { SimulatedDevice } from "@/lib/testing/simulatedDevice";
-import { PRESET_LOCATIONS } from "@/lib/testing/presetLocations";
-import { LONG_BEACH_CENTER, MS_TO_MPH, MPH_TO_MS } from "@/lib/testing/constants";
 import type { SimulatedPosition } from "@/lib/testing/types";
+import { PRESET_LOCATIONS } from "@/lib/testing/presetLocations";
+import { LONG_BEACH_CENTER, MPH_TO_MS } from "@/lib/testing/constants";
 import { MAP_STYLE_URL } from "@/lib/map";
 import { MapPin, Radio, RadioOff, Zap, ArrowDown, Compass } from "lucide-react";
 
@@ -133,7 +133,7 @@ export function GpsSimulator({ device, onPositionUpdate }: Props) {
 
         {/* Manual coordinates */}
         <div>
-          <label className="text-xs font-medium text-zinc-500 mb-1 block">Manual Coordinates</label>
+           <label className="text-xs font-medium text-zinc-500 mb-1 block">Manual location input</label>
           <div className="flex gap-2 mb-2">
             <input
               type="number"

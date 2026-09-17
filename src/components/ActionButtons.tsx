@@ -18,7 +18,7 @@ export function ActionButtons({
       <button
         onClick={onPrimary}
         disabled={disabled}
-        className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 disabled:from-zinc-300 disabled:to-zinc-300 dark:disabled:from-zinc-700 dark:disabled:to-zinc-700 text-white text-base font-extrabold flex items-center justify-center gap-3 shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed disabled:shadow-none"
+        className="app-primary w-full h-14 rounded-2xl text-base font-extrabold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all duration-150 disabled:bg-zinc-300 disabled:text-white disabled:cursor-not-allowed disabled:shadow-none"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
           <line x1="10" y1="2" x2="10" y2="18" />
@@ -30,7 +30,7 @@ export function ActionButtons({
       <button
         onClick={onSecondary}
         disabled={disabled}
-        className="w-full h-14 rounded-2xl bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 disabled:border-zinc-100 dark:disabled:border-zinc-800 disabled:opacity-50 text-zinc-800 dark:text-zinc-200 text-base font-bold flex items-center justify-center gap-3 shadow-sm active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed"
+        className="w-full h-14 rounded-2xl bg-[var(--app-surface)] border-2 border-[var(--app-border)] hover:border-[var(--app-accent)] disabled:border-zinc-100 disabled:opacity-50 text-[var(--app-ink)] text-base font-bold flex items-center justify-center gap-3 shadow-sm active:scale-[0.98] transition-all duration-150 disabled:cursor-not-allowed"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="8.5" cy="8.5" r="6" />

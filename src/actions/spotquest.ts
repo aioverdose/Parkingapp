@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabaseAdmin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GameState, LeaderboardEntry, VehicleType } from "@/lib/spotquest/types";
 
 /** Fetch full game state for a user */
@@ -21,8 +22,9 @@ export async function getGameState(userId: string): Promise<GameState | null> {
 /** Fetch SpotQuest leaderboard */
 export async function getSpotQuestLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("spotquest_leaderboard" as any)
+  const legacy = supabase as unknown as SupabaseClient;
+  const { data, error } = await legacy
+    .from("spotquest_leaderboard")
     .select("*")
     .order("total_xp", { ascending: false })
     .limit(limit);
@@ -38,8 +40,9 @@ export async function getSpotQuestLeaderboard(limit = 50): Promise<LeaderboardEn
 /** Mark onboarding as seen */
 export async function markOnboardingSeen(userId: string): Promise<boolean> {
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("user_game_profile" as any)
+  const legacy = supabase as unknown as SupabaseClient;
+  const { error } = await legacy
+    .from("user_game_profile")
     .update({ onboarding_seen: true, updated_at: new Date().toISOString() })
     .eq("user_id", userId);
 
@@ -49,8 +52,9 @@ export async function markOnboardingSeen(userId: string): Promise<boolean> {
 /** Toggle game mode on/off */
 export async function toggleGameMode(userId: string, enabled: boolean): Promise<boolean> {
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("user_game_profile" as any)
+  const legacy = supabase as unknown as SupabaseClient;
+  const { error } = await legacy
+    .from("user_game_profile")
     .update({ game_mode_enabled: enabled, updated_at: new Date().toISOString() })
     .eq("user_id", userId);
 
@@ -60,8 +64,9 @@ export async function toggleGameMode(userId: string, enabled: boolean): Promise<
 /** Mark a badge as seen */
 export async function markBadgeSeen(userId: string, badgeId: string): Promise<boolean> {
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("user_badges" as any)
+  const legacy = supabase as unknown as SupabaseClient;
+  const { error } = await legacy
+    .from("user_badges")
     .update({ seen: true })
     .eq("user_id", userId)
     .eq("badge_id", badgeId);
@@ -72,8 +77,9 @@ export async function markBadgeSeen(userId: string, badgeId: string): Promise<bo
 /** Set player vehicle type */
 export async function setVehicleType(userId: string, vehicleType: VehicleType): Promise<boolean> {
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("user_game_profile" as any)
+  const legacy = supabase as unknown as SupabaseClient;
+  const { error } = await legacy
+    .from("user_game_profile")
     .update({ vehicle_type: vehicleType, updated_at: new Date().toISOString() })
     .eq("user_id", userId);
 

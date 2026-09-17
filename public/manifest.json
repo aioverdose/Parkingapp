@@ -1,8 +1,11 @@
 {
-  "name": "ParkingMeeters",
-  "short_name": "ParkShare",
+  "id": "/?app=parking-meeters",
+  "name": "Parking Meeters",
+  "short_name": "Parking Meeters",
   "description": "Find and share parking spots in real-time",
   "start_url": "/",
+  "scope": "/",
+  "lang": "en-US",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#2563eb",

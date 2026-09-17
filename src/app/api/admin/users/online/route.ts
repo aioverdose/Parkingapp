@@ -26,10 +26,10 @@ export async function GET(request: NextRequest) {
 
     const since = new Date(Date.now() - 90_000).toISOString();
     const { data, error } = await supabase
-      .from("driver_locations")
-      .select("user_id, recorded_at")
-      .gt("recorded_at", since)
-      .order("recorded_at", { ascending: false });
+      .from("users")
+      .select("id, last_seen_at")
+      .gt("last_seen_at", since)
+      .order("last_seen_at", { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
 
     const online = new Map<string, string>();
     for (const row of data ?? []) {
-      if (!online.has(row.user_id)) {
-        online.set(row.user_id, row.recorded_at);
+      if (row.last_seen_at && !online.has(row.id)) {
+        online.set(row.id, row.last_seen_at);
       }
     }
 

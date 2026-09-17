@@ -1,0 +1,10 @@
+import type { Metadata } from "next";
+import { Checklist, DocCard, DocNotice, DocSection, PublicDocShell } from "@/components/PublicDocShell";
+
+export const metadata: Metadata = { title: "Notifications Guide | Parking Meeters", description: "Understand browser, PWA, push, and in-app notifications." };
+
+export default function NotificationsGuide() { return <PublicDocShell title="Notifications" eyebrow="Support guide" intro="Notifications can call attention to a potential match or coordination update, but the app remains the source of truth.">
+  <div className="grid gap-4 sm:grid-cols-2"><DocCard title="Browser and PWA permissions">Your browser or installed PWA may ask for notification permission. Allow it for timely alerts, or manage it later in the browser or device settings.</DocCard><DocCard title="Web Push expectations">Push delivery depends on browser support, permission, connectivity, device settings, and configured VAPID push keys. Delivery is not guaranteed and may be delayed.</DocCard><DocCard title="In-app fallback">If push is unavailable, review the app&apos;s notification or activity area and the relevant match page. Do not rely on a push alert as proof that a space is available.</DocCard><DocCard title="Privacy">Notifications may reveal that an app event occurred. Use device lock-screen controls if you do not want previews visible to others.</DocCard></div>
+  <DocNotice><strong>Dashboard first:</strong> current match state and expiration are determined in the app, not by whether a push notification appeared.</DocNotice>
+  <DocSection title="Troubleshooting"><Checklist items={["Check permission for the site and the installed PWA.", "Turn off Do Not Disturb, battery restrictions, or browser focus modes that suppress alerts.", "Confirm you are signed in and have an active connection.", "Refresh the app and check in-app notifications when push is late.", "If the issue continues, note your browser, device, and approximate time before contacting support."]} /></DocSection>
+</PublicDocShell>; }

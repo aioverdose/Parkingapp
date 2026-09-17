@@ -27,9 +27,10 @@ export async function POST(
 
     const supabase = createAdminClient();
 
+    const now = new Date().toISOString();
     const { data: existingSpot } = await supabase
       .from("parking_spots")
-      .select("user_id, status")
+      .select("user_id, status, expires_at, departure_time")
       .eq("id", id)
       .single();
 
@@ -41,12 +42,22 @@ export async function POST(
       return NextResponse.json({ error: "You cannot claim your own spot" }, { status: 400 });
     }
 
+    if (
+      existingSpot.status !== "active" ||
+      existingSpot.expires_at <= now ||
+      existingSpot.departure_time <= now
+    ) {
+      return NextResponse.json({ error: "This spot is no longer available" }, { status: 409 });
+    }
+
     // Atomic claim: only succeeds if spot is still active
     const { data: updatedSpot, error: updateError } = await supabase
       .from("parking_spots")
       .update({ status: "taken", claimed_by: user.id })
       .eq("id", id)
       .eq("status", "active")
+      .gt("expires_at", now)
+      .gt("departure_time", now)
       .select()
       .maybeSingle();
 
@@ -63,8 +74,8 @@ export async function POST(
 
     await supabase.from("notifications").insert({
       user_id: existingSpot.user_id,
-      title: "Spot Claimed!",
-      message: `Your parking spot has been claimed by another user.`,
+      title: "Departure Coordination Started",
+      message: `Another member has started coordinating around your departure alert.`,
       type: "claim",
       read: false,
     });

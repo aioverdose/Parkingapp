@@ -49,9 +49,16 @@ export async function POST(request: NextRequest) {
     if (match_id) {
       const { data: match } = await supabase
         .from("spot_matches")
-        .select("spot_id")
+        .select("spot_id, spot_owner_id, seeker_id, status")
         .eq("id", match_id)
         .single();
+
+      if (!match || (match.spot_owner_id !== user.id && match.seeker_id !== user.id)) {
+        return NextResponse.json({ error: "You are not a participant in this match" }, { status: 403 });
+      }
+      if (match.status !== "confirmed") {
+        return NextResponse.json({ error: "Location sharing requires a confirmed match" }, { status: 409 });
+      }
 
       if (match) {
         const { data: spot } = await supabase

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getBusinessOperationalState } from "@/lib/api/business-helpers";
 import { sendPushToUser } from "@/lib/push";
+import { isSyntheticAccount } from "@/lib/testing/synthetic-account";
 
 const DEFAULT_MATCH_RADIUS_METERS = 200;
 const DEFAULT_OFFER_WINDOW_MS = 90_000;
@@ -44,6 +45,22 @@ export function getOfferWindowMs(): number {
 export function getMatchRadiusMeters(): number {
   const raw = Number(process.env.MATCH_RADIUS_METERS);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_MATCH_RADIUS_METERS;
+}
+
+/**
+ * Arrival matching is a reciprocal benefit: a member must have completed at
+ * least one handoff as the departing driver before receiving a spot offer.
+ * Keep this check server-side so clients cannot bypass the participation rule.
+ */
+export async function hasCompletedDepartureHandoff(userId: string): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("spot_matches")
+    .select("id")
+    .eq("spot_owner_id", userId)
+    .eq("status", "completed");
+
+  return !error && Boolean(data?.length);
 }
 
 export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -173,15 +190,25 @@ export async function findBestSeeker(
 
   if (!requests || requests.length === 0) return null;
 
+  const requestUserIds = [...new Set((requests as SeekCandidate[]).map((request) => request.user_id))];
+  const [{ data: ownerUser }, { data: requestUsers }] = await Promise.all([
+    supabase.from("users").select("email").eq("id", spot.user_id).maybeSingle(),
+    supabase.from("users").select("id, email").in("id", requestUserIds),
+  ]);
+  const syntheticOwner = isSyntheticAccount(ownerUser?.email);
+  const syntheticById = new Map((requestUsers ?? []).map((candidate) => [candidate.id, isSyntheticAccount(candidate.email)]));
+
   const excluded = new Set(excludeSeekerIds);
   const memberSet = networkMemberIds ? new Set(networkMemberIds) : null;
   const candidates: SeekCandidateScored[] = [];
 
   for (const req of requests as SeekCandidate[]) {
     if (req.user_id === spot.user_id) continue;
+    const syntheticCandidate = syntheticById.get(req.user_id);
+    // A production users row always has an email; tolerate sparse test doubles.
+    if (syntheticCandidate !== undefined && syntheticCandidate !== syntheticOwner) continue;
     if (excluded.has(req.user_id)) continue;
     if (memberSet && !memberSet.has(req.user_id)) continue;
-
     const distance = haversineDistance(spot.latitude, spot.longitude, req.latitude, req.longitude);
     if (distance > radiusMeters) continue;
 
@@ -193,17 +220,17 @@ export async function findBestSeeker(
 
   if (candidates.length === 0) return null;
 
-  const seekerIds = candidates.map((c) => c.user_id);
+  const candidateSeekerIds = candidates.map((c) => c.user_id);
 
   const [rankRes, usersRes, blockRes] = await Promise.all([
     supabase
       .from("user_ranking")
       .select("user_id, trust_score, rank_tier, rank_points, successful_handoffs, flags_received")
-      .in("user_id", seekerIds),
+      .in("user_id", candidateSeekerIds),
     supabase
       .from("users")
       .select("id, decline_count, no_show_count")
-      .in("id", seekerIds),
+      .in("id", candidateSeekerIds),
     supabase
       .from("user_blocks")
       .select("blocker_id, blocked_id")
@@ -313,12 +340,19 @@ export async function createExclusiveOffer(
     .eq("id", spot.user_id)
     .single();
 
-  const windowSec = Math.round(getOfferWindowMs() / 1000);
+  await supabase.from("notifications").insert({
+    user_id: spot.user_id,
+    title: "Potential match found",
+    message: "A nearby driver matches your departure signal. Review the match and confirm if you want to coordinate.",
+    type: "match",
+    match_id: inserted.id,
+  });
 
-  const pushResult = await sendPushToUser(seekerId, {
+  const [pushResult] = await Promise.all([
+    sendPushToUser(seekerId, {
     type: "exclusive_offer",
-    title: "You've got an exclusive spot offer!",
-    body: `${ownerUser?.name || "Someone"} is leaving a spot${spot.address ? ` on ${spot.address}` : ""}. You have ${windowSec}s to accept before it goes to someone else.`,
+    title: "Potential parking match",
+    body: `${ownerUser?.name || "A member"} shared a departure signal${spot.address ? ` near ${spot.address}` : " nearby"}. Review it before the offer expires.`,
     match_id: inserted.id,
     spot_id: spot.id,
     spot_lat: spot.latitude,
@@ -326,7 +360,15 @@ export async function createExclusiveOffer(
     spot_street: spot.address,
     departing_user_name: ownerUser?.name || "Someone",
     offer_expires_at: offerExpiresAt,
-  });
+    }),
+    sendPushToUser(spot.user_id, {
+      type: "match_request",
+      title: "Potential parking match",
+      body: "A nearby driver matches your departure signal. Review the match and confirm if you want to coordinate.",
+      match_id: inserted.id,
+      spot_id: spot.id,
+    }),
+  ]);
 
   // A user with no subscription can still act from the dashboard/in-app
   // notification. If every registered device failed, do not strand the spot

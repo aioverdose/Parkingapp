@@ -3,23 +3,32 @@
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { TOS_VERSION, TOS_CONTENT, hashTos } from "@/lib/tos";
 import { z } from "zod";
+import { checkRateLimit } from "@/lib/api/rate-limit";
 
 const signUpSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   name: z.string().min(1, "Name is required"),
+  username: z.string().regex(/^[a-z0-9_]{3,20}$/, "Username must be 3-20 characters using lowercase letters, numbers, or underscores"),
   vehicle_type: z.string().optional(),
-  phone: z.string().optional(),
+  phone: z.string().regex(/^\+1\d{10}$/, "A valid 10-digit phone number is required"),
+  age_confirmed: z.boolean().refine((val) => val === true, "You must confirm that you meet the minimum age requirement"),
   tos_accepted: z.boolean().refine((val) => val === true, "You must accept the Terms of Service"),
 });
 
 export async function signUpWithTosGate(formData: FormData) {
+  if (String(formData.get("website") ?? "").trim()) {
+    return { error: "Unable to create account" };
+  }
+
   const raw = {
     email: formData.get("email"),
     password: formData.get("password"),
     name: formData.get("name"),
+    username: String(formData.get("username") ?? "").trim().toLowerCase(),
     vehicle_type: formData.get("vehicle_type") || undefined,
     phone: formData.get("phone") || undefined,
+    age_confirmed: formData.get("age_confirmed") === "true",
     tos_accepted: formData.get("tos_accepted") === "true",
   };
 
@@ -28,14 +37,23 @@ export async function signUpWithTosGate(formData: FormData) {
     return { error: parsed.error.issues.map((e: { message: string }) => e.message).join(". ") };
   }
 
-  const { email, password, name, vehicle_type, phone } = parsed.data;
+  const { email, password, name, username, vehicle_type, phone } = parsed.data;
   const supabase = createAdminClient();
+  const signupLimit = await checkRateLimit(`signup:${email.toLowerCase()}`, 3, 60 * 60 * 1000);
+  if (!signupLimit.allowed) return { error: "Too many signup attempts. Please try again later." };
+
+  const { data: existingUsername } = await supabase
+    .from("users")
+    .select("id")
+    .eq("username", username)
+    .maybeSingle();
+  if (existingUsername) return { error: "That username is already in use" };
 
   const { data, error: signUpError } = await supabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: name },
+    user_metadata: { full_name: name, username },
   });
 
   if (signUpError) {
@@ -55,8 +73,10 @@ export async function signUpWithTosGate(formData: FormData) {
     id: data.user.id,
     email,
     name,
+    username,
     vehicle_type: vehicle_type || null,
     phone_number: phone || null,
+    age_confirmed_at: new Date().toISOString(),
     tos_version: TOS_VERSION,
     tos_hash: tosHash,
     tos_signed_at: new Date().toISOString(),

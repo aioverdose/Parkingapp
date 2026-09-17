@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, X, MessageCircle, MapPin, Car, User as UserIcon, Navigation, Zap } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabaseClient";
+import { MatchFitSummary } from "@/components/MatchFitSummary";
 
 interface Match {
   id: string;
@@ -22,6 +23,7 @@ interface Match {
     departure_time: string;
     return_time: string | null;
     vehicle_type: string | null;
+    relay_mode?: "imminent" | "scheduled";
   };
   spot_owner: {
     id: string;
@@ -214,6 +216,16 @@ export function MatchList({ onClose, onChatOpen, onTrackOpen }: MatchListProps) 
                     </span>
                   </div>
 
+                  <MatchFitSummary
+                    compact
+                    relayMode={match.spot.relay_mode}
+                    departureTime={match.spot.departure_time}
+                    returnTime={match.spot.return_time}
+                    spotVehicleType={match.spot.vehicle_type}
+                    participantVehicleType={otherUser?.vehicle_type}
+                    areaLabel="shared area"
+                  />
+
                   {match.status === "confirmed" ? (
                     <div className="flex gap-2">
                       <Button
@@ -318,6 +330,16 @@ export function MatchList({ onClose, onChatOpen, onTrackOpen }: MatchListProps) 
                       </>
                     )}
                   </div>
+
+                  <MatchFitSummary
+                    compact
+                    relayMode={match.spot.relay_mode}
+                    departureTime={match.spot.departure_time}
+                    returnTime={match.spot.return_time}
+                    spotVehicleType={match.spot.vehicle_type}
+                    participantVehicleType={otherUser?.vehicle_type}
+                    areaLabel="shared area"
+                  />
 
                   <div className="flex gap-2">
                     <Button

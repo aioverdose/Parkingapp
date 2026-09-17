@@ -30,12 +30,12 @@ src/
   actions/       — Server actions (rankings, social features)
   scripts/       — Utility scripts (seeding, TTL cleanup)
 supabase/
-  migrations/    — 15 SQL migration files (00001–00015)
+  migrations/    — 53 SQL migration files (core through business directory)
 ```
 
 ## Database Schema (Supabase)
 
-15 migrations have been created. Key tables:
+53 migrations have been created. Key tables:
 
 ### Core Tables
 - **users** — User profiles, auth, vehicle type, TOS acceptance, phone verification, ratings, flag count
@@ -169,14 +169,14 @@ The app uses a dark/cyan theme with:
 
 ## Development Status
 
-**Build**: Passes clean — 42/42 pages, zero TypeScript errors, zero lint errors  
+**Build**: Production build and TypeScript pass; automated tests pass. ESLint currently reports React 19 purity/effect violations and existing type-safety warnings that still need cleanup.
 **Git**: Not initialized (no commits yet)  
 **Environment**: `.env.local` exists but missing Supabase credentials — app shows map without spots until configured  
 **Deployment**: Vercel project linked but not deployed
 
-### 42 Routes (42 pages built)
-- 17 static pages (map, courses, profile, admin, etc.)
-- 25 dynamic API routes (spots, auth, flags, ratings, courses, etc.)
+### Current Routes
+- 50+ application pages, including consumer, business, admin, legal, support, and testing surfaces
+- 60+ dynamic API routes covering spots, matching, auth, business networks, payments, notifications, agents, and admin operations
 
 ### Queue for Vercel Deploy
 To deploy, you need to:
@@ -208,7 +208,7 @@ To deploy, you need to:
 - Flag misleading alerts support
 
 ## File Count Summary
-- 15 SQL migration files
+- 53 SQL migration files
 - ~20 page components (app router)
 - ~30 React components
 - 4 custom hooks

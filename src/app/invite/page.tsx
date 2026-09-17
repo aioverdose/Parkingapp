@@ -49,8 +49,8 @@ export default function InvitePage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "SpotMatch - Find Parking",
-          text: "Join me on SpotMatch! We help each other find parking spots.",
+           title: "Parking Meeters - Find Parking",
+           text: "Join me on Parking Meeters! We help each other find parking spots.",
           url: shareLink,
         });
       } catch (err: unknown) {
@@ -78,10 +78,10 @@ export default function InvitePage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="public-shell min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <div className="max-w-lg mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={() => router.push("/")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
+          <button aria-label="Back to Parking Meeters" onClick={() => router.push("/")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-2xl font-bold">Invite a Friend</h1>
@@ -94,18 +94,18 @@ export default function InvitePage() {
             </div>
             <div>
               <p className="font-bold">Share &amp; Earn</p>
-              <p className="text-xs text-zinc-500">Invite friends to join SpotMatch</p>
+             <p className="text-xs text-zinc-500">Invite friends to join Parking Meeters</p>
             </div>
           </div>
 
           <div className="flex gap-2 mb-4">
-            <button
+            <button aria-label="Share invite link"
               onClick={handleShare}
               className="flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition flex items-center justify-center gap-2"
             >
               <Share2 size={16} /> Share
             </button>
-            <button
+            <button aria-label={copied ? "Invite link copied" : "Copy invite link"}
               onClick={handleCopy}
               className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 transition flex items-center justify-center"
             >

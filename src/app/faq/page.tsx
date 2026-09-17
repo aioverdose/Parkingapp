@@ -47,7 +47,7 @@ const FAQS = [
   },
   {
     q: "How do I contact support?",
-    a: "Visit our Support Center for guides and contact options. You can also email us at support@spotmatch.app.",
+    a: "Visit our Support Center for guides and contact options. You can also email us at support@parkingmeeters.com.",
   },
 ];
 
@@ -56,10 +56,10 @@ export default function FAQPage() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="public-shell min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => router.push("/")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
+          <button aria-label="Back to Parking Meeters" onClick={() => router.push("/")} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-2xl font-bold">FAQ</h1>
@@ -69,6 +69,7 @@ export default function FAQPage() {
           {FAQS.map((faq, i) => (
             <div key={i} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden transition">
               <button
+                aria-expanded={openIndex === i}
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 className="w-full flex items-center justify-between p-4 text-left"
               >

@@ -1,0 +1,1 @@
+export const OSM_ATTRIBUTION = { display: "OpenStreetMap contributors", license: "ODbL 1.0", sourceUrl: "https://www.openstreetmap.org/copyright", text: "Data © OpenStreetMap contributors, available under the Open Database License (ODbL)." };

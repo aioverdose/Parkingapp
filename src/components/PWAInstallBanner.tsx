@@ -4,12 +4,19 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export function PWAInstallBanner() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [installName, setInstallName] = useState("ParkingMeeters");
 
   useEffect(() => {
+    setInstallName(localStorage.getItem("pwa_install_name") || "ParkingMeeters");
     const dismissedAt = localStorage.getItem("pwa_install_dismissed");
     if (dismissedAt) {
       const hoursSinceDismiss = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60);
@@ -18,7 +25,7 @@ export function PWAInstallBanner() {
 
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowBanner(true);
     };
 
@@ -59,7 +66,7 @@ export function PWAInstallBanner() {
           <Download size={20} className="text-blue-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold">Install ParkingMeeters</p>
+           <p className="text-sm font-bold">Install {installName}</p>
           <p className="text-xs text-zinc-500">Add to your home screen for quick access</p>
         </div>
         <div className="flex gap-1.5 shrink-0">

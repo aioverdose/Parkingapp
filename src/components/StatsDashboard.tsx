@@ -26,7 +26,8 @@ export function StatsDashboard({ onClose, onPostSpot }: StatsDashboardProps) {
   };
 
   useEffect(() => {
-    loadMetrics();
+    const loadTimer = window.setTimeout(() => { void loadMetrics(); }, 0);
+    return () => window.clearTimeout(loadTimer);
   }, []);
 
   if (loading) {

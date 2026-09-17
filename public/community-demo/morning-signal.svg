@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <rect width="1200" height="700" rx="48" fill="#e6f0e8"/>
+  <path d="M0 470 210 360l180 80 210-150 210 110 190-90 210 120v270H0Z" fill="#b7d3bd"/>
+  <path d="M100 570h1000" stroke="#17211e" stroke-width="24" stroke-linecap="round" opacity=".75"/>
+  <circle cx="310" cy="310" r="78" fill="#e85d3f"/>
+  <path d="M310 270v52l34 26" fill="none" stroke="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="100" y="150" fill="#17211e" font-family="Arial, sans-serif" font-size="58" font-weight="700">Morning departure</text>
+  <text x="104" y="215" fill="#4b805d" font-family="Arial, sans-serif" font-size="30" font-weight="700">Belmont Shore · community signal</text>
+</svg>

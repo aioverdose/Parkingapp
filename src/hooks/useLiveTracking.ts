@@ -104,16 +104,20 @@ export function useLiveTracking(
 
   useEffect(() => {
     if (!matchId || !myUserId) {
-      setPartnerLocation(null);
-      setPartnerSharing(false);
-      setIsTracking(false);
-      setPartnerStatus(null);
-      setPartnerDepartEtaSeconds(null);
-      return;
+      const reset = window.setTimeout(() => {
+        setPartnerLocation(null);
+        setPartnerSharing(false);
+        setIsTracking(false);
+        setPartnerStatus(null);
+        setPartnerDepartEtaSeconds(null);
+      }, 0);
+      return () => window.clearTimeout(reset);
     }
 
-    setIsTracking(true);
-    setError(null);
+    const stateTimer = window.setTimeout(() => {
+      setIsTracking(true);
+      setError(null);
+    }, 0);
 
     // Subscribe to realtime location updates for this match
     // RLS on driver_locations ensures we only receive data for confirmed matches
@@ -202,6 +206,7 @@ export function useLiveTracking(
       .subscribe();
 
     return () => {
+      window.clearTimeout(stateTimer);
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;

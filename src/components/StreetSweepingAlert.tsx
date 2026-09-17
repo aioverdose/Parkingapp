@@ -58,7 +58,7 @@ export function StreetSweepingAlert({ sweepingData, loading, userId }: StreetSwe
       alertTime = new Date(sweepDate.getTime() - 2 * 60 * 60 * 1000);
     }
 
-    const { error } = await (supabase as any).from("street_sweeping_alerts").insert({
+    const { error } = await supabase.from("street_sweeping_alerts").insert({
       user_id: userId,
       street_name,
       alert_time: alertTime.toISOString(),

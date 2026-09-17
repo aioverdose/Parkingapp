@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import { Coins, Loader2, Building2 } from "lucide-react";
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
   compact?: boolean;
 }
 
-export function CreditBalance({ credits, onCreditsUpdated, compact }: Props) {
+export function CreditBalance({ credits, compact }: Props) {
   const [purchasing, setPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,12 +71,12 @@ export function CreditBalance({ credits, onCreditsUpdated, compact }: Props) {
       </div>
 
       <div className="flex gap-2">
-        <a
+        <Link
           href="/business"
           className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition flex items-center justify-center gap-2"
         >
           <Building2 size={16} /> Business Plans
-        </a>
+        </Link>
         <button
           onClick={() => handlePurchase(1)}
           disabled={purchasing}

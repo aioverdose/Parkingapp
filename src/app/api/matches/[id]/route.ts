@@ -167,69 +167,58 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: true, status: "rejected" });
     }
 
-    // Confirm action
-    let newStatus: "pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired" = "pending";
-    if (isOwner && match.status === "pending") {
-      newStatus = "confirmed_by_owner";
-    } else if (isSeeker && match.status === "pending") {
-      newStatus = "confirmed_by_seeker";
-    } else if (isOwner && match.status === "confirmed_by_seeker") {
-      newStatus = "confirmed";
-    } else if (isSeeker && match.status === "confirmed_by_owner") {
-      newStatus = "confirmed";
-    } else {
-      return NextResponse.json({ error: "Cannot confirm in current state" }, { status: 400 });
+    // Accept atomically so simultaneous confirmations cannot overwrite the
+    // other participant's acceptance.
+    const { data: acceptedMatch, error: updateError } = await supabase.rpc("accept_match_atomically", {
+      p_match_id: id,
+      p_user_id: user.id,
+    });
+
+    if (updateError || !acceptedMatch) {
+      return NextResponse.json({ error: updateError?.message || "Cannot confirm in current state" }, { status: 400 });
     }
 
-    const { error: updateError } = await supabase
-      .from("spot_matches")
-      .update({ status: newStatus })
-      .eq("id", id);
+    const newStatus = acceptedMatch.status as "pending" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "expired";
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-
-    // If confirmed, deduct credits and finalize
+    // If confirmed, finalize without paywall or prior-handoff requirements.
     if (newStatus === "confirmed") {
-      // Check and deduct match credits from both parties
-      const { data: ownerCredits } = await supabase
-        .from("users")
-        .select("match_credits")
-        .eq("id", match.spot_owner_id)
-        .single();
-      const { data: seekerCredits } = await supabase
-        .from("users")
-        .select("match_credits")
-        .eq("id", match.seeker_id)
-        .single();
-
-      const ownerHas = (ownerCredits?.match_credits ?? 0) >= 1;
-      const seekerHas = (seekerCredits?.match_credits ?? 0) >= 1;
-
-      if (!ownerHas || !seekerHas) {
-        // Revert status back since credits are insufficient
-        await supabase
-          .from("spot_matches")
-          .update({ status: "pending" })
-          .eq("id", id);
-
-        return NextResponse.json({
-          error: "Insufficient match credits. Each party needs at least 1 credit to confirm. Purchase more from your profile.",
-          needs_credits: true,
-          owner_short: !ownerHas,
-          seeker_short: !seekerHas,
-        }, { status: 402 });
-      }
-
-      // Deduct 1 credit from each party
-      await supabase.rpc("deduct_match_credit", { p_user_id: match.spot_owner_id });
-      await supabase.rpc("deduct_match_credit", { p_user_id: match.seeker_id });
-
       await supabase
         .from("parking_spots")
         .update({ status: "taken", claimed_by: match.seeker_id })
         .eq("id", match.spot_id);
+
+      const { data: existingChat } = await supabase
+        .from("ephemeral_chats")
+        .select("id")
+        .eq("spot_id", match.spot_id)
+        .eq("sender_id", match.spot_owner_id)
+        .eq("receiver_id", match.seeker_id)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!existingChat) {
+        await supabase.from("ephemeral_chats").insert({
+          spot_id: match.spot_id,
+          sender_id: match.spot_owner_id,
+          receiver_id: match.seeker_id,
+          status: "active",
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
+      }
+
+      await Promise.all([
+        sendPushToUser(match.spot_owner_id, {
+          type: "match_confirmed",
+          title: "Match confirmed",
+          body: "Both members accepted. Open Messages to coordinate safely before the exchange.",
+          match_id: id,
+        }),
+        sendPushToUser(match.seeker_id, {
+          type: "match_confirmed",
+          title: "Match confirmed",
+          body: "Both members accepted. Open Messages to coordinate safely before the exchange.",
+          match_id: id,
+        }),
+      ]);
 
       // Award handoff XP, badges, and quest progress for both parties
       try {
@@ -264,6 +253,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           ? "The spot owner confirmed. Confirm to complete the match!"
           : "The seeker confirmed. Confirm to complete the match!",
         type: "match",
+      });
+      sendPushToUser(notifyUserId, {
+        type: "match_acceptance_needed",
+        title: "Match acceptance needed",
+        body: "The other member accepted. Review and accept to start coordination.",
+        match_id: id,
       });
     }
 

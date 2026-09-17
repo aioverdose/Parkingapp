@@ -29,8 +29,8 @@ export function useRealtimeSpots(userVehicleType?: string | null) {
     let currentUserId: string | null = null;
 
     if (!isSupabaseConfigured()) {
-      setLoading(false);
-      return;
+      const done = window.setTimeout(() => setLoading(false), 0);
+      return () => window.clearTimeout(done);
     }
 
     supabase.auth.getUser().then(({ data }) => {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
+import { isSyntheticAccount } from "@/lib/testing/synthetic-account";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +14,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "pending";
 
     const supabase = createAdminClient();
+    const { data: me } = await supabase.from("users").select("email").eq("id", user.id).maybeSingle();
+    const syntheticRequester = isSyntheticAccount(me?.email ?? user.email);
 
     const statusFilter =
       status === "all"
@@ -26,8 +29,8 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         spot:spot_id(*),
-        spot_owner:spot_owner_id(id, name, vehicle_type),
-        seeker:seeker_id(id, name, vehicle_type)
+        spot_owner:spot_owner_id(id, email, name, vehicle_type, schedule_arrival, schedule_departure),
+        seeker:seeker_id(id, email, name, vehicle_type, schedule_arrival, schedule_departure)
       `)
       .or(`spot_owner_id.eq.${user.id},seeker_id.eq.${user.id}`)
       .in("status", statusFilter as ("pending" | "offered" | "confirmed_by_owner" | "confirmed_by_seeker" | "confirmed" | "rejected" | "offer_declined" | "offer_expired" | "expired")[])
@@ -37,7 +40,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ matches: matches ?? [] });
+    const uniqueByPair = new Map<string, (typeof matches)[number]>();
+    for (const match of matches ?? []) {
+      const counterpart = match.spot_owner_id === user.id ? match.seeker : match.spot_owner;
+      if (isSyntheticAccount(counterpart?.email) !== syntheticRequester) continue;
+      const pair = [match.spot_owner_id, match.seeker_id].sort().join(":");
+      if (!uniqueByPair.has(pair)) uniqueByPair.set(pair, match);
+    }
+    return NextResponse.json({ matches: [...uniqueByPair.values()] });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },

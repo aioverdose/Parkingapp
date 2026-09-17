@@ -11,14 +11,16 @@ import { useLocationSharing } from "@/hooks/useLocationSharing";
 import { useBehaviorAgentPrefs } from "@/hooks/useBehaviorAgentPrefs";
 import { useHandoffAutomation } from "@/hooks/useHandoffAutomation";
 import type { HandoffAutomationAction } from "@/hooks/useHandoffAutomation";
+import { SPOT_PROTOCOL } from "@/lib/spot-protocol";
 import Map, { Marker, Source, Layer } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { INITIAL_VIEW_STATE, MAP_STYLE_URL } from "@/lib/map";
 import { BlockUserModal } from "@/components/BlockUserModal";
+import { MatchFitSummary } from "@/components/MatchFitSummary";
 import {
   Loader2, CheckCircle2, XCircle, Navigation, MapPin, Clock,
   Mic, MicOff, Volume2, VolumeX, Car, ArrowRight, Locate, Ban,
-  Radio, Send, ShieldAlert, Eye, Undo2, Timer, Sparkles,
+  Radio, Send, Eye, Undo2, Timer, Sparkles,
 } from "lucide-react";
 
 interface MatchData {
@@ -33,6 +35,7 @@ interface MatchData {
     departure_time: string;
     return_time: string | null;
     vehicle_type: string | null;
+    relay_mode?: "imminent" | "scheduled";
   };
   owner: { name: string | null; email: string | null; vehicle_type?: string | null };
   seeker: { name: string | null; email: string | null; vehicle_type?: string | null };
@@ -107,6 +110,7 @@ export default function MatchNotificationPage() {
   const [locationSharingEnabled, setLocationSharingEnabled] = useState(false);
   const hasSpokenRef = useRef(false);
   const sharingStartedRef = useRef(false);
+  const handleArrivedRef = useRef<() => void>(() => {});
 
   const isOwner = userId != null && match?.spot_owner_id === userId;
   const isActive = match?.status === "pending" || match?.status === "offered" || match?.status === "confirmed_by_owner" || match?.status === "confirmed_by_seeker";
@@ -118,7 +122,7 @@ export default function MatchNotificationPage() {
     destination: match ? { lat: match.spot.latitude, lng: match.spot.longitude } : null,
     voiceEnabled: ttsEnabled,
     onArrive: () => {
-      if (result !== "arrived" && !isOwner) handleArrived();
+      if (result !== "arrived" && !isOwner) handleArrivedRef.current();
     },
   });
 
@@ -218,24 +222,6 @@ export default function MatchNotificationPage() {
     enable();
   }, [isConfirmed, match, locationSharingEnabled, getToken]);
 
-  // Handle URL action param (from notification click)
-  useEffect(() => {
-    const action = searchParams.get("action");
-    if (!match || result || userId == null) return;
-    if (action === "accept") {
-      handleAccept();
-    } else if (action === "decline") {
-      handleDecline();
-    } else if (action === "arrived") {
-      if (match.spot_owner_id === userId) {
-        setDriverArrived(true);
-      } else {
-        handleArrived();
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, match, userId]);
-
   const updateMatchStatus = useCallback(async (action: string) => {
     const token = await getToken();
     if (!token) return;
@@ -296,6 +282,27 @@ export default function MatchNotificationPage() {
     }
     setActing(false);
   }, [acting, result, id, getToken, ttsEnabled, nav, refreshMatch]);
+
+  useEffect(() => {
+    handleArrivedRef.current = handleArrived;
+  }, [handleArrived]);
+
+  // Handle URL action param (from notification click).
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (!match || result || userId == null) return;
+    if (action === "accept") {
+      void handleAccept();
+    } else if (action === "decline") {
+      void handleDecline();
+    } else if (action === "arrived") {
+      if (match.spot_owner_id === userId) {
+        setDriverArrived(true);
+      } else {
+        void handleArrived();
+      }
+    }
+  }, [searchParams, match, userId, result, handleAccept, handleDecline, handleArrived]);
 
   const handleDeparted = useCallback(async () => {
     if (acting || departed) return;
@@ -505,19 +512,31 @@ export default function MatchNotificationPage() {
       <div className="max-w-lg mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold">Parking Handoff</h1>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              {isOwner ? "You're departing — a driver is coming to take your spot" : "You're arriving — navigate to the spot"}
-            </p>
-          </div>
-          <button
+         <div>
+           <h1 className="text-xl font-bold">{SPOT_PROTOCOL.name}</h1>
+           <p className="text-xs text-zinc-500 mt-0.5">
+             {isOwner ? "You're departing — a potential match is approaching" : "You're arriving — follow voice-guided directions"}
+           </p>
+         </div>
+           <button
             onClick={() => setTtsEnabled((v) => { const next = !v; if (!next) stopSpeech(); return next; })}
             className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition"
           >
-            {ttsEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-          </button>
-        </div>
+           {ttsEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+         </button>
+       </div>
+
+         {!isOwner && (isConfirmed || result === "accepted") && (
+          <div className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100">
+            <p className="font-bold">Hands-free arrival mode</p>
+            <p className="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">Keep your eyes on the road. The SPOT Protocol uses voice guidance and proximity updates. Only respond when safely stopped.</p>
+          </div>
+         )}
+
+         <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+           <p className="font-bold">Coordination signal, not a reservation</p>
+           <p className="mt-1">Public signs, posted rules, and actual conditions control. Use controls only while safely stopped; the app cannot guarantee that a space will be available.</p>
+         </div>
 
         {/* Result banner */}
         {result && (
@@ -538,14 +557,14 @@ export default function MatchNotificationPage() {
                 <CheckCircle2 size={24} className="text-green-600 shrink-0" />
                 <div>
                   <p className="font-bold text-green-700">Arrival Confirmed!</p>
-                  <p className="text-xs text-green-600">You're parked. Thank you for using ParkingMeeters.</p>
+                   <p className="text-xs text-green-600">You&apos;re parked. Thank you for using ParkingMeeters.</p>
                 </div>
               </>
             ) : result === "departed" ? (
               <>
                 <CheckCircle2 size={24} className="text-green-600 shrink-0" />
                 <div>
-                  <p className="font-bold text-green-700">You've pulled out!</p>
+                   <p className="font-bold text-green-700">You&apos;ve pulled out!</p>
                   <p className="text-xs text-green-600">The arriving driver can now park in your spot.</p>
                 </div>
               </>
@@ -553,11 +572,11 @@ export default function MatchNotificationPage() {
               <>
                 <CheckCircle2 size={24} className="text-green-600 shrink-0" />
                 <div>
-                  <p className="font-bold text-green-700">{isOwner ? "Handoff Confirmed!" : "Match Accepted!"}</p>
-                  <p className="text-xs text-green-600">
-                    {isOwner
-                      ? "Waiting for the driver. Live GPS tracking is active."
-                      : "Voice-guided navigation active."}
+                   <p className="font-bold text-green-700">{isConfirmed ? "Match Confirmed!" : "Match Pending"}</p>
+                   <p className="text-xs text-green-600">
+                     {isOwner
+                       ? "Both members accepted. Coordination is active."
+                       : "Your match is confirmed and guidance is active."}
                   </p>
                 </div>
               </>
@@ -571,7 +590,7 @@ export default function MatchNotificationPage() {
             <Sparkles size={24} className="text-violet-600 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="font-bold text-violet-700 dark:text-violet-200 text-sm">
-                Agent detected {automation.pendingAction === "arrived" ? "you parked" : "you pulled out"}
+                 SPOT Protocol detected {automation.pendingAction === "arrived" ? "you parked" : "you pulled out"}
               </p>
               <p className="text-xs text-violet-600 dark:text-violet-300 flex items-center gap-1 mt-0.5">
                 <Timer size={12} />
@@ -633,7 +652,7 @@ export default function MatchNotificationPage() {
                 </Marker>
 
                 {routeGeoJson && (
-                  <Source id="route" type="geojson" data={routeGeoJson as any}>
+                  <Source id="route" type="geojson" data={routeGeoJson as unknown as GeoJSON.Feature<GeoJSON.LineString>}>
                     <Layer
                       id="route-line"
                       type="line"
@@ -778,7 +797,7 @@ export default function MatchNotificationPage() {
         {!isOwner && nav.status === "off_route" && (
           <div className="mb-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
             <p className="font-bold text-amber-700 text-sm mb-2">Off Route Detected</p>
-            <p className="text-xs text-amber-600 mb-3">You've deviated from the route. Recalculating...</p>
+             <p className="text-xs text-amber-600 mb-3">You&apos;ve deviated from the route. Recalculating...</p>
             <button
               onClick={nav.dismissOffRoute}
               className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold transition"
@@ -801,8 +820,18 @@ export default function MatchNotificationPage() {
                   ? `Your spot — matched with ${match.seeker?.name || "this driver"}`
                   : `Shared by ${match.owner?.name || "someone"}`}
               </p>
-            </div>
-          </div>
+           </div>
+
+           <MatchFitSummary
+             compact
+             relayMode={match.spot.relay_mode}
+             departureTime={match.spot.departure_time}
+             returnTime={match.spot.return_time}
+             spotVehicleType={match.spot.vehicle_type}
+             participantVehicleType={isOwner ? match.seeker?.vehicle_type : match.owner?.vehicle_type}
+             areaLabel="shared area"
+           />
+         </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
             <span className="flex items-center gap-1">
@@ -991,7 +1020,7 @@ export default function MatchNotificationPage() {
               onClick={handleArrived}
               className="mt-3 w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition"
             >
-              Confirm I've Parked
+               Confirm I&apos;ve Parked
             </button>
           </div>
         )}

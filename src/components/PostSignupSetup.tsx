@@ -3,7 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { Loader2, MapPin, Download, Check, Phone, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, MapPin, Download, Check, Phone, RefreshCw } from "lucide-react";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
 
 type Step = "phone" | "location" | "install" | "done";
 
@@ -40,19 +45,10 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
   const [locationLoading, setLocationLoading] = useState(false);
 
   // Install state
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installAccepted, setInstallAccepted] = useState(false);
   const [installSkipped, setInstallSkipped] = useState(false);
   const installPromptRef = useRef<boolean>(false);
-
-  // Auto-send code when phone step mounts with pre-filled phone
-  const sentRef = useRef(false);
-  useEffect(() => {
-    if (initialPhone && !sentRef.current) {
-      sentRef.current = true;
-      handleSendCode();
-    }
-  }, [initialPhone]);
 
   // Cooldown timer
   useEffect(() => {
@@ -67,7 +63,7 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
     installPromptRef.current = true;
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
@@ -78,7 +74,7 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
     return data.session?.access_token;
   }, [supabase]);
 
-  const handleSendCode = async () => {
+  const handleSendCode = useCallback(async () => {
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 10) return;
     setSending(true);
@@ -102,7 +98,16 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
       setCooldown(COOLDOWN_SECONDS);
     } catch { setPhoneError("Failed to send code"); }
     setSending(false);
-  };
+  }, [getToken, phone]);
+
+  // Auto-send code when phone step mounts with pre-filled phone.
+  const sentRef = useRef(false);
+  useEffect(() => {
+    if (initialPhone && !sentRef.current) {
+      sentRef.current = true;
+      void handleSendCode();
+    }
+  }, [initialPhone, handleSendCode]);
 
   const handleVerify = async () => {
     if (code.length < 6) return;
@@ -167,7 +172,7 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
   };
 
   const handleFinish = () => {
-    router.replace("/");
+    router.replace("/profile/setup");
   };
 
   const handleSkipAll = () => {
@@ -215,12 +220,6 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
                 >
                   {sending ? <Loader2 size={18} className="animate-spin" /> : "Send Code"}
                 </button>
-                <button
-                  onClick={() => setStep("location")}
-                  className="w-full text-sm text-zinc-400 hover:text-zinc-600 font-medium"
-                >
-                  Skip
-                </button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -260,12 +259,6 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
                     </button>
                   )}
                 </div>
-                <button
-                  onClick={() => setStep("location")}
-                  className="w-full text-sm text-zinc-400 hover:text-zinc-600 font-medium"
-                >
-                  Skip phone verification
-                </button>
               </div>
             )}
           </>
@@ -279,7 +272,7 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
                 <MapPin size={32} className="text-blue-600" />
               </div>
               <h2 className="text-xl font-bold">Enable Location</h2>
-              <p className="text-sm text-zinc-500">See nearby spots and get notified when you're close to a match.</p>
+              <p className="text-sm text-zinc-500">See nearby spots and get notified when you&apos;re close to a match.</p>
             </div>
 
             {locationGranted ? (
@@ -342,7 +335,7 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
             ) : (
               <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-sm text-zinc-600 space-y-2">
                 <p className="font-medium">Not installable from this browser.</p>
-                <p className="text-xs">Open in Chrome or Samsung Internet and look for "Add to Home Screen" in the menu.</p>
+                 <p className="text-xs">Open in Chrome or Samsung Internet and look for &quot;Add to Home Screen&quot; in the menu.</p>
               </div>
             )}
 
@@ -373,7 +366,7 @@ export function PostSignupSetup({ phone: initialPhone }: { phone?: string }) {
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mx-auto">
                 <Check size={32} className="text-green-600" />
               </div>
-              <h2 className="text-xl font-bold">You're All Set!</h2>
+               <h2 className="text-xl font-bold">You&apos;re All Set!</h2>
               <p className="text-sm text-zinc-500">
                 {phoneVerified ? "Phone verified. " : ""}
                 {locationGranted ? "Location sharing active. " : ""}

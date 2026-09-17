@@ -1,5 +1,6 @@
 import { createAdminClient } from "./supabaseAdmin";
 import { sendSms, isTwilioConfigured } from "./twilio";
+import { createHash, randomInt } from "node:crypto";
 
 export function isPhoneVerificationEnabled(): boolean {
   return process.env.PHONE_VERIFICATION_ENABLED === "true";
@@ -11,7 +12,11 @@ export function isPhoneVerificationEnforced(): boolean {
 }
 
 function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
+}
+
+function hashOtp(code: string): string {
+  return createHash("sha256").update(code).digest("hex");
 }
 
 function isE164(phone: string): boolean {
@@ -41,7 +46,8 @@ export async function requestOtp(phone: string, userId: string) {
     .insert({
       user_id: userId,
       phone: cleanPhone,
-      code,
+      code: null,
+      code_hash: hashOtp(code),
       expires_at: expiresAt,
     });
 
@@ -62,7 +68,7 @@ export async function verifyOtp(phone: string, code: string, userId: string) {
     .select("*")
     .eq("user_id", userId)
     .eq("phone", cleanPhone)
-    .eq("code", code)
+    .eq("code_hash", hashOtp(code))
     .eq("used", false)
     .gte("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })
@@ -76,7 +82,7 @@ export async function verifyOtp(phone: string, code: string, userId: string) {
       .select("expires_at")
       .eq("user_id", userId)
       .eq("phone", cleanPhone)
-      .eq("code", code)
+    .eq("code_hash", hashOtp(code))
       .eq("used", false)
       .order("created_at", { ascending: false })
       .limit(1)

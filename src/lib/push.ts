@@ -43,9 +43,12 @@ export async function sendPushToUser(
         payloadStr,
       );
       sent++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       failed++;
-      if (err?.statusCode === 410 || err?.statusCode === 404) {
+      const statusCode = typeof err === "object" && err !== null && "statusCode" in err
+        ? (err.statusCode as number)
+        : undefined;
+      if (statusCode === 410 || statusCode === 404) {
         staleEndpoints.push(sub.endpoint);
       }
     }

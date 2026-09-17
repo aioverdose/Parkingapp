@@ -1,157 +1,82 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { Loader2, MapPin, Clock, User, RefreshCw, Calendar } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle2, Clock, Loader2, RefreshCw, User } from "lucide-react";
 
-interface PotentialMatchUser {
-  user_id: string;
-  user_name: string | null;
-  user_email: string | null;
-  user_phone: string | null;
-  spot_id: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  departure_time: string;
-  return_time: string | null;
-  relay_mode: "imminent" | "scheduled";
+type Person = { id: string; name: string | null; email: string | null };
+type Match = {
+  id: string;
+  status: string;
   created_at: string;
+  spot?: { address?: string | null; departure_time?: string | null; return_time?: string | null; relay_mode?: string | null } | null;
+  spot_owner?: Person | null;
+  seeker?: Person | null;
+};
+
+const activeStatuses = new Set(["pending", "offered", "confirmed_by_owner", "confirmed_by_seeker", "confirmed"]);
+
+function formatDate(value?: string | null) {
+  return value ? new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Time unavailable";
+}
+
+function statusLabel(status: string) {
+  return status.replaceAll("_", " ");
 }
 
 export default function PotentialMatchesPage() {
-  const [spots, setSpots] = useState<PotentialMatchUser[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const getToken = async () => (await createBrowserClient().auth.getSession()).data.session?.access_token;
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const supabase = createBrowserClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) { setError("Not authenticated"); setLoading(false); return; }
-
-    const res = await fetch("/api/admin/potential-matches", {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error || `Server error ${res.status}`);
-    } else {
-      const data = await res.json();
-      setSpots(data.spots ?? []);
-    }
+    const token = await getToken();
+    if (!token) { setError("Not authenticated"); setLoading(false); return; }
+    const response = await fetch("/api/admin/potential-matches", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) setError(body.error || `Server error ${response.status}`);
+    else setMatches(body.matches ?? []);
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const activeSpots = spots.filter((s) => new Date(s.departure_time) > new Date());
-  const expiredSpots = spots.filter((s) => new Date(s.departure_time) <= new Date());
+  const clearAll = async () => {
+    if (!window.confirm("Clear all matches and their match notifications? This cannot be undone.")) return;
+    setClearing(true); setError(null); setMessage(null);
+    const token = await getToken();
+    if (!token) { setError("Not authenticated"); setClearing(false); return; }
+    const response = await fetch("/api/admin/potential-matches", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) setError(body.error || "Could not clear matches");
+    else { setMatches([]); setMessage(`Cleared ${body.cleared ?? 0} matches.`); }
+    setClearing(false);
+  };
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Potential Matches</h1>
-          <p className="text-sm text-zinc-500 mt-1">Users with active parking spots that have departure/return times set</p>
-        </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition"
-        >
-          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-        </button>
-      </div>
+  const active = matches.filter((match) => activeStatuses.has(match.status));
+  const historical = matches.filter((match) => !activeStatuses.has(match.status));
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4 mb-4">
-          <p className="text-sm text-red-600 font-medium">{error}</p>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>
-      ) : (
-        <>
-          <div className="mb-3">
-            <h2 className="font-bold text-sm flex items-center gap-2">
-              <Clock size={14} className="text-emerald-500" /> Active ({activeSpots.length})
-            </h2>
-          </div>
-          {activeSpots.length === 0 ? (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-8 text-center mb-6">
-              <MapPin size={40} className="mx-auto text-zinc-300 mb-3" />
-              <p className="text-zinc-500 text-sm">No active spots with scheduled times</p>
-            </div>
-          ) : (
-            <div className="space-y-2 mb-8">
-              {activeSpots.map((s) => (
-                <SpotCard key={s.spot_id} spot={s} />
-              ))}
-            </div>
-          )}
-
-          {expiredSpots.length > 0 && (
-            <>
-              <h2 className="font-bold text-sm flex items-center gap-2 mb-3 mt-6">
-                <Calendar size={14} className="text-zinc-400" /> Past ({expiredSpots.length})
-              </h2>
-              <div className="space-y-2 opacity-60">
-                {expiredSpots.map((s) => (
-                  <SpotCard key={s.spot_id} spot={s} />
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
-    </div>
-  );
+  return <main className="mx-auto max-w-5xl p-6">
+    <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+      <div><h1 className="text-2xl font-bold">Potential Matches</h1><p className="mt-1 text-sm text-zinc-500">Live match records, participants, acceptance status, and scheduled handoff times.</p></div>
+      <div className="flex gap-2"><button type="button" onClick={() => void load()} disabled={loading || clearing} className="flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-sm font-bold text-zinc-600 hover:text-zinc-900 disabled:opacity-50"><RefreshCw size={16} className={loading ? "animate-spin" : ""} />Refresh</button><button type="button" onClick={() => void clearAll()} disabled={clearing || matches.length === 0} className="flex h-10 items-center gap-2 rounded-xl bg-red-600 px-3 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"><AlertTriangle size={16} />{clearing ? "Clearing..." : "Clear all matches"}</button></div>
+    </header>
+    {message && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{message}</p>}
+    {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
+    {loading ? <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div> : <>
+      <section className="mt-7"><h2 className="mb-3 flex items-center gap-2 text-sm font-bold"><Clock size={15} className="text-emerald-500" />Active matches ({active.length})</h2>{active.length === 0 ? <Empty text="No active matches" /> : <div className="space-y-3">{active.map((match) => <MatchCard key={match.id} match={match} />)}</div>}</section>
+      {historical.length > 0 && <section className="mt-8 opacity-60"><h2 className="mb-3 flex items-center gap-2 text-sm font-bold"><Calendar size={15} className="text-zinc-400" />History ({historical.length})</h2><div className="space-y-3">{historical.map((match) => <MatchCard key={match.id} match={match} />)}</div></section>}
+    </>}
+  </main>;
 }
 
-function SpotCard({ spot }: { spot: PotentialMatchUser }) {
-  const departsIn = Math.round((new Date(spot.departure_time).getTime() - Date.now()) / 60000);
+function Empty({ text }: { text: string }) { return <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center text-sm text-zinc-500">{text}</div>; }
 
-  return (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <User size={14} className="text-zinc-400 shrink-0" />
-            <span className="text-sm font-bold truncate">{spot.user_name || spot.user_email || "Unknown"}</span>
-            {spot.user_phone && (
-              <span className="text-[10px] text-zinc-400">{spot.user_phone}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <MapPin size={12} />
-            <span className="truncate">{spot.address || "No address"}</span>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
-              <Clock size={10} />
-              Departs {new Date(spot.departure_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              {departsIn > 0 && departsIn < 120 && (
-                <span className="text-emerald-600 dark:text-emerald-400">({departsIn}m)</span>
-              )}
-            </span>
-            {spot.return_time && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
-                Returns {new Date(spot.return_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-              spot.relay_mode === "imminent"
-                ? "bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400"
-                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-            }`}>
-              {spot.relay_mode}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+function MatchCard({ match }: { match: Match }) {
+  return <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><User size={15} className="text-zinc-400" /><span className="font-bold">{match.spot_owner?.name || match.spot_owner?.email || "Unknown owner"}</span><span className="text-zinc-400">↔</span><span className="font-bold">{match.seeker?.name || match.seeker?.email || "Unknown seeker"}</span></div><p className="mt-2 text-xs text-zinc-500">{match.spot?.address || "No address"}</p></div><span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold uppercase text-blue-700">{statusLabel(match.status)}</span></div><div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-600"><span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-1"><Clock size={12} /> Departure: {formatDate(match.spot?.departure_time)}</span>{match.spot?.return_time && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-800"><CheckCircle2 size={12} /> Return: {formatDate(match.spot.return_time)}</span>}<span className="rounded-full bg-zinc-100 px-2 py-1">Created: {formatDate(match.created_at)}</span></div></article>;
 }

@@ -1,0 +1,1 @@
+export default function SettingsPage() { return <main className="mx-auto max-w-3xl p-5 md:p-10"><h1 className="text-3xl font-black text-blue-950">Import Settings</h1><p className="mt-4 text-zinc-600">Area thresholds, chunk sizing, rate limits, and refresh defaults are managed server-side through the settings API. No provider URL is accepted from the browser.</p></main>; }

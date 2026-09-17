@@ -143,13 +143,13 @@ export function CommunityAgreementModal({ open, onAccept, onClose }: CommunityAg
 
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
                 <p className="text-sm font-bold text-red-700 dark:text-red-400">
-                  Selling public parking spaces is ILLEGAL
+                   Selling or reserving public parking spaces is ILLEGAL
                 </p>
                 <p className="text-xs text-red-600 dark:text-red-500 mt-1">
-                  Under California law, it is illegal to sell, rent, or charge for
-                  public on-street parking spaces. We only sell access to our
-                  matching technology — never a spot, and never a reservation.
-                  Violators may face fines and towing.
+                   Applicable local and California rules may prohibit selling, renting,
+                    or charging for public on-street parking spaces. Parking Meeters provides
+                    coordination technology — never a spot, space, right, or reservation.
+                   Check official city and state guidance; violations may result in enforcement action.
                 </p>
               </div>
 

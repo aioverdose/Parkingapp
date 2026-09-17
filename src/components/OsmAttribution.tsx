@@ -1,0 +1,1 @@
+export function OsmAttribution() { return <p className="text-xs text-zinc-500">Data © <a className="underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>, available under the ODbL. Reference data only; availability is not guaranteed.</p>; }

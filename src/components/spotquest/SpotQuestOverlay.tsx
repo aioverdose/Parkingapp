@@ -49,7 +49,8 @@ export function SpotQuestOverlay() {
   // Show tutorial on first game mode enable
   useEffect(() => {
     if (gameMode && state && !state.profile.onboarding_seen) {
-      setShowTutorial(true);
+      const tutorialTimer = window.setTimeout(() => setShowTutorial(true), 0);
+      return () => window.clearTimeout(tutorialTimer);
     }
   }, [gameMode, state]);
 

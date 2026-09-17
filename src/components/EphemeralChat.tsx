@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { sendChatMessage, getChatMessages, closeChat } from "@/actions/social";
+import { sendChatMessage, getChatMessages, closeChat, acceptChat } from "@/actions/social";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { Loader2, Send, X, MessageSquare } from "lucide-react";
 
@@ -20,11 +20,12 @@ interface EphemeralChatProps {
   onClose: () => void;
 }
 
-export function EphemeralChat({ chatId, spotId, otherUserName, onClose }: EphemeralChatProps) {
+export function EphemeralChat({ chatId, otherUserName, onClose }: EphemeralChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const supabase = createBrowserClient();
@@ -37,11 +38,19 @@ export function EphemeralChat({ chatId, spotId, otherUserName, onClose }: Epheme
 
   useEffect(() => {
     async function load() {
-      const msgs = await getChatMessages(chatId);
+      const [msgs, settings] = await Promise.all([
+        getChatMessages(chatId),
+        supabase
+          .from("messenger_conversation_settings")
+          .select("free_form_enabled, mutual_acceptance_at")
+          .eq("conversation_id", chatId)
+          .maybeSingle(),
+      ]);
       setMessages(msgs as ChatMessage[]);
+      setAccepted(Boolean(settings.data?.free_form_enabled && settings.data.mutual_acceptance_at));
     }
-    load();
-  }, [chatId]);
+    void load();
+  }, [chatId, supabase]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -82,6 +91,12 @@ export function EphemeralChat({ chatId, spotId, otherUserName, onClose }: Epheme
   const handleClose = async () => {
     await closeChat(chatId);
     onClose();
+  };
+
+  const handleAccept = async () => {
+    const result = await acceptChat(chatId);
+    if (result.error) setError(result.error);
+    else setAccepted(true);
   };
 
   return (
@@ -126,6 +141,12 @@ export function EphemeralChat({ chatId, spotId, otherUserName, onClose }: Epheme
 
       {error && <p className="px-4 pb-1 text-xs text-red-500">{error}</p>}
 
+      {!accepted && (
+        <div className="border-t border-zinc-200 bg-[#fff0eb] p-3 text-center dark:border-zinc-800">
+          <p className="mb-2 text-xs text-[#71807b]">Accept this coordination request before free-form messaging begins.</p>
+          <button type="button" onClick={() => void handleAccept()} className="rounded-xl bg-[#e85d3f] px-4 py-2 text-xs font-bold text-white">Accept coordination</button>
+        </div>
+      )}
       <div className="p-4 pt-2 border-t border-zinc-200 dark:border-zinc-800">
         <form
           onSubmit={(e) => { e.preventDefault(); handleSend(); }}
@@ -137,12 +158,12 @@ export function EphemeralChat({ chatId, spotId, otherUserName, onClose }: Epheme
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type a message..."
             maxLength={500}
-            disabled={sending}
+            disabled={sending || !accepted}
             className="flex-1 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
           />
           <button
             type="submit"
-            disabled={!input.trim() || sending}
+            disabled={!input.trim() || sending || !accepted}
             className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 text-white flex items-center justify-center transition"
           >
             {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}

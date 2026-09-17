@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { SimulatedDevice } from "@/lib/testing/simulatedDevice";
 import { TEST_USERS } from "@/lib/testing/constants";
@@ -12,7 +12,7 @@ import { TrackingMonitor } from "./TrackingMonitor";
 import { EtaTester } from "./EtaTester";
 import { GeofenceTester } from "./GeofenceTester";
 import { ScenarioRunner } from "./ScenarioRunner";
-import { MatchScenario } from "./MatchScenario";
+import SpotProtocolDemo from "./SpotProtocolDemo";
 import { AiTestRunner } from "./AiTestRunner";
 import { VirtualEnvironmentSandbox } from "./VirtualEnvironment";
 import { DeviceTestMonitor } from "./DeviceTestMonitor";
@@ -26,7 +26,7 @@ const PANELS: { key: TestingPanel; label: string; icon: React.ReactNode; phase: 
   { key: "eta", label: "ETA Tester", icon: <MapPin size={16} />, phase: 2 },
   { key: "geofence", label: "Geofence Tester", icon: <Fence size={16} />, phase: 2 },
   { key: "scenarios", label: "Scenario Runner", icon: <Play size={16} />, phase: 2 },
-  { key: "match", label: "Match Scenario", icon: <Navigation size={16} />, phase: 2 },
+  { key: "match", label: "SPOT Live Demo", icon: <Navigation size={16} />, phase: 2 },
   { key: "ai-test", label: "AI Test", icon: <Brain size={16} />, phase: 2 },
   { key: "venv", label: "Virtual Env", icon: <Target size={16} />, phase: 2 },
   { key: "device", label: "Device Tests", icon: <Smartphone size={16} />, phase: 2 },
@@ -38,15 +38,9 @@ export function TestSuiteTab() {
   const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0);
   const [events, setEvents] = useState<ParkingDetectionEvent[]>([]);
   const [positions, setPositions] = useState<SimulatedPosition[]>([]);
-  const deviceRef = useRef<SimulatedDevice | null>(null);
+  const [device, setDevice] = useState(() => new SimulatedDevice(supabase, TEST_USERS[0].id));
 
-  useEffect(() => {
-    const device = new SimulatedDevice(supabase, TEST_USERS[selectedDeviceIndex].id);
-    deviceRef.current = device;
-    return () => device.destroy();
-  }, [selectedDeviceIndex, supabase]);
-
-  const getDevice = useCallback(() => deviceRef.current, []);
+  useEffect(() => () => device.destroy(), [device]);
 
   const handlePositionUpdate = useCallback((pos: SimulatedPosition) => {
     setPositions((prev) => [...prev.slice(-599), pos]);
@@ -57,15 +51,13 @@ export function TestSuiteTab() {
   }, []);
 
   const handleResetAll = useCallback(() => {
-    const device = deviceRef.current;
-    if (device) {
-      device.destroy();
-      deviceRef.current = new SimulatedDevice(supabase, TEST_USERS[selectedDeviceIndex].id);
-    }
+    const nextDevice = new SimulatedDevice(supabase, TEST_USERS[selectedDeviceIndex].id);
+    device.destroy();
+    setDevice(nextDevice);
     setEvents([]);
     setPositions([]);
     localStorage.removeItem("testsuite_last_position");
-  }, [selectedDeviceIndex, supabase]);
+  }, [device, selectedDeviceIndex, supabase]);
 
   return (
     <div className="h-screen flex flex-col">
@@ -80,7 +72,11 @@ export function TestSuiteTab() {
           <div className="relative">
             <select
               value={selectedDeviceIndex}
-              onChange={(e) => setSelectedDeviceIndex(Number(e.target.value))}
+               onChange={(e) => {
+                 const index = Number(e.target.value);
+                 setSelectedDeviceIndex(index);
+                 setDevice(new SimulatedDevice(supabase, TEST_USERS[index].id));
+               }}
               className="appearance-none bg-amber-600 text-white text-sm font-medium rounded-lg pl-3 pr-8 py-1.5 border border-amber-400 cursor-pointer"
             >
               {TEST_USERS.map((u, i) => (
@@ -120,14 +116,14 @@ export function TestSuiteTab() {
       {/* Panel Content */}
       <div className="flex-1 overflow-hidden">
         {activePanel === "gps" && (
-          <GpsSimulator device={getDevice()} onPositionUpdate={handlePositionUpdate} />
+          <GpsSimulator device={device} onPositionUpdate={handlePositionUpdate} />
         )}
         {activePanel === "routes" && (
-          <RoutePlayback device={getDevice()} onPositionUpdate={handlePositionUpdate} />
+          <RoutePlayback device={device} onPositionUpdate={handlePositionUpdate} />
         )}
         {activePanel === "parking" && (
           <ParkingTester
-            device={getDevice()}
+            device={device}
             events={events}
             onParkingEvent={handleParkingEvent}
             onPositionUpdate={handlePositionUpdate}
@@ -137,9 +133,9 @@ export function TestSuiteTab() {
           <TrackingMonitor />
         )}
         {activePanel === "eta" && <EtaTester />}
-        {activePanel === "geofence" && <GeofenceTester device={getDevice()} />}
-        {activePanel === "scenarios" && <ScenarioRunner device={getDevice()} />}
-        {activePanel === "match" && <MatchScenario />}
+        {activePanel === "geofence" && <GeofenceTester device={device} />}
+        {activePanel === "scenarios" && <ScenarioRunner device={device} />}
+        {activePanel === "match" && <SpotProtocolDemo />}
         {activePanel === "ai-test" && <AiTestRunner />}
         {activePanel === "venv" && <VirtualEnvironmentSandbox />}
         {activePanel === "device" && <DeviceTestMonitor />}

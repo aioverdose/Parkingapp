@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabaseClient";
 import { Loader2, ArrowLeft, Coins, CreditCard, ExternalLink, Building2, ArrowRight } from "lucide-react";
 
@@ -76,7 +77,7 @@ export default function PaymentsPage() {
           <h1 className="text-2xl font-bold">Payment History</h1>
         </div>
 
-        <a
+        <Link
           href="/business"
           className="block bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-lg shadow-blue-600/20 mb-6"
         >
@@ -85,7 +86,7 @@ export default function PaymentsPage() {
               <Building2 size={24} />
             </div>
             <div className="flex-1">
-              <p className="font-black">SpotMatch for Businesses</p>
+               <p className="font-black">Parking Meeters for Businesses</p>
               <p className="text-sm text-blue-100 mt-0.5">
                 Subscription-based parking coordination for restaurants, bars, and operators. Set up your network to get started.
               </p>
@@ -94,7 +95,7 @@ export default function PaymentsPage() {
               Get started <ArrowRight size={16} />
             </span>
           </div>
-        </a>
+        </Link>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 mb-6">
           <div className="flex items-center gap-3 mb-2">
@@ -107,7 +108,7 @@ export default function PaymentsPage() {
             </div>
           </div>
           <p className="text-xs text-zinc-500 mb-4">
-            Optional bonus credits for the consumer side. Business subscriptions are the primary way to pay for SpotMatch.
+             Optional bonus credits for the consumer side. Business subscriptions are the primary way to pay for Parking Meeters.
           </p>
           <button
             onClick={buyCredits}

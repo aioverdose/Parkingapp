@@ -13,12 +13,12 @@ const FEATURES = [
   {
     icon: CalendarClock,
     title: "Departure & return matching",
-    body: "Set when you'll leave and when you'll be back. The moment you depart, our detection sends a live departure signal to a matched driver for exactly that window.",
+    body: "Set when you'll leave and when you'll be back. The app can send a live departure signal to a compatible member for that estimated window.",
   },
   {
     icon: RefreshCcw,
     title: "The signal keeps working",
-    body: "Every departure is a live signal. Commuter out in the morning, lunchtime visitor in the afternoon, evening guest at night — the technology keeps the space in motion.",
+    body: "Every departure is a time-limited signal. Commuter out in the morning, lunchtime visitor in the afternoon, evening guest at night — members coordinate around changing conditions.",
   },
   {
     icon: MapPin,
@@ -28,29 +28,29 @@ const FEATURES = [
   {
     icon: Smartphone,
     title: "Arrival alerts",
-    body: "No more guessing. When a spot is about to open near you, you get a real-time alert with directions to a space that's actually available.",
+    body: "Reduce guesswork. When a departure signal appears near you, you can get an alert and directions while checking posted signs and current street conditions yourself.",
   },
   {
     icon: ShieldCheck,
     title: "Confirmed handoffs only",
-    body: "Both sides confirm the handoff. Chats are ephemeral, matches are vetted by schedule + vehicle type, and safety tools are built in.",
+    body: "Both sides can confirm they are coordinating. Chats are ephemeral, suggestions use schedule and vehicle compatibility, and safety tools are built in.",
   },
   {
     icon: Users,
     title: "A shared network, not a marketplace",
-    body: "Members help each other. Every departure signal you share makes the neighborhood better for the next driver — and gets you more reliable parking in return.",
+    body: "Members help each other. Every departure signal can make neighborhood arrivals easier, but no member is promised a space in return.",
   },
 ];
 
 export default function SolutionPage() {
   return (
-    <main className="max-w-6xl mx-auto px-4 py-16">
+    <main className="public-shell min-h-screen max-w-6xl mx-auto px-4 py-16">
       <div className="max-w-2xl mb-12">
         <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">The Solution</p>
         <h1 className="text-3xl md:text-5xl font-black">Stop circling. Start matching.</h1>
         <p className="text-lg text-zinc-600 dark:text-zinc-400 mt-4">
-          ParkingMeeters turns every departing driver into a live parking signal,
-          and every arriving driver into a matched guest.
+             ParkingMeeters turns departing drivers into live coordination signals,
+             and helps arriving drivers make informed decisions.
         </p>
       </div>
 
@@ -60,16 +60,16 @@ export default function SolutionPage() {
           <p className="font-black text-xl mb-2">Someone is leaving…</p>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
             They set their departure and return time. When they drive away, the
-            app publishes a live &quot;spot opening&quot; signal to matched drivers —
-            never exposing the address until it&apos;s confirmed.
+             app publishes a live &quot;departure window&quot; signal to compatible drivers —
+             never promising that a public space will remain available.
           </p>
         </div>
         <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 p-8">
           <p className="font-black text-xl mb-2">…and someone is arriving.</p>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
-            They&apos;re nearby and looking. We match them to the opening window by
-            location, schedule, and vehicle type. Both confirm, both win, and the
-            space keeps flowing.
+             They&apos;re nearby and looking. We suggest coordination based on location,
+             schedule, and vehicle type. Both members decide whether to proceed,
+             and public parking rules always control.
           </p>
         </div>
       </div>
@@ -96,7 +96,7 @@ export default function SolutionPage() {
         </div>
         <div className="flex gap-3 shrink-0 flex-wrap">
           <Link href="/auth/signup" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition">
-            Book a business pilot <ArrowRight size={18} />
+             Join a business pilot <ArrowRight size={18} />
           </Link>
           <Link href="/marketing/how-it-works" className="px-6 py-3 rounded-xl font-bold border border-zinc-600 hover:border-white transition">
             How it works

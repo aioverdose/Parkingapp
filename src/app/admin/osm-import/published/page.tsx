@@ -1,0 +1,10 @@
+"use client";
+import { useEffect, useState } from "react";
+import { osmImportFetch } from "../client";
+
+export default function PublishedPage() {
+  const [records, setRecords] = useState<any[] | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => { void (async () => { try { const response = await osmImportFetch("/api/admin/osm-import/published"); const data = await response.json(); if (!response.ok) throw new Error(data.error); setRecords(data.records || []); } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to load published records"); } })(); }, []);
+  return <main className="mx-auto max-w-6xl p-5 md:p-10"><h1 className="text-3xl font-black text-blue-950">Published Parking Records</h1><p className="mt-3 text-zinc-600">These OSM reference records are published in app-facing <code>parking_information</code>. They remain separate from user-generated parking spots.</p><p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">OSM data may be incomplete or out of date. Verify details locally; publication does not guarantee parking availability.</p>{error && <p className="mt-4 text-sm font-semibold text-red-700">{error}</p>}{records === null && !error ? <p className="mt-6">Loading published records...</p> : records?.length ? <div className="mt-5 grid gap-3">{records.map((record) => <article key={record.id} className="rounded-2xl border bg-white p-4"><div className="flex flex-wrap justify-between gap-2"><h2 className="font-bold">{record.name}</h2><span className="text-xs font-bold uppercase text-green-700">published</span></div><p className="mt-1 text-sm text-zinc-600">{record.city}{record.state_country ? ` · ${record.state_country}` : ""} · {record.record_type}</p><p className="mt-1 text-sm text-zinc-600">Mapped area geometry</p>{record.source_url && <a className="mt-2 inline-block text-sm text-blue-700 underline" href={record.source_url} target="_blank" rel="noreferrer">OpenStreetMap source</a>}</article>)}</div> : <p className="mt-6">No published OSM records found.</p>}</main>;
+}

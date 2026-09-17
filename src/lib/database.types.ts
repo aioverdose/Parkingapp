@@ -110,6 +110,8 @@ export interface Database {
           id: string;
           email: string;
           name: string | null;
+          username: string | null;
+          age_confirmed_at: string | null;
           avatar_url: string | null;
           phone: string | null;
           vehicle_type: string | null;
@@ -134,6 +136,8 @@ export interface Database {
           id?: string;
           email: string;
           name?: string | null;
+          username?: string | null;
+          age_confirmed_at?: string | null;
           avatar_url?: string | null;
           phone?: string | null;
           vehicle_type?: string | null;
@@ -158,6 +162,8 @@ export interface Database {
           id?: string;
           email?: string;
           name?: string | null;
+          username?: string | null;
+          age_confirmed_at?: string | null;
           avatar_url?: string | null;
           phone?: string | null;
           vehicle_type?: string | null;
@@ -404,6 +410,7 @@ export interface Database {
           title: string;
           message: string;
           type: string;
+          match_id: string | null;
           read: boolean;
           created_at: string;
         };
@@ -413,6 +420,7 @@ export interface Database {
           title: string;
           message: string;
           type: string;
+          match_id?: string | null;
           read?: boolean;
           created_at?: string;
         };
@@ -422,6 +430,7 @@ export interface Database {
           title?: string;
           message?: string;
           type?: string;
+          match_id?: string | null;
           read?: boolean;
           created_at?: string;
         };
@@ -600,6 +609,7 @@ export interface Database {
           target_lat: number | null;
           target_lng: number | null;
           target_radius_meters: number | null;
+          placement: "all" | "spot_details" | "sidebar" | "dashboard";
           start_date: string;
           end_date: string | null;
           active: boolean;
@@ -618,6 +628,7 @@ export interface Database {
           target_lat?: number | null;
           target_lng?: number | null;
           target_radius_meters?: number | null;
+          placement?: "all" | "spot_details" | "sidebar" | "dashboard";
           start_date?: string;
           end_date?: string | null;
           active?: boolean;
@@ -636,6 +647,7 @@ export interface Database {
           target_lat?: number | null;
           target_lng?: number | null;
           target_radius_meters?: number | null;
+          placement?: "all" | "spot_details" | "sidebar" | "dashboard";
           start_date?: string;
           end_date?: string | null;
           active?: boolean;
@@ -1526,6 +1538,63 @@ export interface Database {
           role?: "admin" | "staff" | "member";
           status?: "active" | "invited" | "disabled";
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      business_known_departures: {
+        Row: {
+          id: string;
+          business_id: string;
+          network_id: string | null;
+          category: "shift_end" | "closing_time" | "meal_turnover" | "class_end" | "street_sweeping" | "event_end" | "staff_departure" | "other";
+          title: string | null;
+          day_of_week: number[] | null;
+          specific_date: string | null;
+          start_time: string;
+          end_time: string | null;
+          lead_minutes: number | null;
+          timezone: string;
+          active: boolean;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          network_id?: string | null;
+          category: "shift_end" | "closing_time" | "meal_turnover" | "class_end" | "street_sweeping" | "event_end" | "staff_departure" | "other";
+          title?: string | null;
+          day_of_week?: number[] | null;
+          specific_date?: string | null;
+          start_time: string;
+          end_time?: string | null;
+          lead_minutes?: number | null;
+          timezone?: string;
+          active?: boolean;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          business_id?: string;
+          network_id?: string | null;
+          category?: "shift_end" | "closing_time" | "meal_turnover" | "class_end" | "street_sweeping" | "event_end" | "staff_departure" | "other";
+          title?: string | null;
+          day_of_week?: number[] | null;
+          specific_date?: string | null;
+          start_time?: string;
+          end_time?: string | null;
+          lead_minutes?: number | null;
+          timezone?: string;
+          active?: boolean;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

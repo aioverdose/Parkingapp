@@ -34,14 +34,17 @@ export function PhoneVerificationModal({ open, userId, onVerified, onClose }: Ph
 
   useEffect(() => {
     if (!open) {
-      setPhone("");
-      setCode("");
-      setStep("phone");
-      setError(null);
-      setSuccess(false);
-      setSimulated(false);
-      setCooldown(0);
-      if (timerRef.current) clearInterval(timerRef.current);
+      const reset = window.setTimeout(() => {
+        setPhone("");
+        setCode("");
+        setStep("phone");
+        setError(null);
+        setSuccess(false);
+        setSimulated(false);
+        setCooldown(0);
+        if (timerRef.current) clearInterval(timerRef.current);
+      }, 0);
+      return () => window.clearTimeout(reset);
     }
   }, [open]);
 

@@ -198,7 +198,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
     return (
       <div className="flex flex-col gap-6 p-8">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mx-auto">
+           <div className="w-12 h-12 bg-gradient-to-br from-[#164d3b] to-[#246b50] rounded-xl flex items-center justify-center text-white mx-auto shadow-lg shadow-[#164d3b]/20">
             <Phone size={24} />
           </div>
           <h2 className="text-2xl font-bold">Verify Your Phone</h2>
@@ -237,7 +237,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
             <button
               onClick={handleSendCode}
               disabled={sending || verifyPhone.replace(/\D/g, "").length < 10}
-              className="w-full h-12 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 text-white font-bold transition flex items-center justify-center gap-2"
+               className="app-primary w-full h-12 rounded-full text-white font-bold transition flex items-center justify-center gap-2"
             >
               {sending ? <Loader2 size={18} className="animate-spin" /> : null}
               Send Verification Code
@@ -286,7 +286,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
               <button
                 onClick={handleVerify}
                 disabled={verifying || verifyCode.length < 6}
-                className="flex-1 h-12 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 text-white font-bold transition flex items-center justify-center gap-2"
+                 className="app-primary flex-1 h-12 rounded-full text-white font-bold transition flex items-center justify-center gap-2"
               >
                 {verifying ? <Loader2 size={18} className="animate-spin" /> : "Verify"}
               </button>
@@ -404,7 +404,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
 
             {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
 
-            <Button type="submit" disabled={loading} className="h-14 text-lg font-bold bg-blue-600 hover:bg-blue-700 text-white">
+             <Button type="submit" disabled={loading} className="h-14 text-lg font-bold">
               {loading ? (
                 <Loader2 className="animate-spin" />
               ) : (
@@ -418,7 +418,7 @@ export function Auth({ onComplete }: { onComplete: () => void }) {
       <div className="text-center">
         <button
           onClick={() => setIsLogin(!isLogin)}
-          className="text-sm font-medium text-blue-600 hover:underline"
+           className="app-link text-sm font-medium hover:underline"
         >
           {isLogin ? "Don't have an account? Sign up" : "Already have an account? Log in"}
         </button>

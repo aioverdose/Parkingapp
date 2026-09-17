@@ -1,0 +1,9 @@
+import type { Metadata } from "next";
+import { Checklist, DocCard, DocSection, PublicDocShell } from "@/components/PublicDocShell";
+
+export const metadata: Metadata = { title: "Messaging Guide | Parking Meeters", description: "Learn when temporary match messaging opens and how privacy and reports work." };
+
+export default function MessagingGuide() { return <PublicDocShell title="Messaging" eyebrow="Support guide" intro="Messaging is a short-lived coordination tool for members who have mutually accepted a potential match.">
+  <div className="grid gap-4 sm:grid-cols-2"><DocCard title="Match Protocol">Accept potential matches from the Match Protocol card in Messages. The message box opens only after both people accept.</DocCard><DocCard title="SPOT Arrival/Handoff Protocol">SPOT Protocol is a separate safety flow for arrival and the eventual handoff. Accepting a match does not start it.</DocCard><DocCard title="What to write">Keep messages practical: timing, vehicle description, and a nearby lawful handoff area. Do not share more personal information than needed.</DocCard><DocCard title="Expiration and privacy">Conversations are temporary and may expire with the match or after the configured handoff window. Do not assume an expired thread remains available.</DocCard><DocCard title="Reports">Use the report or flag control on the match or conversation for harassment, threats, suspicious activity, inaccurate signals, or other concerns. For urgent safety issues, use local emergency services first.</DocCard></div>
+  <DocSection title="Good coordination habits"><Checklist items={["Meet only in a public, lawful area and follow every posted rule.", "Do not pressure someone to accept or disclose private contact details.", "Decline the match if the details do not feel right.", "Report problems promptly so moderators can review available information."]} /></DocSection>
+</PublicDocShell>; }
