@@ -3,17 +3,6 @@ import { Mail, MapPin, Zap } from "lucide-react";
 
 const columns = [
   {
-    title: "Product",
-    links: [
-      ["How it works", "/marketing/how-it-works"],
-      ["Explore / Search", "/search"],
-      ["Community", "/community"],
-      ["Matching / Activity", "/activity"],
-      ["Schedule planner", "/profile/schedules"],
-      ["For businesses", "/business"],
-    ],
-  },
-  {
     title: "Support",
     links: [
       ["Support center", "/support"],
@@ -66,7 +55,7 @@ export function SiteFooter() {
               <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-[#b9ccf7]" /><a href="mailto:support@parkingmeeters.com" className="hover:text-white">support@parkingmeeters.com</a></p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3">
             {columns.map((column) => (
               <div key={column.title}>
                 <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[#b9ccf7]">{column.title}</h2>
