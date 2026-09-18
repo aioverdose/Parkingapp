@@ -8,9 +8,9 @@ import { sendPushToUser } from "@/lib/push";
 const PASSWORD = "test-device-password-2024";
 const USERS = [
   { email: "test-device-1@parkingmeeters.test", username: "test_driver_1", name: "Synthetic Driver 1", phone: "+15550001001", vehicle_type: "sedan", latitude: 33.7701, longitude: -118.1937 },
-  { email: "test-device-2@parkingmeeters.test", username: "test_driver_2", name: "Synthetic Driver 2", phone: "+15550001002", vehicle_type: "suv", latitude: 33.7701, longitude: -118.1937 },
-  { email: "test-device-3@parkingmeeters.test", username: "test_driver_3", name: "Synthetic Driver 3", phone: "+15550001003", vehicle_type: "compact", latitude: 33.7734, longitude: -118.1852 },
-  { email: "test-device-4@parkingmeeters.test", username: "test_driver_4", name: "Synthetic Driver 4", phone: "+15550001004", vehicle_type: "truck", latitude: 33.7628, longitude: -118.1981 },
+  { email: "test-device-2@parkingmeeters.test", username: "test_driver_2", name: "Synthetic Driver 2", phone: "+15550001002", vehicle_type: "sedan", latitude: 33.7701, longitude: -118.1937 },
+  { email: "test-device-3@parkingmeeters.test", username: "test_driver_3", name: "Synthetic Driver 3", phone: "+15550001003", vehicle_type: "sedan", latitude: 33.7734, longitude: -118.1852 },
+  { email: "test-device-4@parkingmeeters.test", username: "test_driver_4", name: "Synthetic Driver 4", phone: "+15550001004", vehicle_type: "sedan", latitude: 33.7628, longitude: -118.1981 },
 ];
 
 export async function POST(request: NextRequest) {

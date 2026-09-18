@@ -88,7 +88,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link href="/admin/synthetic-users" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#17211e] transition hover:bg-[#fff0eb] hover:text-[#e85d3f]"><FlaskConical size={18} /> Synthetic Users</Link>
          <Link href="/admin/messenger" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#17211e] transition hover:bg-[#fff0eb] hover:text-[#e85d3f]"><MessageSquare size={18} /> Messenger</Link>
          <Link href="/admin/profile-design" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#17211e] transition hover:bg-[#fff0eb] hover:text-[#e85d3f]"><Palette size={18} /> Profile Design</Link>
-         <div className="mt-3 border-t border-[#dce3df] pt-3"><p className="px-3 pb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#71807b]">Experience management</p>
+          <Link href="/admin/clients" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-[#164d3b] hover:bg-[#fff1eb]"><Briefcase size={18} /> Client Files</Link>
+          <div className="mt-3 border-t border-[#dce3df] pt-3"><p className="px-3 pb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#71807b]">Experience management</p>
           <Link href="/admin/experience" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-[#164d3b] hover:bg-[#fff1eb]"><SlidersHorizontal size={18} /> Overview</Link>
           <Link href="/admin/profile-configuration" className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-[#17211e] hover:bg-[#fff1eb]">Profile configuration</Link>
           <Link href="/admin/profile-appearance" className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-[#17211e] hover:bg-[#fff1eb]">Profile appearance</Link>
