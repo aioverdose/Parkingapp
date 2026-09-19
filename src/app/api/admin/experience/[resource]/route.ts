@@ -3,10 +3,27 @@ import { createAdminClient } from "@/lib/supabaseAdmin";
 import { audit, requireExperienceAuth } from "@/lib/api/experience-auth";
 import { SAFE_PRIVACY_DEFAULTS, validateCategory } from "@/lib/experience-validation";
 import { APP_COLOR_PALETTES, EXPERIENCE_APPEARANCE_PRESETS } from "@/lib/experience-appearance";
+import { z } from "zod";
 
 const singletonResources = new Set(["profile-appearance", "community-settings", "privacy-defaults"]);
 const tableFor = (resource: string) => resource === "profile-sections" ? "profile_section_configs" : resource === "feature-flags" ? "feature_flags" : resource === "categories" ? "explore_categories" : resource === "category-images" ? "category_images" : resource === "audit-logs" ? "admin_audit_logs" : resource.replaceAll("-", "_");
 const json = (request: NextRequest) => request.json().catch(() => null) as Promise<Record<string, unknown> | null>;
+const featureFlagUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  enabled: z.boolean().optional(),
+  rollout: z.object({
+    mode: z.enum(["open", "allowlist", "disabled"]),
+    user_ids: z.array(z.string().uuid()).default([]),
+    roles: z.array(z.string().trim().min(1).max(64)).default([]),
+  }).strict().optional(),
+  description: z.string().max(500).optional(),
+}).strict().refine((value) => value.enabled !== undefined || value.rollout !== undefined || value.description !== undefined, {
+  message: "At least one feature flag field must be provided",
+});
+
+export function validateFeatureFlagUpdate(input: unknown) {
+  return featureFlagUpdateSchema.safeParse(input);
+}
 
 export async function GET(request: NextRequest, context: { params: Promise<{ resource: string }> }) {
   const { resource } = await context.params;
@@ -78,6 +95,17 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ res
     const patch = resource === "profile-sections" ? { status: "published", published_at: new Date().toISOString(), updated_by: auth.auth.user.id } : resource === "categories" ? { status: "published", updated_at: new Date().toISOString() } : { published: body.draft ?? body.published ?? {}, status: "published", updated_by: auth.auth.user.id, updated_at: new Date().toISOString() };
     const { data, error } = await client.from(table).update(patch).eq(resource === "profile-sections" || resource === "categories" ? "id" : "key", id).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 400 }); await audit(auth.auth, "publish", resource, id, previous, data); return NextResponse.json({ data });
+  }
+  if (resource === "feature-flags") {
+    const parsed = validateFeatureFlagUpdate(body);
+    if (!parsed.success) return NextResponse.json({ error: "Invalid feature flag update", details: parsed.error.flatten() }, { status: 400 });
+    const { name, ...patch } = parsed.data;
+    const { data: previous } = await client.from(table).select("*").eq("name", name).maybeSingle();
+    if (!previous) return NextResponse.json({ error: "Feature flag not found" }, { status: 404 });
+    const { data, error } = await client.from(table).update({ ...patch, updated_at: new Date().toISOString(), updated_by: auth.auth.user.id }).eq("name", name).select().single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    await audit(auth.auth, "update", resource, name, previous, data);
+    return NextResponse.json({ data });
   }
   const key = resource === "profile-sections" || resource === "categories" || resource === "category-images" ? "id" : "key";
   const { data: previous } = await client.from(table).select("*").eq(key, id).maybeSingle();

@@ -6,6 +6,7 @@ import { PresenceTracker } from "@/components/PresenceTracker";
 import { BottomNav } from "@/components/BottomNav";
 import { AppAppearanceProvider } from "@/components/AppAppearanceProvider";
 import { PendingMatchBanner } from "@/components/PendingMatchBanner";
+import { PotentialMatchBanner } from "@/components/PotentialMatchBanner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -56,6 +57,7 @@ export default function RootLayout({
         <PWAInstallBanner />
         <PresenceTracker />
         <AppAppearanceProvider />
+        <PotentialMatchBanner />
         <PendingMatchBanner />
         {children}
         <BottomNav />
