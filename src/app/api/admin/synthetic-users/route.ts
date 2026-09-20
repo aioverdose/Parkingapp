@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { checkRateLimit } from "@/lib/api/rate-limit";
 import { getClientIp } from "@/lib/api/request-security";
 import { sendPushToUser } from "@/lib/push";
+import { syncRecurringScheduleWindows } from "@/lib/matching/matching-observability";
 
 const PASSWORD = "test-device-password-2024";
 const USERS = [
@@ -55,8 +56,15 @@ export async function POST(request: NextRequest) {
     else await admin.from("user_parking_spots").insert(area);
     const schedule = { user_id: authUser.id, label: "Synthetic test schedule", latitude: profileData.latitude, longitude: profileData.longitude, days_of_week: [1, 2, 3, 4, 5], departure_time: seekerFixture ? "08:00" : "17:00", return_time: seekerFixture ? "17:00" : "20:00", vehicle_type: profileData.vehicle_type, active: true };
     const { data: existingSchedule } = await admin.from("recurring_schedules").select("id").eq("user_id", authUser.id).eq("label", "Synthetic test schedule").maybeSingle();
-    if (existingSchedule) await admin.from("recurring_schedules").update(schedule).eq("id", existingSchedule.id);
-    else await admin.from("recurring_schedules").insert(schedule);
+    const scheduleWrite = existingSchedule
+      ? await admin.from("recurring_schedules").update(schedule).eq("id", existingSchedule.id)
+      : await admin.from("recurring_schedules").insert(schedule);
+    if (scheduleWrite.error) return NextResponse.json({ error: "SYNTHETIC_SCHEDULE_WRITE_FAILED" }, { status: 500 });
+    try {
+      await syncRecurringScheduleWindows(authUser.id, "/api/admin/synthetic-users", "synthetic");
+    } catch {
+      return NextResponse.json({ error: "SYNTHETIC_SCHEDULE_SYNC_FAILED" }, { status: 503 });
+    }
     accounts.push({ email: profileData.email, username: profileData.username, vehicle_type: profileData.vehicle_type });
   }
 

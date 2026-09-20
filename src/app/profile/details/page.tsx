@@ -207,14 +207,10 @@ export default function ProfilePage() {
     if (!userId) return;
     const arrival = to24h(schedArrivalHour, schedArrivalMin, schedArrivalAmPm);
     const departure = to24h(schedDepartureHour, schedDepartureMin, schedDepartureAmPm);
-    const { error } = await supabase
-      .from("users")
-      .update({ schedule_arrival: arrival, schedule_departure: departure, schedule_days: schedDays })
-      .eq("id", userId);
-    if (!error) {
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const response = token ? await fetch("/api/profile/schedule", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ schedule_arrival: arrival, schedule_departure: departure, schedule_days: schedDays }) }) : null;
+    if (response?.ok) {
       setScheduleSaved(true);
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      if (token) void fetch("/api/matches/schedule", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       setTimeout(() => setScheduleSaved(false), 3000);
     }
   };

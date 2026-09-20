@@ -86,13 +86,8 @@ export default function ProfileSetupPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("Your session expired. Please log in again.");
-      const { error: profileError } = await supabase.from("users").update({
-        vehicle_type: vehicleType,
-        schedule_arrival: to24h(primaryArrival),
-        schedule_departure: to24h(primaryDeparture),
-        schedule_days: primaryDays,
-      }).eq("id", session.user.id);
-      if (profileError) throw new Error("Your profile details could not be saved.");
+      const profileResponse = await fetch("/api/profile/schedule", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ vehicle_type: vehicleType, schedule_arrival: to24h(primaryArrival), schedule_departure: to24h(primaryDeparture), schedule_days: primaryDays }) });
+      if (!profileResponse.ok) throw new Error("Your profile details could not be synchronized.");
       const primaryResponse = await fetch("/api/parking-spots/save", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ ...pin, label: "Primary commute area" }) });
       if (!primaryResponse.ok) throw new Error("Your primary area could not be saved.");
       const primaryScheduleResponse = await fetch("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ latitude: pin.latitude, longitude: pin.longitude, label: "Primary commute area", days_of_week: primaryDays, departure_time: to24h(primaryDeparture), return_time: to24h(primaryArrival), vehicle_type: vehicleType }) });
@@ -102,13 +97,7 @@ export default function ProfileSetupPage() {
         const response = await fetch("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ latitude: schedule.lat, longitude: schedule.lng, label: schedule.label.trim(), days_of_week: schedule.days, departure_time: to24h(schedule.departure), return_time: to24h(schedule.arrival) }) });
         if (!response.ok) throw new Error("An additional schedule could not be saved.");
       }
-      setMatchingStatus(null);
-      try {
-        const matchingResponse = await fetch("/api/matches/schedule", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } });
-        if (!matchingResponse.ok) setMatchingStatus("Your profile is saved. Matching will be retried later.");
-      } catch {
-        setMatchingStatus("Your profile is saved. Matching will be retried later.");
-      }
+       setMatchingStatus(null);
       setSaved(true);
       setShowNotificationConsent(true);
     } catch (error) {
