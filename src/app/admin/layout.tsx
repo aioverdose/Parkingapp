@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabaseClient";
-import { LayoutDashboard, Megaphone, Users, AlertTriangle, Globe, Truck, ArrowLeft, Radar, FlaskConical, Bell, GitCompare, Share2, Brain, Clapperboard, Mic, Code2, MessageSquare, Palette, SlidersHorizontal, BookOpen, Briefcase } from "lucide-react";
+import { Activity, LayoutDashboard, Megaphone, Users, AlertTriangle, Globe, Truck, ArrowLeft, Radar, FlaskConical, Bell, GitCompare, Share2, Brain, Clapperboard, Mic, Code2, MessageSquare, Palette, SlidersHorizontal, BookOpen, Briefcase } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createBrowserClient();
@@ -52,9 +52,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
          <a href="/admin" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#164d3b] transition hover:bg-[#fff1eb] hover:text-[#b93d29]">
           <LayoutDashboard size={18} /> Dashboard
         </a>
-         <a href="/admin/control-tower" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#164d3b] transition hover:bg-[#fff1eb] hover:text-[#b93d29]">
-          <Radar size={18} /> Control Tower
-        </a>
+          <a href="/admin/control-tower" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#164d3b] transition hover:bg-[#fff1eb] hover:text-[#b93d29]">
+           <Radar size={18} /> Control Tower
+         </a>
+          <Link href="/admin/matching-operations" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#164d3b] transition hover:bg-[#fff1eb] hover:text-[#b93d29]"> <Activity size={18} /> Matching Operations</Link>
         <a href="/admin/agent" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
           <Brain size={18} /> App Agent
         </a>
@@ -132,7 +133,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="absolute right-0 top-12 grid w-64 grid-cols-2 gap-1 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl">
           <a href="/admin" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Dashboard</a>
           <a href="/admin/testing" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Testing</a>
-          <a href="/admin/control-tower" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Control Tower</a>
+           <a href="/admin/control-tower" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Control Tower</a>
+           <a href="/admin/matching-operations" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Matching Operations</a>
           <a href="/admin/users" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Users</a>
           <a href="/admin/pilot-areas" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Pilot Areas</a>
           <a href="/admin/street-sweeping" className="rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-zinc-100">Sweeping</a>
