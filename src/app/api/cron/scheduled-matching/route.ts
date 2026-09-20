@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabaseAdmin";
 import { logger } from "@/lib/logger";
+import { newMatchingCorrelationId, recordMatchingOperationsEvent } from "@/lib/matching/matching-observability";
 
 /**
  * POST /api/cron/scheduled-matching
@@ -21,6 +22,11 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    const { data: legacyFlag, error: legacyFlagError } = await supabase.from("feature_flags").select("enabled").eq("name", "legacy_spot_matching_v1").maybeSingle();
+    if (legacyFlagError || legacyFlag?.enabled !== true) {
+      void recordMatchingOperationsEvent({ eventName: "legacy_matching_disabled", correlationId: newMatchingCorrelationId(), routeOrigin: "/api/cron/scheduled-matching", actorScope: "system", outcome: "blocked", failureCode: "LEGACY_MATCHING_DISABLED" });
+      return NextResponse.json({ error: "LEGACY_MATCHING_DISABLED", code: "LEGACY_MATCHING_DISABLED" }, { status: 410 });
+    }
 
     // Get the app URL for internal API call
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL

@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import { resolve } from "path";
 import { createClient } from "@supabase/supabase-js";
+import { syncRecurringScheduleWindows } from "../src/lib/matching/matching-observability";
 
 config({ path: resolve(process.cwd(), ".env.local") });
 
@@ -70,8 +71,11 @@ async function main() {
     else await supabase.from("user_parking_spots").insert(area);
     const schedule = { user_id: authUser.id, label: "Synthetic test schedule", latitude: profile.latitude, longitude: profile.longitude, days_of_week: [1, 2, 3, 4, 5], departure_time: seekerFixture ? "08:00" : "17:00", return_time: seekerFixture ? "17:00" : "20:00", vehicle_type: profile.vehicle_type, active: true };
     const { data: existingSchedule } = await supabase.from("recurring_schedules").select("id").eq("user_id", authUser.id).eq("label", "Synthetic test schedule").maybeSingle();
-    if (existingSchedule) await supabase.from("recurring_schedules").update(schedule).eq("id", existingSchedule.id);
-    else await supabase.from("recurring_schedules").insert(schedule);
+    const scheduleWrite = existingSchedule
+      ? await supabase.from("recurring_schedules").update(schedule).eq("id", existingSchedule.id)
+      : await supabase.from("recurring_schedules").insert(schedule);
+    if (scheduleWrite.error) throw new Error("SYNTHETIC_SCHEDULE_WRITE_FAILED");
+    await syncRecurringScheduleWindows(authUser.id, "scripts/create-synthetic-users", "synthetic");
 
     console.log(`${profile.email} ready (${profile.username})`);
   }

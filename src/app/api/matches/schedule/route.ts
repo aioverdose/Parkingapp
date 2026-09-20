@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/api/auth-helpers";
 import { sendPushToUser } from "@/lib/push";
 import { isSyntheticAccount } from "@/lib/testing/synthetic-account";
 import { appDateKey, nextAppOccurrence } from "@/lib/schedule-time";
+import { newMatchingCorrelationId, recordMatchingOperationsEvent } from "@/lib/matching/matching-observability";
 
 /**
  * POST /api/matches/schedule
@@ -122,6 +123,11 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    const { data: legacyFlag, error: legacyFlagError } = await supabase.from("feature_flags").select("enabled").eq("name", "legacy_spot_matching_v1").maybeSingle();
+    if (legacyFlagError || legacyFlag?.enabled !== true) {
+      void recordMatchingOperationsEvent({ eventName: "legacy_matching_disabled", correlationId: newMatchingCorrelationId(), routeOrigin: "/api/matches/schedule", actorScope: isSyntheticAccount(user.email) ? "synthetic" : "system", outcome: "blocked", failureCode: "LEGACY_MATCHING_DISABLED" });
+      return NextResponse.json({ error: "LEGACY_MATCHING_DISABLED", code: "LEGACY_MATCHING_DISABLED" }, { status: 410 });
+    }
 
     // Load my profile + schedules
     const { data: me } = await supabase
